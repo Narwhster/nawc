@@ -191,7 +191,7 @@ function SourceView({ node, deleteNode, runnable }: NodeViewProps & { runnable: 
   }, [load]);
   return (
     <NodeViewWrapper className="nawc-node-shell">
-      <details open className="nawc-source-block">
+      <details className="nawc-source-block">
         <summary>
           <ChevronDownIcon /> <span>{attrs.file}</span>
           {attrs.name && (

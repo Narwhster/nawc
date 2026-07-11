@@ -378,6 +378,9 @@ body {
   .nawc-node-shell:focus-within .nawc-node-ribbon {
     @apply opacity-100;
   }
+  .nawc-node-shell:has(> .nawc-source-block:not([open])) .nawc-node-ribbon {
+    @apply -right-12 top-1/2 -translate-y-1/2;
+  }
   .nawc-interactive-frame {
     @apply block min-h-64 w-full border-0 bg-white;
   }
