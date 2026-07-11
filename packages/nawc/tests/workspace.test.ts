@@ -1,10 +1,16 @@
 import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import {
   createFolder,
+  isProjectFile,
+  isProjectPath,
   listEntries,
+  listProjectFiles,
+  listProjectPaths,
   moveEntry,
   renameEntry,
   renameNote,
@@ -13,6 +19,8 @@ import {
   writeNote,
 } from "../src/workspace.ts";
 import { syncSkills } from "../src/skills.ts";
+
+const execFileAsync = promisify(execFile);
 
 describe("workspace boundaries", () => {
   it("rejects traversal outside a notebook", async () => {
@@ -53,6 +61,61 @@ describe("workspace boundaries", () => {
       { path: "design/api.html", type: "file" },
       { path: "ideas", type: "folder" },
     ]);
+  });
+
+  it("lists project files through Git while excluding ignored and generated content", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "nawc-project-"));
+    await execFileAsync("git", ["init", root]);
+    await mkdir(path.join(root, "src"));
+    await mkdir(path.join(root, "dist"));
+    await mkdir(path.join(root, "node_modules"));
+    await writeFile(path.join(root, ".gitignore"), "*.secret\n", "utf8");
+    await writeFile(path.join(root, "src/index.ts"), "export {};", "utf8");
+    await writeFile(path.join(root, "local.secret"), "secret", "utf8");
+    await writeFile(path.join(root, "dist/tracked.js"), "generated", "utf8");
+    await writeFile(path.join(root, "node_modules/tracked.js"), "generated", "utf8");
+    await execFileAsync("git", [
+      "-C",
+      root,
+      "add",
+      "-f",
+      "dist/tracked.js",
+      "node_modules/tracked.js",
+    ]);
+    await expect(listProjectFiles(root)).resolves.toEqual([".gitignore", "src/index.ts"]);
+    await expect(listProjectPaths(root)).resolves.toEqual([
+      { path: ".gitignore", kind: "file" },
+      { path: "src", kind: "directory" },
+      { path: "src/index.ts", kind: "file" },
+    ]);
+    await expect(isProjectPath(root, "src")).resolves.toBe(true);
+  });
+
+  it("bounds project file results while skipping unsafe candidates", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "nawc-large-project-"));
+    const outside = await mkdtemp(path.join(tmpdir(), "nawc-outside-"));
+    await execFileAsync("git", ["init", root]);
+    await mkdir(path.join(root, "src"));
+    await writeFile(path.join(outside, "secret.ts"), "secret", "utf8");
+    await symlink(path.join(outside, "secret.ts"), path.join(root, "src/000.ts"));
+    await Promise.all(
+      Array.from({ length: 100 }, (_, index) =>
+        writeFile(
+          path.join(root, `src/${String(index + 1).padStart(3, "0")}.ts`),
+          "export {};",
+          "utf8",
+        ),
+      ),
+    );
+    await expect(listProjectFiles(root, { query: "src/", limit: 5 })).resolves.toEqual([
+      "src/001.ts",
+      "src/002.ts",
+      "src/003.ts",
+      "src/004.ts",
+      "src/005.ts",
+    ]);
+    await expect(isProjectFile(root, "src/000.ts")).resolves.toBe(false);
+    await expect(isProjectFile(root, "src/001.ts")).resolves.toBe(true);
   });
 
   it("moves folders without overwriting an existing entry", async () => {

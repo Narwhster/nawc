@@ -165,7 +165,7 @@ function FileTreeItem({
               dropTarget === node.path && "drop-target",
               dragging?.path === node.path && "dragging",
             )}
-            style={{ paddingLeft: `${node.path.split("/").length * 20}px` }}
+            style={{ paddingLeft: `${(node.path.split("/").length - 1) * 20}px` }}
             onClick={(event) =>
               folder ? toggle() : actions.open(node.path, event.metaKey || event.ctrlKey)
             }

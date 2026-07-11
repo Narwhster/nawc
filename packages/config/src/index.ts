@@ -157,11 +157,42 @@ export type ProviderEvent =
 
 export type NawcProvider = {
   readonly name: string;
+  readonly listSkills?: (input: { readonly cwd: string }) => Promise<readonly NawcProviderSkill[]>;
+  readonly listModels?: (input: { readonly cwd: string }) => Promise<readonly NawcProviderModel[]>;
+  readonly slashCommands?: readonly NawcProviderSlashCommand[];
   prompt(input: {
     readonly prompt: string;
     readonly cwd: string;
     readonly skillsDir: string;
+    readonly references?: readonly PromptReference[];
+    readonly model?: string;
+    readonly mode?: "default" | "plan";
   }): AsyncIterable<ProviderEvent>;
+};
+
+export type PromptReference =
+  | { readonly type: "file"; readonly path: string }
+  | { readonly type: "skill"; readonly name: string; readonly path: string };
+
+export type NawcProviderSkill = {
+  readonly name: string;
+  readonly path: string;
+  readonly enabled?: boolean;
+  readonly scope?: string;
+  readonly displayName?: string;
+  readonly shortDescription?: string;
+  readonly description?: string;
+};
+
+export type NawcProviderModel = {
+  readonly id: string;
+  readonly name: string;
+  readonly description?: string;
+};
+
+export type NawcProviderSlashCommand = {
+  readonly name: string;
+  readonly description?: string;
 };
 
 export type NawcConfig = {

@@ -6,10 +6,28 @@ import {
   realpath,
   rename,
   rm,
+  stat,
   writeFile,
 } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import path from "node:path";
+import { promisify } from "node:util";
 import type { NawcConfig, SourceSelection } from "@nawc/config";
+
+const execFileAsync = promisify(execFile);
+const GENERATED_DIRECTORY_NAMES = new Set([
+  ".git",
+  ".skills",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules",
+]);
+const PROJECT_FILE_CACHE_TTL_MS = 2_000;
+const projectFileCache = new Map<
+  string,
+  { readonly expiresAt: number; readonly files: readonly string[] }
+>();
 
 export async function safePath(root: string, relative: string): Promise<string> {
   if (path.isAbsolute(relative)) throw new Error("Paths must be relative");
@@ -64,6 +82,116 @@ export async function listEntries(srcDir: string): Promise<WorkspaceEntry[]> {
   await mkdir(srcDir, { recursive: true });
   await walk(srcDir);
   return entries.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+async function projectFileCandidates(baseDir: string): Promise<readonly string[]> {
+  const cacheKey = path.resolve(baseDir);
+  const cached = projectFileCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.files;
+  const { stdout } = await execFileAsync(
+    "git",
+    ["-C", baseDir, "ls-files", "-co", "--exclude-standard", "-z", "--", "."],
+    { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+  );
+  const files = stdout
+    .split("\0")
+    .filter(Boolean)
+    .filter(
+      (file) => !file.split(/[\\/]/).some((segment) => GENERATED_DIRECTORY_NAMES.has(segment)),
+    )
+    .sort();
+  projectFileCache.set(cacheKey, { expiresAt: Date.now() + PROJECT_FILE_CACHE_TTL_MS, files });
+  return files;
+}
+
+/** Lists a bounded set of tracked and unignored files underneath the configured base directory. */
+export async function listProjectFiles(
+  baseDir: string,
+  options: { readonly query?: string; readonly limit?: number } = {},
+): Promise<string[]> {
+  const query = options.query?.trim().toLowerCase();
+  const limit = options.limit === undefined ? undefined : Math.max(0, options.limit);
+  const candidates = (await projectFileCandidates(baseDir))
+    .filter((file) => !query || file.toLowerCase().includes(query))
+    // Check a small surplus so an invalid/deleted symlink does not usually reduce the result page.
+    .slice(0, limit === undefined ? undefined : limit * 2);
+  const files = await Promise.all(
+    candidates.map(async (file) => {
+      try {
+        await safeExistingPath(baseDir, file);
+        return file;
+      } catch {
+        // Git can report deleted tracked files and symlinks that leave baseDir.
+        return undefined;
+      }
+    }),
+  );
+  return files.filter((file): file is string => file !== undefined).slice(0, limit);
+}
+
+export type ProjectPath = {
+  readonly path: string;
+  readonly kind: "file" | "directory";
+};
+
+async function projectPathCandidates(baseDir: string): Promise<readonly string[]> {
+  const files = await projectFileCandidates(baseDir);
+  const paths = new Set(files);
+  for (const file of files) {
+    const segments = file.split("/");
+    for (let index = 1; index < segments.length; index++) {
+      paths.add(segments.slice(0, index).join("/"));
+    }
+  }
+  return [...paths].sort();
+}
+
+/** Lists searchable project files and their containing directories. */
+export async function listProjectPaths(
+  baseDir: string,
+  options: { readonly query?: string; readonly limit?: number } = {},
+): Promise<readonly ProjectPath[]> {
+  const query = options.query?.trim().toLowerCase();
+  const limit = options.limit === undefined ? undefined : Math.max(0, options.limit);
+  const candidates = (await projectPathCandidates(baseDir))
+    .filter((candidate) => !query || candidate.toLowerCase().includes(query))
+    .slice(0, limit === undefined ? undefined : limit * 2);
+  const paths = await Promise.all(
+    candidates.map(async (candidate) => {
+      try {
+        const file = await safeExistingPath(baseDir, candidate);
+        return {
+          path: candidate,
+          kind: (await stat(file)).isDirectory() ? "directory" : "file",
+        } as const;
+      } catch {
+        return undefined;
+      }
+    }),
+  );
+  return paths.filter((entry): entry is ProjectPath => entry !== undefined).slice(0, limit);
+}
+
+/** Validates one submitted reference without walking or resolving every project file. */
+export async function isProjectFile(baseDir: string, file: string): Promise<boolean> {
+  if (!(await projectFileCandidates(baseDir)).includes(file)) return false;
+  try {
+    await safeExistingPath(baseDir, file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Validates one submitted project path, including directories. */
+export async function isProjectPath(baseDir: string, file: string): Promise<boolean> {
+  if (!(await projectPathCandidates(baseDir)).includes(file)) return false;
+  try {
+    await safeExistingPath(baseDir, file);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function readNote(srcDir: string, note: string): Promise<string> {

@@ -275,13 +275,52 @@ body {
     @apply text-destructive;
   }
   .nawc-prompt-compose {
-    @apply flex flex-col gap-2 border-t p-3;
+    @apply relative flex flex-col gap-2 border-t p-3;
   }
   .nawc-prompt-compose textarea {
     @apply max-h-40 min-h-20 resize-none text-xs;
   }
   .nawc-prompt-compose button {
     @apply self-end;
+  }
+  .nawc-completion-menu {
+    @apply absolute right-3 bottom-full left-3 z-30 mb-1 max-h-72 min-w-0 overflow-x-hidden overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg;
+  }
+  .nawc-completion-heading {
+    @apply flex items-center justify-between px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground;
+  }
+  .nawc-completion-heading span {
+    @apply font-normal normal-case tracking-normal;
+  }
+  .nawc-completion-menu > button {
+    @apply flex min-w-0 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs outline-none;
+  }
+  .nawc-completion-menu > button[aria-selected="true"] {
+    @apply bg-accent text-accent-foreground;
+  }
+  .nawc-completion-menu > button svg {
+    @apply size-3.5 shrink-0 text-muted-foreground;
+  }
+  .nawc-completion-menu > button span {
+    @apply min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono;
+  }
+  .nawc-completion-menu > button small {
+    @apply min-w-0 max-w-[55%] overflow-hidden text-ellipsis whitespace-nowrap text-[10px] text-muted-foreground;
+  }
+  .nawc-completion-state {
+    @apply px-2 py-4 text-center text-xs text-muted-foreground;
+  }
+  .nawc-completion-state.error {
+    @apply text-destructive;
+  }
+  .nawc-prompt-references {
+    @apply flex flex-wrap gap-1;
+  }
+  .nawc-prompt-references span {
+    @apply inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-1.5 py-1 font-mono text-[10px] text-muted-foreground;
+  }
+  .nawc-prompt-references svg {
+    @apply size-3 shrink-0;
   }
   .nawc-node-shell {
     @apply relative my-5 rounded-md border bg-card;

@@ -3,7 +3,13 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getRequestListener } from "@hono/node-server";
-import type { NawcConfig, SourceSelection } from "@nawc/config";
+import type {
+  NawcConfig,
+  NawcProviderModel,
+  NawcProviderSkill,
+  PromptReference,
+  SourceSelection,
+} from "@nawc/config";
 import { watch } from "chokidar";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
@@ -16,8 +22,10 @@ import {
   createFolder,
   deleteEntry,
   deleteNote,
+  isProjectPath,
   listEntries,
   listNotes,
+  listProjectPaths,
   moveEntry,
   readNote,
   renameEntry,
@@ -60,6 +68,46 @@ function rawDataText(data: RawData): string {
   return data.toString();
 }
 
+type PromptSkill = {
+  readonly name: string;
+  readonly path: string;
+  readonly source: string;
+  readonly displayName?: string;
+  readonly shortDescription?: string;
+  readonly description?: string;
+  readonly scope?: string;
+};
+
+async function listPromptSkills(
+  config: NawcConfig,
+  skillsDir: string,
+  providerSkills: readonly NawcProviderSkill[],
+): Promise<readonly PromptSkill[]> {
+  const skills: PromptSkill[] = providerSkills
+    .filter((skill) => skill.enabled !== false)
+    .map((skill: NawcProviderSkill) => ({
+      name: skill.name,
+      path: skill.path,
+      source: skill.scope ? `${config.provider.name} · ${skill.scope}` : config.provider.name,
+      ...(skill.displayName ? { displayName: skill.displayName } : {}),
+      ...(skill.shortDescription ? { shortDescription: skill.shortDescription } : {}),
+      ...(skill.description ? { description: skill.description } : {}),
+      ...(skill.scope ? { scope: skill.scope } : {}),
+    }));
+  for (const plugin of config.plugins) {
+    for (const skill of plugin.skills ?? []) {
+      skills.push({
+        name: skill.name,
+        path: await safeExistingPath(skillsDir, path.join(skill.name, "SKILL.md")),
+        source: plugin.name,
+        displayName: skill.name,
+        shortDescription: "NAWC plugin skill",
+      });
+    }
+  }
+  return skills;
+}
+
 export async function createNawcServer(options: ServerOptions): Promise<RunningServer> {
   const projectDir = path.resolve(options.projectDir);
   const config = await loadConfig(projectDir, options.configFile);
@@ -67,6 +115,34 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   const srcDir = path.join(projectDir, "src");
   await assertGitRepository(baseDir);
   const skillsDir = await syncSkills(projectDir, config.plugins);
+  let providerSkillsPromise: Promise<readonly NawcProviderSkill[]> | undefined;
+  let providerModelsPromise: Promise<readonly NawcProviderModel[]> | undefined;
+  const getProviderSkills = () => {
+    if (!providerSkillsPromise) {
+      const promise = config.provider.listSkills
+        ? config.provider.listSkills({ cwd: baseDir })
+        : Promise.resolve<readonly NawcProviderSkill[]>([]);
+      providerSkillsPromise = promise.catch((error: unknown) => {
+        providerSkillsPromise = undefined;
+        throw error;
+      });
+    }
+    return providerSkillsPromise;
+  };
+  const getPromptSkills = async () =>
+    listPromptSkills(config, skillsDir, await getProviderSkills());
+  const getProviderModels = () => {
+    if (!providerModelsPromise) {
+      const promise = config.provider.listModels
+        ? config.provider.listModels({ cwd: baseDir })
+        : Promise.resolve<readonly NawcProviderModel[]>([]);
+      providerModelsPromise = promise.catch((error: unknown) => {
+        providerModelsPromise = undefined;
+        throw error;
+      });
+    }
+    return providerModelsPromise;
+  };
   const fileListeners = new Set<(event: string, file: string) => void>();
   const watcher = watch(srcDir, {
     ignored: ["**/.git/**", "**/node_modules/**", "**/.skills/**"],
@@ -95,6 +171,26 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   );
   app.get("/api/notes", async (context) => context.json(await listNotes(srcDir)));
   app.get("/api/files", async (context) => context.json(await listEntries(srcDir)));
+  app.get("/api/prompt/skills", async (context) =>
+    context.json(
+      (await getPromptSkills()).map(
+        ({ name, source, displayName, shortDescription, description, scope }) => ({
+          name,
+          source,
+          ...(displayName ? { displayName } : {}),
+          ...(shortDescription ? { shortDescription } : {}),
+          ...(description ? { description } : {}),
+          ...(scope ? { scope } : {}),
+        }),
+      ),
+    ),
+  );
+  app.get("/api/prompt/files", async (context) => {
+    const query = (context.req.query("q") ?? "").trim().toLowerCase();
+    return context.json(await listProjectPaths(baseDir, { query, limit: 50 }));
+  });
+  app.get("/api/prompt/models", async (context) => context.json(await getProviderModels()));
+  app.get("/api/prompt/commands", (context) => context.json(config.provider.slashCommands ?? []));
   app.get("/api/events", (context) =>
     streamSSE(context, async (stream) => {
       await stream.writeSSE({ data: JSON.stringify({ event: "ready" }) });
@@ -174,9 +270,67 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     return context.json({ ok: true });
   });
   app.post("/api/prompt", async (context) => {
-    const { prompt } = await context.req.json<{ prompt: string }>();
+    const body = await context.req.json<{
+      prompt: string;
+      model?: string;
+      mode?: "default" | "plan";
+      references?: readonly (
+        | { readonly type: "file"; readonly path: string }
+        | { readonly type: "skill"; readonly name: string }
+      )[];
+    }>();
+    if (typeof body.prompt !== "string") throw new Error("Prompt must be a string");
+    if (body.model !== undefined && typeof body.model !== "string")
+      throw new Error("Model must be a string");
+    if (body.mode !== undefined && body.mode !== "default" && body.mode !== "plan")
+      throw new Error("Invalid prompt mode");
+    if ((body.references?.length ?? 0) > 50) throw new Error("Too many prompt references");
+    if (body.model && config.provider.listModels) {
+      const models = await getProviderModels();
+      if (!models.some((model) => model.id === body.model))
+        throw new Error(`Unknown model: ${body.model}`);
+    }
+    const availableSkills = new Map(
+      (await getPromptSkills()).map((skill) => [skill.name, skill.path]),
+    );
+    const references: PromptReference[] = [];
+    for (const reference of body.references ?? []) {
+      if (reference.type === "file") {
+        if (!(await isProjectPath(baseDir, reference.path)))
+          throw new Error(`Unknown or ignored file reference: ${reference.path}`);
+        references.push({ type: "file", path: reference.path });
+      } else if (reference.type === "skill") {
+        const skillPath = availableSkills.get(reference.name);
+        if (!skillPath) {
+          throw new Error(`Unknown skill reference: ${reference.name}`);
+        }
+        references.push({
+          type: "skill",
+          name: reference.name,
+          path: skillPath,
+        });
+      } else {
+        throw new Error("Invalid prompt reference");
+      }
+    }
+    const referenceContext = references.length
+      ? `\n\nNAWC references selected by the user:\n${references
+          .map((reference) =>
+            reference.type === "file"
+              ? `- File: ${JSON.stringify(reference.path)} (relative to the working directory)`
+              : `- Skill: ${JSON.stringify(`$${reference.name}`)} (${JSON.stringify(reference.path)}); read this SKILL.md before acting`,
+          )
+          .join("\n")}`
+      : "";
     return streamSSE(context, async (stream) => {
-      for await (const event of config.provider.prompt({ prompt, cwd: baseDir, skillsDir }))
+      for await (const event of config.provider.prompt({
+        prompt: body.prompt + referenceContext,
+        cwd: baseDir,
+        skillsDir,
+        references,
+        model: body.model,
+        mode: body.mode,
+      }))
         await stream.writeSSE({ data: JSON.stringify(event), event: event.type });
     });
   });

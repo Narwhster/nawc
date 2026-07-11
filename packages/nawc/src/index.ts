@@ -5,7 +5,10 @@ export type {
   EditorTarget,
   NawcConfig,
   NawcEditor,
+  NawcProviderModel,
   NawcProvider,
+  NawcProviderSkill,
+  NawcProviderSlashCommand,
   NawcSyntax,
 } from "@nawc/config";
 export { createNawcServer } from "./server.ts";
