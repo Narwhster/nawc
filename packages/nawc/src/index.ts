@@ -7,6 +7,8 @@ export type {
   NawcEditor,
   NawcProviderModel,
   NawcProvider,
+  NawcProviderReasoningEffort,
+  NawcProviderSettings,
   NawcProviderSkill,
   NawcProviderSlashCommand,
   NawcSyntax,

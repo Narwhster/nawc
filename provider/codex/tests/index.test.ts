@@ -59,10 +59,32 @@ describe("Codex JSONL", () => {
     expect(
       parseCodexModelsResponse({
         data: [
-          { id: "gpt-5.5", displayName: "GPT-5.5", description: "Frontier model" },
+          {
+            id: "gpt-5.5",
+            displayName: "GPT-5.5",
+            description: "Frontier model",
+            supportedReasoningEfforts: [
+              { reasoningEffort: "low", description: "Faster" },
+              { reasoningEffort: "high", description: "Deeper" },
+            ],
+            defaultReasoningEffort: "low",
+            isDefault: true,
+          },
           { id: "hidden", displayName: "Hidden", hidden: true },
         ],
       }),
-    ).toEqual([{ id: "gpt-5.5", name: "GPT-5.5", description: "Frontier model" }]);
+    ).toEqual([
+      {
+        id: "gpt-5.5",
+        name: "GPT-5.5",
+        description: "Frontier model",
+        reasoningEfforts: [
+          { id: "low", description: "Faster" },
+          { id: "high", description: "Deeper" },
+        ],
+        defaultReasoningEffort: "low",
+        isDefault: true,
+      },
+    ]);
   });
 });

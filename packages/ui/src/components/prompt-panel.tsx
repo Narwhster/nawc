@@ -3,6 +3,7 @@ import {
   CpuIcon,
   FileIcon,
   FolderIcon,
+  GaugeIcon,
   SendIcon,
   SparklesIcon,
   WrenchIcon,
@@ -37,7 +38,19 @@ type SkillOption = {
   readonly scope?: string;
 };
 type PathOption = { readonly path: string; readonly kind: "file" | "directory" };
-type ModelOption = { readonly id: string; readonly name: string; readonly description?: string };
+type ReasoningEffortOption = { readonly id: string; readonly description?: string };
+type ModelOption = {
+  readonly id: string;
+  readonly name: string;
+  readonly description?: string;
+  readonly reasoningEfforts?: readonly ReasoningEffortOption[];
+  readonly defaultReasoningEffort?: string;
+};
+type PromptSettings = {
+  readonly model?: string;
+  readonly reasoningEffort?: string;
+  readonly reasoningEfforts?: readonly ReasoningEffortOption[];
+};
 type CommandOption = { readonly name: string; readonly description?: string };
 type CompletionOption =
   | {
@@ -53,9 +66,11 @@ type CompletionOption =
       readonly label: string;
     }
   | { readonly kind: "command"; readonly value: string; readonly detail: string }
-  | { readonly kind: "model"; readonly value: string; readonly detail: string };
+  | { readonly kind: "model"; readonly value: string; readonly detail: string }
+  | { readonly kind: "reasoning"; readonly value: string; readonly detail: string };
 
 type PromptMode = "default" | "plan";
+const EMPTY_REASONING_OPTIONS: readonly ReasoningEffortOption[] = [];
 
 function skillSearchScore(skill: SkillOption, query: string): number | undefined {
   const normalized = query.trim().toLowerCase();
@@ -118,6 +133,9 @@ export function PromptPanel({ note }: { note?: string }) {
   const [events, setEvents] = useState<PromptEvent[]>([]);
   const [running, setRunning] = useState(false);
   const [model, setModel] = useState<string>();
+  const [reasoningEffort, setReasoningEffort] = useState<string>();
+  const [settings, setSettings] = useState<PromptSettings>();
+  const [models, setModels] = useState<readonly ModelOption[]>([]);
   const [mode, setMode] = useState<PromptMode>("default");
   const [trigger, setTrigger] = useState<ComposerTrigger>();
   const [options, setOptions] = useState<readonly CompletionOption[]>([]);
@@ -127,6 +145,18 @@ export function PromptPanel({ note }: { note?: string }) {
   const textarea = useRef<HTMLTextAreaElement>(null);
   const completionOpen = trigger !== undefined;
   const references = useMemo(() => collectPromptReferences(prompt), [prompt]);
+  const activeModel = model ?? settings?.model;
+  const selectedModel = models.find((item) => item.id === activeModel);
+  const activeReasoningEffort =
+    reasoningEffort ?? settings?.reasoningEffort ?? selectedModel?.defaultReasoningEffort;
+  const reasoningOptions =
+    selectedModel?.reasoningEfforts ?? settings?.reasoningEfforts ?? EMPTY_REASONING_OPTIONS;
+
+  useEffect(() => {
+    void api<PromptSettings>("/api/prompt/settings")
+      .then(setSettings)
+      .catch(() => undefined);
+  }, []);
 
   const updatePrompt = (value: string, cursor: number) => {
     setPrompt(value);
@@ -178,47 +208,68 @@ export function PromptPanel({ note }: { note?: string }) {
               ? api<SkillOption[]>("/api/prompt/skills", { signal: controller.signal }).then(
                   (skills) => searchSkills(skills, trigger.query),
                 )
-              : trigger.kind === "slash-command"
-                ? api<CommandOption[]>("/api/prompt/commands", {
-                    signal: controller.signal,
-                  }).then((commands) => {
-                    const builtIns: CommandOption[] = [
-                      { name: "model", description: "Choose the response model" },
-                      { name: "plan", description: "Plan changes without editing files" },
-                      { name: "default", description: "Return to normal build mode" },
-                    ];
-                    const all = [...builtIns, ...commands];
-                    const query = trigger.query.toLowerCase();
-                    return all
-                      .filter((command) => !query || command.name.toLowerCase().includes(query))
+              : trigger.kind === "slash-reasoning"
+                ? Promise.resolve(
+                    reasoningOptions
+                      .filter(
+                        (item) =>
+                          !trigger.query ||
+                          item.id.toLowerCase().includes(trigger.query.toLowerCase()) ||
+                          item.description?.toLowerCase().includes(trigger.query.toLowerCase()),
+                      )
                       .map(
-                        (command): CompletionOption => ({
-                          kind: "command",
-                          value: command.name,
-                          detail: command.description ?? "Provider command",
+                        (item): CompletionOption => ({
+                          kind: "reasoning",
+                          value: item.id,
+                          detail: item.description ?? item.id,
                         }),
-                      );
-                  })
-                : api<ModelOption[]>("/api/prompt/models", { signal: controller.signal }).then(
-                    (models) => {
+                      ),
+                  )
+                : trigger.kind === "slash-command"
+                  ? api<CommandOption[]>("/api/prompt/commands", {
+                      signal: controller.signal,
+                    }).then((commands) => {
+                      const builtIns: CommandOption[] = [
+                        { name: "model", description: "Choose the response model" },
+                        ...(reasoningOptions.length > 0
+                          ? [{ name: "reasoning", description: "Choose reasoning effort" }]
+                          : []),
+                        { name: "plan", description: "Plan changes without editing files" },
+                        { name: "default", description: "Return to normal build mode" },
+                      ];
+                      const all = [...builtIns, ...commands];
                       const query = trigger.query.toLowerCase();
-                      return models
-                        .filter(
-                          (item) =>
-                            !query ||
-                            item.id.toLowerCase().includes(query) ||
-                            item.name.toLowerCase().includes(query) ||
-                            item.description?.toLowerCase().includes(query),
-                        )
+                      return all
+                        .filter((command) => !query || command.name.toLowerCase().includes(query))
                         .map(
-                          (item): CompletionOption => ({
-                            kind: "model",
-                            value: item.id,
-                            detail: item.description ?? item.id,
+                          (command): CompletionOption => ({
+                            kind: "command",
+                            value: command.name,
+                            detail: command.description ?? "Provider command",
                           }),
                         );
-                    },
-                  );
+                    })
+                  : api<ModelOption[]>("/api/prompt/models", { signal: controller.signal }).then(
+                      (models) => {
+                        setModels((current) => (current.length === 0 ? models : current));
+                        const query = trigger.query.toLowerCase();
+                        return models
+                          .filter(
+                            (item) =>
+                              !query ||
+                              item.id.toLowerCase().includes(query) ||
+                              item.name.toLowerCase().includes(query) ||
+                              item.description?.toLowerCase().includes(query),
+                          )
+                          .map(
+                            (item): CompletionOption => ({
+                              kind: "model",
+                              value: item.id,
+                              detail: item.description ?? item.id,
+                            }),
+                          );
+                      },
+                    );
         void request
           .then((next) => {
             setOptions(next);
@@ -238,13 +289,19 @@ export function PromptPanel({ note }: { note?: string }) {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [trigger]);
+  }, [reasoningOptions, trigger]);
 
   const chooseOption = (option: CompletionOption) => {
     if (!trigger) return;
     if (option.kind === "command") {
       if (option.value === "model") {
         const completed = replaceComposerTrigger(prompt, trigger, "/model ", false);
+        setPrompt(completed.text);
+        setTrigger(detectComposerTrigger(completed.text, completed.cursor));
+        return;
+      }
+      if (option.value === "reasoning") {
+        const completed = replaceComposerTrigger(prompt, trigger, "/reasoning ", false);
         setPrompt(completed.text);
         setTrigger(detectComposerTrigger(completed.text, completed.cursor));
         return;
@@ -265,6 +322,14 @@ export function PromptPanel({ note }: { note?: string }) {
       const completed = replaceComposerTrigger(prompt, trigger, "", false);
       setPrompt(completed.text.trimStart());
       setModel(option.value);
+      setReasoningEffort(models.find((item) => item.id === option.value)?.defaultReasoningEffort);
+      setTrigger(undefined);
+      return;
+    }
+    if (option.kind === "reasoning") {
+      const completed = replaceComposerTrigger(prompt, trigger, "", false);
+      setPrompt(completed.text.trimStart());
+      setReasoningEffort(option.value);
       setTrigger(undefined);
       return;
     }
@@ -288,6 +353,7 @@ export function PromptPanel({ note }: { note?: string }) {
           prompt: `Current NAWC note: ${note ?? "none"}\n\n${prompt}`,
           references,
           ...(model ? { model } : {}),
+          ...(reasoningEffort ? { reasoningEffort } : {}),
           mode,
         }),
       );
@@ -323,10 +389,15 @@ export function PromptPanel({ note }: { note?: string }) {
   return (
     <aside className="nawc-prompt-panel">
       <header>
-        <SparklesIcon />
-        <strong>Agent</strong>
-        {mode === "plan" && <small>Plan mode</small>}
-        {model && <small>{model}</small>}
+        <div className="nawc-prompt-header-main">
+          <SparklesIcon />
+          <strong>Agent</strong>
+          {mode === "plan" && <small>Plan mode</small>}
+        </div>
+        <div className="nawc-prompt-header-meta">
+          {activeModel && <small>{activeModel}</small>}
+          {activeReasoningEffort && <small>Reasoning: {activeReasoningEffort}</small>}
+        </div>
       </header>
       <div className="nawc-prompt-events">
         {events.length === 0 && (
@@ -357,7 +428,9 @@ export function PromptPanel({ note }: { note?: string }) {
                   ? "Skills"
                   : trigger.kind === "slash-model"
                     ? "Models"
-                    : "Commands"}
+                    : trigger.kind === "slash-reasoning"
+                      ? "Reasoning effort"
+                      : "Commands"}
               <span>↑↓ navigate · ↵ select · esc close</span>
             </div>
             {loading && <div className="nawc-completion-state">Loading…</div>}
@@ -391,6 +464,8 @@ export function PromptPanel({ note }: { note?: string }) {
                     <WrenchIcon />
                   ) : option.kind === "model" ? (
                     <CpuIcon />
+                  ) : option.kind === "reasoning" ? (
+                    <GaugeIcon />
                   ) : (
                     <CommandIcon />
                   )}

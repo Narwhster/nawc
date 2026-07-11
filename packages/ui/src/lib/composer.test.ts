@@ -26,6 +26,12 @@ describe("composer completions", () => {
       start: 0,
       end: 10,
     });
+    expect(detectComposerTrigger("/reasoning high", 15)).toEqual({
+      kind: "slash-reasoning",
+      query: "high",
+      start: 0,
+      end: 15,
+    });
     expect(detectComposerTrigger("email@example.com", 17)).toBeUndefined();
   });
 

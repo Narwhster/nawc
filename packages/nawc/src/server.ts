@@ -6,6 +6,7 @@ import { getRequestListener } from "@hono/node-server";
 import type {
   NawcConfig,
   NawcProviderModel,
+  NawcProviderSettings,
   NawcProviderSkill,
   PromptReference,
   SourceSelection,
@@ -119,6 +120,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   const skillsDir = await syncSkills(projectDir, config.plugins);
   let providerSkillsPromise: Promise<readonly NawcProviderSkill[]> | undefined;
   let providerModelsPromise: Promise<readonly NawcProviderModel[]> | undefined;
+  let providerSettingsPromise: Promise<NawcProviderSettings> | undefined;
   const getProviderSkills = () => {
     if (!providerSkillsPromise) {
       const promise = config.provider.listSkills
@@ -144,6 +146,18 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
       });
     }
     return providerModelsPromise;
+  };
+  const getProviderSettings = () => {
+    if (!providerSettingsPromise) {
+      const promise = config.provider.getSettings
+        ? config.provider.getSettings({ cwd: baseDir })
+        : Promise.resolve<NawcProviderSettings>({});
+      providerSettingsPromise = promise.catch((error: unknown) => {
+        providerSettingsPromise = undefined;
+        throw error;
+      });
+    }
+    return providerSettingsPromise;
   };
   const fileListeners = new Set<(event: string, file: string) => void>();
   const watcher = watch(srcDir, {
@@ -197,6 +211,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     return context.json(await listProjectPaths(baseDir, { query, limit: 50 }));
   });
   app.get("/api/prompt/models", async (context) => context.json(await getProviderModels()));
+  app.get("/api/prompt/settings", async (context) => context.json(await getProviderSettings()));
   app.get("/api/prompt/commands", (context) => context.json(config.provider.slashCommands ?? []));
   app.get("/api/events", (context) =>
     streamSSE(context, async (stream) => {
@@ -287,6 +302,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     const body = await context.req.json<{
       prompt: string;
       model?: string;
+      reasoningEffort?: string;
       mode?: "default" | "plan";
       references?: readonly (
         | { readonly type: "file"; readonly path: string }
@@ -296,6 +312,8 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     if (typeof body.prompt !== "string") throw new Error("Prompt must be a string");
     if (body.model !== undefined && typeof body.model !== "string")
       throw new Error("Model must be a string");
+    if (body.reasoningEffort !== undefined && typeof body.reasoningEffort !== "string")
+      throw new Error("Reasoning effort must be a string");
     if (body.mode !== undefined && body.mode !== "default" && body.mode !== "plan")
       throw new Error("Invalid prompt mode");
     if ((body.references?.length ?? 0) > 50) throw new Error("Too many prompt references");
@@ -343,6 +361,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
         skillsDir,
         references,
         model: body.model,
+        reasoningEffort: body.reasoningEffort,
         mode: body.mode,
       }))
         await stream.writeSSE({ data: JSON.stringify(event), event: event.type });

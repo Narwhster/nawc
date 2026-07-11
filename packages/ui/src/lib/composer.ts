@@ -1,5 +1,5 @@
 export type ComposerTrigger = {
-  readonly kind: "file" | "skill" | "slash-command" | "slash-model";
+  readonly kind: "file" | "skill" | "slash-command" | "slash-model" | "slash-reasoning";
   readonly query: string;
   readonly start: number;
   readonly end: number;
@@ -18,6 +18,15 @@ export function detectComposerTrigger(text: string, cursor: number): ComposerTri
     return {
       kind: "slash-model",
       query: (modelMatch[1] ?? "").trim(),
+      start: lineStart,
+      end,
+    };
+  }
+  const reasoningMatch = /^\/reasoning(?:\s+(.*))?$/i.exec(linePrefix);
+  if (reasoningMatch) {
+    return {
+      kind: "slash-reasoning",
+      query: (reasoningMatch[1] ?? "").trim(),
       start: lineStart,
       end,
     };

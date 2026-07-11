@@ -293,7 +293,17 @@ body {
     @apply flex h-full min-h-0 flex-col border-l bg-background;
   }
   .nawc-prompt-panel > header {
-    @apply flex h-11 shrink-0 items-center gap-2 border-b px-3 text-xs;
+    @apply flex h-11 shrink-0 items-center justify-between gap-2 border-b px-3 text-xs;
+  }
+  .nawc-prompt-header-main,
+  .nawc-prompt-header-meta {
+    @apply flex min-w-0 items-center gap-2;
+  }
+  .nawc-prompt-header-meta {
+    @apply justify-end;
+  }
+  .nawc-prompt-panel > header small {
+    @apply inline-flex items-center leading-none;
   }
   .nawc-prompt-panel > header svg {
     @apply size-3.5;

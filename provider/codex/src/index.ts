@@ -3,6 +3,8 @@ import { execa } from "execa";
 import type {
   NawcProvider,
   NawcProviderModel,
+  NawcProviderReasoningEffort,
+  NawcProviderSettings,
   NawcProviderSkill,
   ProviderEvent,
 } from "@nawc/config";
@@ -53,6 +55,7 @@ export function parseCodexEvent(line: string): ProviderEvent | undefined {
 export type CodexOptions = {
   readonly executable?: string;
   readonly model?: string;
+  readonly reasoningEffort?: string;
   readonly sandbox?: "read-only" | "workspace-write";
 };
 
@@ -211,11 +214,39 @@ export function parseCodexModelsResponse(value: unknown): readonly NawcProviderM
     const id = typeof item.id === "string" ? item.id : item.model;
     if (typeof id !== "string" || item.hidden === true) return [];
     const name = typeof item.displayName === "string" ? item.displayName : id;
+    const reasoningEfforts = Array.isArray(item.supportedReasoningEfforts)
+      ? item.supportedReasoningEfforts.flatMap((effort): NawcProviderReasoningEffort[] => {
+          if (typeof effort === "string") return [{ id: effort }];
+          if (!effort || typeof effort !== "object") return [];
+          const entry = effort as Record<string, unknown>;
+          const effortId =
+            typeof entry.reasoningEffort === "string"
+              ? entry.reasoningEffort
+              : typeof entry.id === "string"
+                ? entry.id
+                : undefined;
+          return effortId
+            ? [
+                {
+                  id: effortId,
+                  ...(typeof entry.description === "string"
+                    ? { description: entry.description }
+                    : {}),
+                },
+              ]
+            : [];
+        })
+      : undefined;
     return [
       {
         id,
         name,
         ...(typeof item.description === "string" ? { description: item.description } : {}),
+        ...(reasoningEfforts?.length ? { reasoningEfforts } : {}),
+        ...(typeof item.defaultReasoningEffort === "string"
+          ? { defaultReasoningEffort: item.defaultReasoningEffort }
+          : {}),
+        ...(item.isDefault === true ? { isDefault: true } : {}),
       },
     ];
   });
@@ -242,12 +273,33 @@ async function listCodexModels(
   return models;
 }
 
+async function getCodexSettings(
+  executable: string,
+  cwd: string,
+  configuredModel?: string,
+  configuredReasoningEffort?: string,
+): Promise<NawcProviderSettings> {
+  const models = await listCodexModels(executable, cwd);
+  const model = configuredModel
+    ? models.find((item) => item.id === configuredModel)
+    : models.find((item) => item.isDefault);
+  return {
+    ...((configuredModel ?? model?.id) ? { model: configuredModel ?? model?.id } : {}),
+    ...((configuredReasoningEffort ?? model?.defaultReasoningEffort)
+      ? { reasoningEffort: configuredReasoningEffort ?? model?.defaultReasoningEffort }
+      : {}),
+    ...(model?.reasoningEfforts ? { reasoningEfforts: model.reasoningEfforts } : {}),
+  };
+}
+
 export function codex(options: CodexOptions = {}): NawcProvider {
   return {
     name: "codex",
+    getSettings: ({ cwd }) =>
+      getCodexSettings(options.executable ?? "codex", cwd, options.model, options.reasoningEffort),
     listSkills: ({ cwd }) => listCodexSkills(options.executable ?? "codex", cwd),
     listModels: ({ cwd }) => listCodexModels(options.executable ?? "codex", cwd),
-    async *prompt({ prompt, cwd, skillsDir, model, mode }) {
+    async *prompt({ prompt, cwd, skillsDir, model, reasoningEffort, mode }) {
       const skillInstruction = `\n\nNAWC plugin skills are available in ${skillsDir}. Read the relevant SKILL.md files before editing NAWC notes.`;
       const modeInstruction =
         mode === "plan"
@@ -264,6 +316,11 @@ export function codex(options: CodexOptions = {}): NawcProvider {
         cwd,
       ];
       if (model ?? options.model) args.push("--model", model ?? options.model!);
+      if (reasoningEffort ?? options.reasoningEffort)
+        args.push(
+          "--config",
+          `model_reasoning_effort=${JSON.stringify(reasoningEffort ?? options.reasoningEffort)}`,
+        );
       args.push("-");
       const child = execa(options.executable ?? "codex", args, {
         input: prompt + skillInstruction + modeInstruction,

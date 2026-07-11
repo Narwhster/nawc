@@ -155,8 +155,20 @@ export type ProviderEvent =
   | { readonly type: "error"; readonly message: string }
   | { readonly type: "done" };
 
+export type NawcProviderReasoningEffort = {
+  readonly id: string;
+  readonly description?: string;
+};
+
+export type NawcProviderSettings = {
+  readonly model?: string;
+  readonly reasoningEffort?: string;
+  readonly reasoningEfforts?: readonly NawcProviderReasoningEffort[];
+};
+
 export type NawcProvider = {
   readonly name: string;
+  readonly getSettings?: (input: { readonly cwd: string }) => Promise<NawcProviderSettings>;
   readonly listSkills?: (input: { readonly cwd: string }) => Promise<readonly NawcProviderSkill[]>;
   readonly listModels?: (input: { readonly cwd: string }) => Promise<readonly NawcProviderModel[]>;
   readonly slashCommands?: readonly NawcProviderSlashCommand[];
@@ -166,6 +178,7 @@ export type NawcProvider = {
     readonly skillsDir: string;
     readonly references?: readonly PromptReference[];
     readonly model?: string;
+    readonly reasoningEffort?: string;
     readonly mode?: "default" | "plan";
   }): AsyncIterable<ProviderEvent>;
 };
@@ -188,6 +201,9 @@ export type NawcProviderModel = {
   readonly id: string;
   readonly name: string;
   readonly description?: string;
+  readonly reasoningEfforts?: readonly NawcProviderReasoningEffort[];
+  readonly defaultReasoningEffort?: string;
+  readonly isDefault?: boolean;
 };
 
 export type NawcProviderSlashCommand = {
