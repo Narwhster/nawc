@@ -35,6 +35,100 @@ export type EditorTarget =
   | { readonly type: "command"; readonly command: readonly string[] }
   | { readonly type: "url"; readonly url: string };
 
+export type NawcTheme = {
+  readonly name: string;
+  readonly appearance: "light" | "dark";
+  readonly variables: Readonly<Record<`--${string}`, string>>;
+};
+
+const sharedThemeVariables = {
+  "--radius": "0",
+  "--font-sans": '"JetBrains Mono Variable", monospace',
+  "--font-mono": '"JetBrains Mono Variable", monospace',
+} as const;
+
+export function nawcLight(): NawcTheme {
+  return {
+    name: "nawc-light",
+    appearance: "light",
+    variables: {
+      ...sharedThemeVariables,
+      "--background": "oklch(1 0 0)",
+      "--foreground": "oklch(0.148 0.004 228.8)",
+      "--card": "oklch(1 0 0)",
+      "--card-foreground": "oklch(0.148 0.004 228.8)",
+      "--popover": "oklch(1 0 0)",
+      "--popover-foreground": "oklch(0.148 0.004 228.8)",
+      "--primary": "oklch(0.852 0.199 91.936)",
+      "--primary-foreground": "oklch(0.421 0.095 57.708)",
+      "--secondary": "oklch(0.967 0.001 286.375)",
+      "--secondary-foreground": "oklch(0.21 0.006 285.885)",
+      "--muted": "oklch(0.963 0.002 197.1)",
+      "--muted-foreground": "oklch(0.56 0.021 213.5)",
+      "--accent": "oklch(0.963 0.002 197.1)",
+      "--accent-foreground": "oklch(0.218 0.008 223.9)",
+      "--destructive": "oklch(0.577 0.245 27.325)",
+      "--border": "oklch(0.925 0.005 214.3)",
+      "--input": "oklch(0.925 0.005 214.3)",
+      "--ring": "oklch(0.723 0.014 214.4)",
+      "--sidebar": "oklch(1 0 0)",
+      "--sidebar-foreground": "oklch(0.148 0.004 228.8)",
+      "--sidebar-primary": "oklch(0.681 0.162 75.834)",
+      "--sidebar-primary-foreground": "oklch(0.987 0.026 102.212)",
+      "--sidebar-accent": "oklch(0.963 0.002 197.1)",
+      "--sidebar-accent-foreground": "oklch(0.218 0.008 223.9)",
+      "--sidebar-border": "oklch(0.925 0.005 214.3)",
+      "--sidebar-ring": "oklch(0.723 0.014 214.4)",
+      "--terminal-selection": "oklch(0.8 0.01 220 / 45%)",
+      "--syntax-keyword": "oklch(0.55 0.16 290)",
+      "--syntax-string": "oklch(0.49 0.13 155)",
+      "--syntax-number": "oklch(0.52 0.16 40)",
+      "--syntax-title": "oklch(0.52 0.14 220)",
+    },
+  };
+}
+
+export function nawcDark(): NawcTheme {
+  return {
+    name: "nawc-dark",
+    appearance: "dark",
+    variables: {
+      ...sharedThemeVariables,
+      "--background": "oklch(0.16 0.006 240)",
+      "--foreground": "oklch(0.94 0.006 220)",
+      "--card": "oklch(0.19 0.007 240)",
+      "--card-foreground": "oklch(0.94 0.006 220)",
+      "--popover": "oklch(0.19 0.007 240)",
+      "--popover-foreground": "oklch(0.94 0.006 220)",
+      "--primary": "oklch(0.8 0.17 91)",
+      "--primary-foreground": "oklch(0.24 0.055 67)",
+      "--secondary": "oklch(0.25 0.008 240)",
+      "--secondary-foreground": "oklch(0.94 0.006 220)",
+      "--muted": "oklch(0.23 0.008 230)",
+      "--muted-foreground": "oklch(0.7 0.016 220)",
+      "--accent": "oklch(0.28 0.012 220)",
+      "--accent-foreground": "oklch(0.96 0.004 220)",
+      "--destructive": "oklch(0.67 0.21 25)",
+      "--border": "oklch(0.3 0.01 225)",
+      "--input": "oklch(0.3 0.01 225)",
+      "--ring": "oklch(0.66 0.02 215)",
+      "--sidebar": "oklch(0.14 0.006 240)",
+      "--sidebar-foreground": "oklch(0.94 0.006 220)",
+      "--sidebar-primary": "oklch(0.8 0.17 91)",
+      "--sidebar-primary-foreground": "oklch(0.24 0.055 67)",
+      "--sidebar-accent": "oklch(0.23 0.008 230)",
+      "--sidebar-accent-foreground": "oklch(0.96 0.004 220)",
+      "--sidebar-border": "oklch(0.3 0.01 225)",
+      "--sidebar-ring": "oklch(0.66 0.02 215)",
+      "--terminal-selection": "oklch(0.55 0.02 220 / 55%)",
+      "--syntax-keyword": "oklch(0.77 0.14 300)",
+      "--syntax-string": "oklch(0.76 0.14 155)",
+      "--syntax-number": "oklch(0.76 0.14 55)",
+      "--syntax-title": "oklch(0.75 0.12 220)",
+    },
+  };
+}
+
 export function vscode(): NawcEditor {
   return {
     name: "vscode",
@@ -76,6 +170,7 @@ export type NawcConfig = {
   readonly syntax: readonly NawcSyntax[];
   readonly baseDir: string;
   readonly editor?: NawcEditor;
+  readonly theme?: NawcTheme;
   readonly port?: number;
 };
 
@@ -85,14 +180,15 @@ export const configShape = z.object({
   syntax: z.array(z.custom<NawcSyntax>()),
   baseDir: z.string().min(1),
   editor: z.custom<NawcEditor>().optional(),
+  theme: z.custom<NawcTheme>().optional(),
   port: z.number().int().min(1).max(65_535).optional(),
 });
 
 export function defineConfig<const T extends NawcConfig>(
   config: T,
-): T & { readonly editor: NawcEditor } {
+): T & { readonly editor: NawcEditor; readonly theme: NawcTheme } {
   configShape.parse(config);
-  return { ...config, editor: config.editor ?? vscode() };
+  return { ...config, editor: config.editor ?? vscode(), theme: config.theme ?? nawcLight() };
 }
 
 export function syntaxFor(config: NawcConfig, name?: string): NawcSyntax | undefined {

@@ -104,6 +104,11 @@
   --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
   --sidebar-border: oklch(0.925 0.005 214.3);
   --sidebar-ring: oklch(0.723 0.014 214.4);
+  --terminal-selection: oklch(0.8 0.01 220 / 45%);
+  --syntax-keyword: oklch(0.55 0.16 290);
+  --syntax-string: oklch(0.49 0.13 155);
+  --syntax-number: oklch(0.52 0.16 40);
+  --syntax-title: oklch(0.52 0.14 220);
 }
 
 html,
@@ -352,7 +357,7 @@ body {
   .nawc-highlighted-code .hljs-literal,
   .nawc-highlighted-code .hljs-section,
   .nawc-highlighted-code .hljs-link {
-    color: oklch(0.55 0.16 290);
+    color: var(--syntax-keyword);
   }
   .nawc-highlighted-code .hljs-string,
   .nawc-highlighted-code .hljs-title,
@@ -362,24 +367,24 @@ body {
   .nawc-highlighted-code .hljs-symbol,
   .nawc-highlighted-code .hljs-bullet,
   .nawc-highlighted-code .hljs-addition {
-    color: oklch(0.49 0.13 155);
+    color: var(--syntax-string);
   }
   .nawc-highlighted-code .hljs-number,
   .nawc-highlighted-code .hljs-regexp,
   .nawc-highlighted-code .hljs-variable,
   .nawc-highlighted-code .hljs-template-variable {
-    color: oklch(0.52 0.16 40);
+    color: var(--syntax-number);
   }
   .nawc-highlighted-code .hljs-built_in,
   .nawc-highlighted-code .hljs-class .hljs-title,
   .nawc-highlighted-code .hljs-function .hljs-title {
-    color: oklch(0.52 0.14 220);
+    color: var(--syntax-title);
   }
   .nawc-highlighted-code .hljs-deletion {
     color: var(--destructive);
   }
   .nawc-run-terminal {
-    @apply h-56 border-t bg-zinc-950 p-2 text-left;
+    @apply h-56 border-t bg-background p-2 text-left;
   }
   .nawc-run-terminal .xterm {
     @apply h-full;

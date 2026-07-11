@@ -37,7 +37,7 @@ export async function createProject(options: CreateOptions): Promise<string> {
   if ((await readdir(root)).length > 0) throw new Error(`Directory is not empty: ${root}`);
   const files: Record<string, string> = {
     "package.json": `${JSON.stringify({ name: packageName(root), private: true, type: "module", scripts: { nawc: "nawc" }, dependencies: { nawc: "latest", "@nawc/core": "latest", "@nawc/provider-codex": "latest", "@nawc/syntax-typescript": "latest", "@nawc/syntax-vitest": "latest" } }, null, 2)}\n`,
-    "nawc.config.ts": `import { defineConfig, vscode } from "nawc";\nimport { core } from "@nawc/core";\nimport { codex } from "@nawc/provider-codex";\nimport { typescript } from "@nawc/syntax-typescript";\nimport { vitest } from "@nawc/syntax-vitest";\n\nexport default defineConfig({\n  plugins: [core()],\n  provider: codex(),\n  syntax: [typescript(), vitest()],\n  editor: vscode(),\n  baseDir: "..",\n});\n`,
+    "nawc.config.ts": `import { defineConfig, nawcLight, vscode } from "nawc";\nimport { core } from "@nawc/core";\nimport { codex } from "@nawc/provider-codex";\nimport { typescript } from "@nawc/syntax-typescript";\nimport { vitest } from "@nawc/syntax-vitest";\n\nexport default defineConfig({\n  plugins: [core()],\n  provider: codex(),\n  syntax: [typescript(), vitest()],\n  editor: vscode(),\n  theme: nawcLight(),\n  baseDir: "..",\n});\n`,
     "src/Welcome.html": welcome,
     ".gitignore": "node_modules\n.skills\n",
     "README.md": `# ${packageName(root)}\n\nRun \`${options.packageManager} nawc\` and open http://localhost:6292.\n`,

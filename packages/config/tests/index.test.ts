@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { defineConfig, syntaxFor, vscode, type NawcConfig } from "../src/index.ts";
+import {
+  defineConfig,
+  nawcDark,
+  syntaxFor,
+  vscode,
+  type NawcConfig,
+  type NawcTheme,
+} from "../src/index.ts";
 
 const syntax = { name: "typescript", aliases: ["ts"], resolve: () => undefined };
 const provider = { name: "test", async *prompt() {} };
@@ -15,6 +22,19 @@ describe("configuration", () => {
     });
     expect(config.baseDir).toBe("..");
     expect(config.editor.name).toBe("vscode");
+    expect(config.theme.name).toBe("nawc-light");
+  });
+
+  it("supports built-in dark and user-defined themes", () => {
+    expect(nawcDark()).toMatchObject({ name: "nawc-dark", appearance: "dark" });
+    const custom = {
+      name: "company",
+      appearance: "light",
+      variables: { "--background": "white", "--foreground": "black" },
+    } satisfies NawcTheme;
+    expect(
+      defineConfig({ plugins: [], provider, syntax: [], baseDir: ".", theme: custom }).theme,
+    ).toBe(custom);
   });
 
   it("opens VS Code through its registered URL handler at an exact source location", () => {

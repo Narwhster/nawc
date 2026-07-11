@@ -1,4 +1,5 @@
-export { defineConfig, vscode } from "@nawc/config";
+export { defineConfig, nawcDark, nawcLight, vscode } from "@nawc/config";
+export type { NawcTheme } from "@nawc/config";
 export type {
   EditorLocation,
   EditorTarget,

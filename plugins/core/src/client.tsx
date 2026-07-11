@@ -228,6 +228,8 @@ function RunnableTerminal({ selection }: { selection: SourceAttrs }) {
 
   useEffect(() => {
     if (!container.current) return;
+    const styles = getComputedStyle(document.documentElement);
+    const color = (property: string) => styles.getPropertyValue(property).trim();
     const terminal = new Terminal({
       convertEol: true,
       cursorBlink: true,
@@ -236,10 +238,10 @@ function RunnableTerminal({ selection }: { selection: SourceAttrs }) {
       fontSize: 12,
       scrollback: 5_000,
       theme: {
-        background: "#18181b",
-        foreground: "#e4e4e7",
-        cursor: "#fafafa",
-        selectionBackground: "#52525b",
+        background: color("--background"),
+        foreground: color("--foreground"),
+        cursor: color("--foreground"),
+        selectionBackground: color("--terminal-selection"),
       },
     });
     const fit = new FitAddon();

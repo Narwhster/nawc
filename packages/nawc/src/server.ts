@@ -30,7 +30,7 @@ import {
 import { syncSkills } from "./skills.ts";
 import { isSameOrigin, parseRunClientEvent } from "./run-protocol.ts";
 import { launchEditor } from "./editor.ts";
-import { vscode } from "@nawc/config";
+import { nawcLight, vscode } from "@nawc/config";
 
 type ServerOptions = {
   readonly projectDir: string;
@@ -89,6 +89,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
         label: (config.editor ?? vscode()).label,
         icon: (config.editor ?? vscode()).icon,
       },
+      theme: config.theme ?? nawcLight(),
       plugins: config.plugins.map(({ name, nodes }) => ({ name, nodes })),
     }),
   );

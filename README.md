@@ -24,6 +24,10 @@ pnpm nawc
 
 A notebook contains `nawc.config.ts`, HTML notes under `src`, and generated plugin skills under `.skills` while NAWC is running.
 
+### Themes
+
+Use `theme: nawcLight()` (the default) or `theme: nawcDark()` in `nawc.config.ts`. The showcase notebook uses the dark theme. Themes are plain `NawcTheme` objects, so a notebook can provide its own named light or dark palette by supplying CSS custom properties in `variables`. The semantic variables are shared by the application chrome, editor highlighting, Dockview, and runnable terminals.
+
 ## Workspace
 
 - `packages/` — CLI/server, creator, config, plugin contracts, and React UI
