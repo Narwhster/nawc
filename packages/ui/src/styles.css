@@ -295,7 +295,7 @@ body {
     @apply rounded bg-muted px-1 py-0.5 text-xs;
   }
   .nawc-editor-content a[data-wiki-link] {
-    @apply cursor-pointer text-primary-foreground underline decoration-primary decoration-2 underline-offset-4 transition-colors hover:text-primary-foreground/70;
+    @apply cursor-pointer text-chart-4 underline decoration-chart-4 decoration-2 underline-offset-4 transition-colors hover:text-chart-4/70;
   }
   .nawc-empty {
     @apply grid flex-1 place-items-center text-sm text-muted-foreground;
