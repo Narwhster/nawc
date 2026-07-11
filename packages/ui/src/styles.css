@@ -378,8 +378,11 @@ body {
   .nawc-highlighted-code .hljs-deletion {
     color: var(--destructive);
   }
-  .nawc-source-block .nawc-run-output {
-    @apply border-t bg-muted/40;
+  .nawc-run-terminal {
+    @apply h-56 border-t bg-zinc-950 p-2 text-left;
+  }
+  .nawc-run-terminal .xterm {
+    @apply h-full;
   }
   .nawc-node-error {
     @apply p-4 text-xs text-destructive;

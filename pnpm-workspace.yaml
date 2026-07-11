@@ -27,3 +27,4 @@ minimumReleaseAgeExclude:
 
 allowBuilds:
   esbuild: true
+  node-pty: true

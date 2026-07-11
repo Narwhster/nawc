@@ -5,11 +5,12 @@ import { fileURLToPath } from "node:url";
 import { getRequestListener } from "@hono/node-server";
 import type { NawcConfig, SourceSelection } from "@nawc/config";
 import { watch } from "chokidar";
-import { execa } from "execa";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { createJiti } from "jiti";
+import { type IPty, spawn } from "node-pty";
 import { createServer as createViteServer, type ViteDevServer } from "vite";
+import { type RawData, type WebSocket, WebSocketServer } from "ws";
 import {
   assertGitRepository,
   createFolder,
@@ -26,6 +27,7 @@ import {
   writeNote,
 } from "./workspace.ts";
 import { syncSkills } from "./skills.ts";
+import { isSameOrigin, parseRunClientEvent } from "./run-protocol.ts";
 
 type ServerOptions = {
   readonly projectDir: string;
@@ -47,6 +49,12 @@ async function loadConfig(projectDir: string, configFile = "nawc.config.ts"): Pr
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function rawDataText(data: RawData): string {
+  if (Array.isArray(data)) return Buffer.concat(data).toString();
+  if (data instanceof ArrayBuffer) return Buffer.from(data).toString();
+  return data.toString();
 }
 
 export async function createNawcServer(options: ServerOptions): Promise<RunningServer> {
@@ -135,24 +143,6 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     watcher.add(await safePath(baseDir, selection.file));
     return context.json(await resolveSource(config, baseDir, selection));
   });
-  app.post("/api/run", async (context) => {
-    const selection = await context.req.json<SourceSelection>();
-    const syntax = config.syntax.find(
-      (item) => item.name === selection.syntax || item.aliases.includes(selection.syntax ?? ""),
-    );
-    if (!syntax?.run) throw new Error(`Syntax ${selection.syntax ?? ""} is not runnable`);
-    await safePath(baseDir, selection.file);
-    const run = syntax.run({ ...selection, cwd: baseDir });
-    const [command, ...args] = run.command;
-    if (!command) throw new Error("Runnable syntax returned an empty command");
-    const result = await execa(command, args, { cwd: run.cwd, reject: false });
-    return context.json({
-      command: run.command,
-      exitCode: result.exitCode,
-      stdout: result.stdout,
-      stderr: result.stderr,
-    });
-  });
   app.post("/api/prompt", async (context) => {
     const { prompt } = await context.req.json<{ prompt: string }>();
     return streamSSE(context, async (stream) => {
@@ -206,6 +196,107 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
         response.end(message(error));
       });
   });
+  const runSockets = new WebSocketServer({ noServer: true });
+  const startRun = async (
+    webSocket: WebSocket,
+    selection: SourceSelection,
+    size: { cols: number; rows: number },
+  ): Promise<IPty | undefined> => {
+    try {
+      const syntax = config.syntax.find(
+        (item) => item.name === selection.syntax || item.aliases.includes(selection.syntax ?? ""),
+      );
+      if (!syntax?.run) throw new Error(`Syntax ${selection.syntax ?? ""} is not runnable`);
+      await safePath(baseDir, selection.file);
+      const run = syntax.run({ ...selection, cwd: baseDir });
+      const [command, ...args] = run.command;
+      if (!command) throw new Error("Runnable syntax returned an empty command");
+
+      const child = spawn(command, args, {
+        cols: size.cols,
+        cwd: run.cwd,
+        env: { ...process.env, TERM: "xterm-256color" },
+        name: "xterm-256color",
+        rows: size.rows,
+      });
+      child.onData((data) => {
+        if (webSocket.readyState === webSocket.OPEN)
+          webSocket.send(JSON.stringify({ type: "output", data }));
+      });
+      child.onExit(({ exitCode }) => {
+        if (webSocket.readyState === webSocket.OPEN) {
+          webSocket.send(JSON.stringify({ type: "exit", exitCode }));
+          webSocket.close(1000, String(exitCode));
+        }
+      });
+      return child;
+    } catch (error) {
+      if (webSocket.readyState === webSocket.OPEN) {
+        webSocket.send(JSON.stringify({ type: "error", message: message(error) }));
+        webSocket.close(1011, "Runnable failed");
+      }
+    }
+  };
+  server.on("upgrade", (request, socket, head) => {
+    if (new URL(request.url ?? "", "http://localhost").pathname !== "/api/run") {
+      socket.destroy();
+      return;
+    }
+    if (!isSameOrigin(request.headers.origin, request.headers.host)) {
+      socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+      return;
+    }
+    runSockets.handleUpgrade(request, socket, head, (webSocket) => {
+      runSockets.emit("connection", webSocket, request);
+    });
+  });
+  runSockets.on("connection", (webSocket) => {
+    let child: IPty | undefined;
+    let closed = false;
+    const pendingInput: string[] = [];
+    let pendingSize: { cols: number; rows: number } | undefined;
+    let starting = false;
+    webSocket.on("message", (data: RawData) => {
+      const event = parseRunClientEvent(rawDataText(data));
+      if (!event) {
+        webSocket.close(1008, "Invalid runnable message");
+        return;
+      }
+      try {
+        if (event.type === "start" && !child && !starting) {
+          starting = true;
+          void startRun(webSocket, event.selection, {
+            cols: Math.max(1, Math.min(500, event.cols)),
+            rows: Math.max(1, Math.min(200, event.rows)),
+          }).then((process) => {
+            if (closed) {
+              process?.kill();
+              return;
+            }
+            child = process;
+            if (pendingSize) child?.resize(pendingSize.cols, pendingSize.rows);
+            for (const input of pendingInput) child?.write(input);
+          });
+        } else if (event.type === "input") {
+          if (child) child.write(event.data);
+          else if (starting) pendingInput.push(event.data);
+        } else if (event.type === "resize") {
+          const size = {
+            cols: Math.max(1, Math.min(500, event.cols)),
+            rows: Math.max(1, Math.min(200, event.rows)),
+          };
+          if (child) child.resize(size.cols, size.rows);
+          else if (starting) pendingSize = size;
+        }
+      } catch {
+        webSocket.close(1008, "Invalid runnable message");
+      }
+    });
+    webSocket.on("close", () => {
+      closed = true;
+      child?.kill();
+    });
+  });
   const port = options.port ?? config.port ?? 6292;
   await new Promise<void>((resolve, reject) =>
     server.listen(port, "127.0.0.1", resolve).once("error", reject),
@@ -215,6 +306,8 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     vite,
     url: `http://localhost:${port}`,
     async close() {
+      for (const webSocket of runSockets.clients) webSocket.close(1001, "Server shutting down");
+      runSockets.close();
       await watcher.close();
       await vite.close();
       await new Promise<void>((resolve, reject) =>

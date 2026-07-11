@@ -1,4 +1,7 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { FitAddon } from "@xterm/addon-fit";
+import { Terminal } from "@xterm/xterm";
+import "@xterm/xterm/css/xterm.css";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 import { Button } from "@nawc/ui/components/ui/button";
 import {
@@ -160,7 +163,7 @@ function SourceView({ node, deleteNode, runnable }: NodeViewProps & { runnable: 
   const attrs = node.attrs as SourceAttrs;
   const [source, setSource] = useState<SourceResult>();
   const [error, setError] = useState<string>();
-  const [output, setOutput] = useState<string>();
+  const [runId, setRunId] = useState(0);
   const load = useCallback(async () => {
     const response = await fetch("/api/source", {
       method: "POST",
@@ -180,19 +183,6 @@ function SourceView({ node, deleteNode, runnable }: NodeViewProps & { runnable: 
     window.addEventListener("nawc:files-changed", refresh);
     return () => window.removeEventListener("nawc:files-changed", refresh);
   }, [load]);
-  const run = async () => {
-    setOutput("Running…");
-    const response = await fetch("/api/run", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(attrs),
-    });
-    const result = (await response.json()) as { stdout?: string; stderr?: string; error?: string };
-    setOutput(
-      result.error ??
-        ([result.stdout, result.stderr].filter(Boolean).join("\n") || "Completed with no output"),
-    );
-  };
   return (
     <NodeViewWrapper className="nawc-node-shell">
       <details open className="nawc-source-block">
@@ -215,19 +205,89 @@ function SourceView({ node, deleteNode, runnable }: NodeViewProps & { runnable: 
             />
           </pre>
         )}
-        {output && (
-          <pre className="nawc-run-output">
-            <code>{output}</code>
-          </pre>
-        )}
+        {runId > 0 && <RunnableTerminal key={runId} selection={attrs} />}
       </details>
       <Ribbon
         onDelete={deleteNode}
         onPrompt={() => promptForNode(runnable ? "runnable" : "ref", attrs)}
-        onRun={runnable ? () => void run() : undefined}
+        onRun={runnable ? () => setRunId((id) => id + 1) : undefined}
       />
     </NodeViewWrapper>
   );
+}
+
+function RunnableTerminal({ selection }: { selection: SourceAttrs }) {
+  const container = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!container.current) return;
+    const terminal = new Terminal({
+      convertEol: true,
+      cursorBlink: true,
+      cursorStyle: "bar",
+      fontFamily: "var(--font-mono)",
+      fontSize: 12,
+      scrollback: 5_000,
+      theme: {
+        background: "#18181b",
+        foreground: "#e4e4e7",
+        cursor: "#fafafa",
+        selectionBackground: "#52525b",
+      },
+    });
+    const fit = new FitAddon();
+    terminal.loadAddon(fit);
+    terminal.open(container.current);
+    fit.fit();
+    terminal.focus();
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const socket = new WebSocket(`${protocol}//${window.location.host}/api/run`);
+    socket.addEventListener("open", () => {
+      socket.send(
+        JSON.stringify({
+          type: "start",
+          selection,
+          cols: terminal.cols,
+          rows: terminal.rows,
+        }),
+      );
+    });
+    socket.addEventListener("message", (event) => {
+      const message = JSON.parse(String(event.data)) as
+        | { type: "output"; data: string }
+        | { type: "exit"; exitCode: number }
+        | { type: "error"; message: string };
+      if (message.type === "output") terminal.write(message.data);
+      else if (message.type === "error") terminal.writeln(`\r\n\x1b[31m${message.message}\x1b[0m`);
+    });
+    socket.addEventListener("close", (event) => {
+      if (event.code !== 1000)
+        terminal.writeln(
+          `\r\n\x1b[31mProcess disconnected: ${event.reason || "unknown error"}\x1b[0m`,
+        );
+    });
+    const input = terminal.onData((data) => {
+      if (socket.readyState === WebSocket.OPEN)
+        socket.send(JSON.stringify({ type: "input", data }));
+    });
+    const terminalResize = terminal.onResize(({ cols, rows }) => {
+      if (socket.readyState === WebSocket.OPEN)
+        socket.send(JSON.stringify({ type: "resize", cols, rows }));
+    });
+    const resize = new ResizeObserver(() => fit.fit());
+    resize.observe(container.current);
+
+    return () => {
+      resize.disconnect();
+      input.dispose();
+      terminalResize.dispose();
+      socket.close(1000, "Terminal closed");
+      terminal.dispose();
+    };
+  }, [selection.file, selection.name, selection.syntax, selection.type]);
+
+  return <div aria-label="Runnable terminal" className="nawc-run-terminal" ref={container} />;
 }
 
 const sourceAttributes = {

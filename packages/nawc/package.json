@@ -25,13 +25,15 @@
     "@nawc/ui": "workspace:*",
     "chokidar": "^5.0.0",
     "commander": "^15.0.0",
-    "execa": "^9.6.1",
     "hono": "^4.12.29",
     "jiti": "^2.7.0",
-    "vite": "catalog:"
+    "node-pty": "1.2.0-beta.12",
+    "vite": "catalog:",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/ws": "^8.18.1",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   }

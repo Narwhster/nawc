@@ -20,6 +20,8 @@
     "@nawc/ui": "workspace:*",
     "@tiptap/core": "^3.27.3",
     "@tiptap/react": "^3.27.3",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "highlight.js": "catalog:",
     "lucide-react": "^1.24.0",
     "react": "^19.2.7",
