@@ -1,0 +1,38 @@
+{
+  "name": "nawc",
+  "version": "0.0.0",
+  "bin": {
+    "nawc": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./cli": "./dist/cli.mjs",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.10",
+    "@nawc/config": "workspace:*",
+    "@nawc/plugin": "workspace:*",
+    "@nawc/ui": "workspace:*",
+    "chokidar": "^5.0.0",
+    "commander": "^15.0.0",
+    "execa": "^9.6.1",
+    "hono": "^4.12.29",
+    "jiti": "^2.7.0",
+    "vite": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

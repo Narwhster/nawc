@@ -1,0 +1,64 @@
+<h1>Workspace map</h1>
+<p>
+  The monorepo separates framework contracts from concrete editor, agent, and language integrations.
+</p>
+<h2>Framework packages</h2>
+<ul>
+  <li>
+    <code>packages/nawc</code>: public entry point, CLI, config loading, HTTP/SSE server, file
+    workspace, watcher, runners, and generated skills.
+  </li>
+  <li>
+    <code>packages/create-nawc</code>: interactive scaffolder used by package-manager create
+    commands.
+  </li>
+  <li>
+    <code>packages/config</code>: shared source, run, provider, syntax, and notebook configuration
+    types plus runtime validation.
+  </li>
+  <li>
+    <code>packages/plugin</code>: server-side plugin metadata and browser-side Tiptap extension
+    contracts.
+  </li>
+  <li>
+    <code>packages/ui</code>: React/Tiptap notebook shell, note navigation, canonical serialization,
+    wiki links, and prompt panel.
+  </li>
+</ul>
+<h3>Public NAWC exports</h3>
+<ref file="packages/nawc/src/index.ts"></ref>
+<h3>Configuration schema</h3>
+<ref file="packages/config/src/index.ts" syntax="ts" name="NawcConfig" type="type"></ref>
+<h2>Concrete integrations</h2>
+<ul>
+  <li>
+    <code>plugins/core</code>: declares the interactive, ref, and runnable nodes, ships their Tiptap
+    node views, and contributes the core authoring skill.
+  </li>
+  <li>
+    <code>provider/codex</code>: launches the local Codex CLI and translates its JSONL event stream.
+  </li>
+  <li>
+    <code>syntax/typescript</code>: extracts whole files or named TypeScript declarations and runs
+    files through <code>tsx</code>.
+  </li>
+  <li>
+    <code>syntax/vitest</code>: extracts exact <code>it</code>/<code>test</code> calls and runs
+    Vitest with an optional title filter.
+  </li>
+  <li>
+    <code>examples/notebook</code>: this dogfood notebook, configured with every integration above
+    and a base directory at the monorepo root.
+  </li>
+</ul>
+<h3>Core plugin declaration</h3>
+<ref file="plugins/core/src/index.ts" syntax="ts" name="core" type="function"></ref>
+<h3>Notebook configuration</h3>
+<ref file="examples/notebook/nawc.config.ts"></ref>
+<h2>UI composition</h2>
+<p>
+  The application is a three-column shell: notes on the left, the active Tiptap document in the
+  center, and provider interaction on the right. The UI uses React, Tiptap, Tailwind CSS,
+  shadcn-style components, Radix UI primitives, and Lucide icons.
+</p>
+<ref file="packages/ui/src/App.tsx" syntax="tsx" name="App" type="function"></ref>

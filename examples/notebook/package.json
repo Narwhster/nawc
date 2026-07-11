@@ -1,0 +1,16 @@
+{
+  "name": "@nawc/example-notebook",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nawc"
+  },
+  "dependencies": {
+    "@nawc/core": "workspace:*",
+    "@nawc/provider-codex": "workspace:*",
+    "@nawc/syntax-typescript": "workspace:*",
+    "@nawc/syntax-vitest": "workspace:*",
+    "nawc": "workspace:*"
+  }
+}
