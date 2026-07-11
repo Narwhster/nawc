@@ -14,6 +14,7 @@ import {
   FolderPlusIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
+  SearchIcon,
   SparklesIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -26,6 +27,7 @@ import { FileTree, type FileTreeActions } from "@/components/file-tree";
 import { PromptPanel } from "@/components/prompt-panel";
 import { WorkspaceDialog, type WorkspaceDialogState } from "@/components/workspace-dialog";
 import { EditorAction } from "@/components/editor-action";
+import { NoteSearchDialog } from "@/components/note-search";
 import { api, json } from "@/lib/api";
 import {
   createNoteHistory,
@@ -76,6 +78,8 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [agentOpen, setAgentOpen] = useState(true);
   const [dialog, setDialog] = useState<WorkspaceDialogState>();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchRevision, setSearchRevision] = useState(0);
 
   const refresh = useCallback(
     async () => setEntries(await api<WorkspaceEntry[]>("/api/files")),
@@ -144,6 +148,7 @@ export default function App() {
     events.onmessage = (message) => {
       const detail = JSON.parse(message.data) as { event: string; file?: string };
       if (detail.event !== "ready") void refresh();
+      if (detail.event !== "ready") setSearchRevision((revision) => revision + 1);
       window.dispatchEvent(new CustomEvent("nawc:files-changed", { detail }));
     };
     return () => events.close();
@@ -158,6 +163,16 @@ export default function App() {
     window.addEventListener("nawc:open-note", onOpenNote);
     return () => window.removeEventListener("nawc:open-note", onOpenNote);
   }, [openNote]);
+
+  useEffect(() => {
+    const openSearch = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== "k" || (!event.metaKey && !event.ctrlKey)) return;
+      event.preventDefault();
+      setSearchOpen(true);
+    };
+    window.addEventListener("keydown", openSearch);
+    return () => window.removeEventListener("keydown", openSearch);
+  }, []);
 
   const actions: FileTreeActions = {
     open: openNote,
@@ -305,7 +320,15 @@ export default function App() {
         {sidebarOpen && (
           <aside className="nawc-sidebar">
             <header>
-              <strong>NAWC</strong>
+              <Button
+                className="nawc-search-trigger"
+                variant="ghost"
+                onClick={() => setSearchOpen(true)}
+              >
+                <SearchIcon />
+                <span>Search</span>
+                <kbd>⌘K</kbd>
+              </Button>
               <span className="flex gap-1">
                 <Button size="icon-sm" variant="ghost" onClick={() => actions.createNote()}>
                   <FilePlus2Icon />
@@ -349,6 +372,12 @@ export default function App() {
             if (!open) setDialog(undefined);
           }}
           onSubmit={(value) => void submitDialog(value)}
+        />
+        <NoteSearchDialog
+          open={searchOpen}
+          revision={searchRevision}
+          onOpenChange={setSearchOpen}
+          onOpenNote={openNote}
         />
       </main>
     </TooltipProvider>

@@ -21,6 +21,9 @@ catalog:
   dockview-react: ^6.6.1
   zustand: ^5.0.14
   highlight.js: ^11.11.1
+  minisearch: ^7.2.0
+  parse5: ^8.0.1
+  cmdk: ^1.1.1
 
 minimumReleaseAgeExclude:
   - hono@4.12.29

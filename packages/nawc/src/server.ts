@@ -39,6 +39,7 @@ import { syncSkills } from "./skills.ts";
 import { isSameOrigin, parseRunClientEvent } from "./run-protocol.ts";
 import { launchEditor } from "./editor.ts";
 import { nawcLight, vscode } from "@nawc/config";
+import { NoteSearchIndex } from "./note-search.ts";
 
 type ServerOptions = {
   readonly projectDir: string;
@@ -113,6 +114,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   const config = await loadConfig(projectDir, options.configFile);
   const baseDir = path.resolve(projectDir, config.baseDir);
   const srcDir = path.join(projectDir, "src");
+  const noteSearch = new NoteSearchIndex(srcDir);
   await assertGitRepository(baseDir);
   const skillsDir = await syncSkills(projectDir, config.plugins);
   let providerSkillsPromise: Promise<readonly NawcProviderSkill[]> | undefined;
@@ -151,6 +153,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     interval: 500,
   });
   watcher.on("all", (event, file) => {
+    noteSearch.invalidate();
     for (const listener of fileListeners) listener(event, file);
   });
 
@@ -170,6 +173,10 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     }),
   );
   app.get("/api/notes", async (context) => context.json(await listNotes(srcDir)));
+  app.get("/api/search", async (context) => {
+    const query = context.req.query("q") ?? "";
+    return context.json(await noteSearch.search(query));
+  });
   app.get("/api/files", async (context) => context.json(await listEntries(srcDir)));
   app.get("/api/prompt/skills", async (context) =>
     context.json(
@@ -213,34 +220,41 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   app.put("/api/note", async (context) => {
     const body = await context.req.json<{ path: string; content: string }>();
     await writeNote(srcDir, body.path, body.content);
+    noteSearch.invalidate();
     return context.json({ ok: true });
   });
   app.delete("/api/note", async (context) => {
     await deleteNote(srcDir, context.req.query("path") ?? "");
+    noteSearch.invalidate();
     return context.json({ ok: true });
   });
   app.post("/api/note/rename", async (context) => {
     const body = await context.req.json<{ from: string; to: string }>();
     await renameNote(srcDir, body.from, body.to);
+    noteSearch.invalidate();
     return context.json({ ok: true });
   });
   app.post("/api/folder", async (context) => {
     const { path: folder } = await context.req.json<{ path: string }>();
     await createFolder(srcDir, folder);
+    noteSearch.invalidate();
     return context.json({ ok: true });
   });
   app.delete("/api/entry", async (context) => {
     await deleteEntry(srcDir, context.req.query("path") ?? "");
+    noteSearch.invalidate();
     return context.json({ ok: true });
   });
   app.post("/api/entry/rename", async (context) => {
     const body = await context.req.json<{ from: string; to: string }>();
     await renameEntry(srcDir, body.from, body.to);
+    noteSearch.invalidate();
     return context.json({ ok: true });
   });
   app.post("/api/entry/move", async (context) => {
     const body = await context.req.json<{ from: string; to: string; replace?: boolean }>();
     await moveEntry(srcDir, body.from, body.to, body.replace);
+    noteSearch.invalidate();
     return context.json({ ok: true });
   });
   app.post("/api/source", async (context) => {
@@ -354,6 +368,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     server: {
       middlewareMode: true,
       hmr: false,
+      ws: false,
       watch: { usePolling: true, interval: 500 },
       fs: { allow: [projectDir, baseDir, uiRoot] },
     },

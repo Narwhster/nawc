@@ -413,7 +413,7 @@ export function PromptPanel({ note }: { note?: string }) {
           onClick={(event) =>
             setTrigger(detectComposerTrigger(prompt, event.currentTarget.selectionStart))
           }
-          placeholder="Ask the agent…  $ skills  @ files"
+          placeholder="Ask the agent..."
           aria-autocomplete="list"
           aria-expanded={completionOpen}
           aria-controls={completionOpen ? "nawc-prompt-completions" : undefined}

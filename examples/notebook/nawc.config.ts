@@ -1,4 +1,4 @@
-import { defineConfig, nawcLight, vscode } from "nawc";
+import { defineConfig, nawcDark, vscode } from "nawc";
 import { core } from "@nawc/core";
 import { codex } from "@nawc/provider-codex";
 import { typescript } from "@nawc/syntax-typescript";
@@ -9,6 +9,6 @@ export default defineConfig({
   provider: codex(),
   syntax: [typescript(), vitest()],
   editor: vscode(),
-  theme: nawcLight(),
+  theme: nawcDark(),
   baseDir: "../..",
 });

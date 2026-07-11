@@ -152,6 +152,54 @@ body {
   .nawc-sidebar > footer {
     @apply flex h-11 shrink-0 items-center justify-between px-3 text-xs;
   }
+  .nawc-search-trigger {
+    @apply min-w-0 flex-1 justify-start gap-2 px-2 text-muted-foreground;
+  }
+  .nawc-search-trigger svg {
+    @apply size-4;
+  }
+  .nawc-search-trigger kbd {
+    @apply ml-auto text-[10px] text-muted-foreground;
+  }
+  .nawc-search-dialog {
+    @apply top-[18%] w-[min(92vw,42rem)] max-w-none translate-y-0 gap-0 overflow-hidden p-0;
+  }
+  .nawc-search-dialog [data-slot="command-input-wrapper"] {
+    @apply border-b px-3 py-0;
+  }
+  .nawc-search-dialog [data-slot="command-input"] {
+    @apply h-12;
+  }
+  .nawc-search-results {
+    @apply max-h-[min(60vh,30rem)];
+  }
+  [data-slot="command-empty"] {
+    @apply p-6 text-center text-xs text-muted-foreground;
+  }
+  .nawc-search-item {
+    @apply items-start gap-3 px-3 py-2;
+  }
+  .nawc-search-item > svg {
+    @apply mt-0.5 size-4 shrink-0 text-muted-foreground;
+  }
+  .nawc-search-item-text {
+    @apply flex min-w-0 flex-1 flex-col;
+  }
+  .nawc-search-item strong,
+  .nawc-search-item small,
+  .nawc-search-snippet {
+    @apply truncate;
+  }
+  .nawc-search-item small,
+  .nawc-search-snippet {
+    @apply text-xs text-muted-foreground;
+  }
+  .nawc-search-results mark {
+    @apply bg-primary/35 text-inherit;
+  }
+  .nawc-search-footer {
+    @apply flex gap-4 border-t bg-muted/50 px-3 py-2 text-[10px] text-muted-foreground;
+  }
   .nawc-file-tree {
     @apply flex min-h-full flex-col p-2;
   }
