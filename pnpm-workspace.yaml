@@ -4,6 +4,7 @@ packages:
   - provider/*
   - syntax/*
   - examples/*
+  - .notebook
 
 catalogMode: prefer
 

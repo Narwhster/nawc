@@ -1,0 +1,37 @@
+<h1>Creating a syntax adapter</h1>
+<p>
+  A syntax adapter gives <code>&lt;ref&gt;</code> blocks source intelligence and can optionally make
+  <code>&lt;runnable&gt;</code> executable. Its canonical name and aliases are matched against the
+  element's <code>syntax</code> attribute.
+</p>
+<ref file="packages/config/src/index.ts" syntax="ts" name="NawcSyntax" type="type"></ref>
+<ref
+  file=".notebook/src/docs/syntax-adapter.example.ts"
+  syntax="ts"
+  name="json"
+  type="variable"
+></ref>
+<p>
+  <code>resolve</code> receives already-read source and the selection attributes. Return selected
+  code and one-based inclusive line numbers, or <code>undefined</code> when a requested symbol
+  cannot be found. Whole-file fallback is useful when no <code>name</code> or <code>type</code> is
+  supplied.
+</p>
+<h2>Adding execution</h2>
+<p>
+  The example's <code>run</code> method returns an argv array and working directory; it does not
+  execute the process. Avoid shell strings. Treat every configured adapter as trusted code because
+  its command runs with the NAWC server user's permissions.
+</p>
+<p>
+  The TypeScript adapter uses the compiler AST to find declarations and runs files through
+  <code>tsx</code>. The Vitest adapter selects exact string-literal test names and runs Vitest with
+  <code>-t</code>.
+</p>
+<ref
+  file="syntax/typescript/src/index.ts"
+  syntax="ts"
+  name="resolveTypescript"
+  type="function"
+></ref>
+<ref file="syntax/vitest/src/index.ts" syntax="ts" name="resolveVitest" type="function"></ref>

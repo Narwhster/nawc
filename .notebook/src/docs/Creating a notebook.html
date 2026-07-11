@@ -1,0 +1,45 @@
+<h1>Creating a notebook</h1>
+<p>
+  A NAWC notebook is a small Node project whose notes are HTML files in <code>src/</code>. The
+  quickest starting point is the scaffold produced by <code>create-nawc</code>; the checked-in
+  example shows the complete shape.
+</p>
+<h2>Minimum layout</h2>
+<pre><code>.notebook/
+  package.json
+  nawc.config.ts
+  src/
+    Welcome.html</code></pre>
+<p>
+  Install <code>nawc</code>, <code>@nawc/core</code>, a provider, and whichever syntax adapters the
+  notes need. Add a script such as <code>"dev": "nawc"</code>, then run it from the notebook
+  directory.
+</p>
+<ref file="examples/notebook/package.json" syntax="ts"></ref>
+<ref file="examples/notebook/nawc.config.ts" syntax="ts"></ref>
+<h2>Write live notes</h2>
+<p>Ordinary HTML is editable in the notebook. The core plugin adds three useful elements:</p>
+<ul>
+  <li>
+    <code
+      >&lt;ref file="src/api.ts" syntax="ts" name="createApi" type="function"&gt;&lt;/ref&gt;</code
+    >
+    displays live source.
+  </li>
+  <li>
+    <code>&lt;runnable file="examples/demo.ts" syntax="ts"&gt;&lt;/runnable&gt;</code> displays and
+    runs a file.
+  </li>
+  <li>
+    <code>&lt;interactive&gt;...&lt;/interactive&gt;</code> embeds an HTML prototype in a sandboxed
+    iframe.
+  </li>
+</ul>
+<p>
+  Paths resolve against <code>baseDir</code>, not against the note. Wiki links such as
+  <code>[[Architecture]]</code> connect notes without duplicating explanations.
+</p>
+<p>
+  Continue with [[Configuration and themes]], [[Creating a plugin]], and [[Safe notebook
+  workflows]].
+</p>

@@ -1,0 +1,43 @@
+<h1>Source intelligence and execution</h1>
+<p>
+  A source element stores a selection—not copied code. The server reads the current file under
+  <code>baseDir</code>, finds the syntax adapter, and asks it to resolve the selection. This keeps
+  explanations synchronized with refactors and makes line-aware editor links possible.
+</p>
+<interactive>
+  <style>
+    body {
+      font: 14px system-ui;
+      padding: 20px;
+      background: #faf8f2;
+      color: #27241d;
+    }
+    .step {
+      display: inline-block;
+      padding: 10px;
+      border: 1px solid #a58b58;
+      border-radius: 8px;
+    }
+    .arrow {
+      padding: 8px;
+      color: #8a6322;
+    }
+  </style>
+  <div>
+    <span class="step">HTML attributes</span><span class="arrow">→</span
+    ><span class="step">safe file read</span><span class="arrow">→</span
+    ><span class="step">adapter.resolve</span><span class="arrow">→</span
+    ><span class="step">live code + lines</span>
+  </div>
+</interactive>
+<p>
+  The TypeScript adapter traverses a compiler AST and supports functions, methods, classes, type
+  aliases, interfaces, variables, and enums. Function-valued variables expand to their enclosing
+  variable statement. The Vitest adapter instead finds a call with an exact literal title.
+</p>
+<p>
+  Execution is deliberately separate. An adapter's optional <code>run</code> returns argv and cwd;
+  the server validates the selection and starts the process without a shell. This avoids treating
+  note text as shell syntax, but does not make configured commands untrusted-safe.
+</p>
+<p>See [[Creating a syntax adapter]] and [[Testing with runnable specifications]].</p>

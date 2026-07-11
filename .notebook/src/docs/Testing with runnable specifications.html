@@ -1,0 +1,34 @@
+<h1>Testing with runnable specifications</h1>
+<p>
+  Runnable notes can hold executable acceptance examples close to a design without promoting every
+  implementation-shaping preference into the permanent test suite.
+</p>
+<h2>Run a focused Vitest case</h2>
+<pre><code>&lt;runnable
+  file="src/builder.spec.ts"
+  syntax="vitest"
+  name="builds the curried API"
+  type="it"
+&gt;&lt;/runnable&gt;</code></pre>
+<p>
+  The adapter finds an exact string-literal title. With the default <code>it</code> type it accepts
+  either <code>it(...)</code> or <code>test(...)</code>; another type matches that call name.
+  Execution becomes <code>vitest run FILE -t NAME</code>.
+</p>
+<runnable
+  file="syntax/vitest/tests/index.test.ts"
+  syntax="vitest"
+  name="extracts an exact test"
+  type="it"
+></runnable>
+<h2>Run a TypeScript example</h2>
+<runnable file=".notebook/src/docs/builder.example.ts" syntax="ts"></runnable>
+<p>
+  The TypeScript adapter runs the selected file with Node and <code>tsx</code>. Keep examples
+  deterministic, non-destructive, and fast. Runnable blocks always execute the file, not merely the
+  displayed declaration selection.
+</p>
+<p>
+  For repository validation, runnable examples complement rather than replace the project's standard
+  <code>vp check</code> and <code>vp test</code> commands.
+</p>

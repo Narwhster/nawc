@@ -1,0 +1,138 @@
+<h1>Architecture: files connected by small contracts</h1>
+<p>
+  NAWC is a local React application whose database is a directory of HTML files. A typed config
+  composes four seams: browser plugins, an agent provider, syntax adapters, and an editor launcher.
+  The server joins them without making any one integration mandatory in the others.
+</p>
+<h2>The system at a glance</h2>
+<interactive>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #10141b;
+      color: #e7edf4;
+      font:
+        13px ui-monospace,
+        monospace;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    button {
+      min-height: 92px;
+      border: 1px solid #3c4b5f;
+      background: #171e28;
+      color: inherit;
+      padding: 12px;
+      cursor: pointer;
+    }
+    button:hover,
+    button.active {
+      border-color: #f0c75e;
+    }
+    #detail {
+      margin-top: 16px;
+      padding: 14px;
+      border-left: 3px solid #f0c75e;
+    }
+  </style>
+  <div class="grid">
+    <button
+      onclick="
+        pick(
+          this,
+          'HTML notes are listed, searched, read, and written as files under the notebook src directory.',
+        )
+      "
+    >
+      HTML notes<br />persistent content
+    </button>
+    <button
+      onclick="
+        pick(
+          this,
+          'Hono owns the API while Vite serves the React client; both share one local Node HTTP server.',
+        )
+      "
+    >
+      NAWC server<br />coordination
+    </button>
+    <button
+      onclick="
+        pick(
+          this,
+          'Tiptap turns canonical HTML and plugin extensions into an editable document, then serializes it back.',
+        )
+      "
+    >
+      React editor<br />interaction
+    </button>
+    <button
+      onclick="
+        pick(
+          this,
+          'Syntax adapters resolve declarations and optionally return argv-based run instructions; the local server still treats configured adapters as trusted execution policy.',
+        )
+      "
+    >
+      Source + runners<br />code intelligence
+    </button>
+    <button
+      onclick="
+        pick(
+          this,
+          'The provider translates prompts and agent activity into a small async event stream.',
+        )
+      "
+    >
+      Agent provider<br />collaboration
+    </button>
+    <button
+      onclick="
+        pick(
+          this,
+          'Core and third-party plugins contribute Tiptap nodes plus skills that teach agents how to author them.',
+        )
+      "
+    >
+      Plugins + skills<br />extension
+    </button>
+  </div>
+  <div id="detail">Select a component to inspect its responsibility.</div>
+  <script>
+    function pick(button, text) {
+      document.querySelectorAll("button").forEach((item) => item.classList.remove("active"));
+      button.classList.add("active");
+      document.querySelector("#detail").textContent = text;
+    }
+  </script>
+</interactive>
+<h2>Follow a real flow</h2>
+<ol>
+  <li>The CLI loads <code>nawc.config.ts</code> and creates the local server.</li>
+  <li>
+    The UI fetches a flat note listing, builds a folder tree, and opens HTML in a Dockview panel
+    backed by a Tiptap document.
+  </li>
+  <li>
+    A <code>&lt;ref&gt;</code> asks the server to resolve current source through a syntax adapter.
+  </li>
+  <li>
+    A <code>&lt;runnable&gt;</code> opens a same-origin WebSocket. Its adapter supplies argv and
+    cwd, which run in a pseudo-terminal without shell interpolation.
+  </li>
+  <li>
+    The prompt panel validates selected Git-backed file paths and known skills/models, then streams
+    provider events over server-sent events.
+  </li>
+</ol>
+<p>
+  Continue into [[codebase/runtime/Runtime architecture]], [[codebase/runtime/Workspace and
+  search]], [[codebase/runtime/Run protocol]], [[codebase/editor/index]],
+  [[codebase/editor/workspace-tools]], [[codebase/editor/core-nodes]],
+  [[concepts/editor/mental-model]], and [[concepts/extensions/Extension architecture]].
+</p>
+<ref file="packages/nawc/src/server.ts" syntax="ts" name="createNawcServer" type="function"></ref>

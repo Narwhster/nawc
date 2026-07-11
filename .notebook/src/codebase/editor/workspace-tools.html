@@ -1,0 +1,70 @@
+<h1>Workspace tools: tree, search, and prompt</h1>
+
+<h2>File tree</h2>
+<ref file="packages/ui/src/components/file-tree.tsx" syntax="ts" name="buildTree" type="function" />
+<p>
+  The server returns a flat list of paths. <code>buildTree</code> synthesizes missing intermediate
+  folders into nested maps, then materializes arrays with folders first and locale-sorted names.
+  File labels omit the <code>.html</code> suffix. The active note automatically expands every
+  ancestor folder.
+</p>
+<p>
+  Each row is keyboard-activatable and draggable. Folders reject a drop onto themselves or
+  descendants. Moves are delegated to <code>App</code>, which handles collisions by opening a
+  replace confirmation; contextual actions provide open/new/rename/delete operations.
+</p>
+
+<h2>Search</h2>
+<ref
+  file="packages/ui/src/components/note-search.tsx"
+  syntax="ts"
+  name="NoteSearchDialog"
+  type="function"
+/>
+<p>
+  Command/control-K opens server-backed search over names, paths, and content. Requests wait 120 ms
+  and use an <code>AbortController</code>, so stale queries cannot overwrite newer results. The
+  shell increments <code>revision</code> for every filesystem event, causing an open query to run
+  again. The server supplies matching terms; the client escapes them before building a
+  case-insensitive highlighting expression. Command/control-Enter opens the selection in a new
+  panel.
+</p>
+
+<h2>Agent composer</h2>
+<ref
+  file="packages/ui/src/lib/composer.ts"
+  syntax="ts"
+  name="detectComposerTrigger"
+  type="function"
+/>
+<p>
+  Completion is lexical and cursor-local: <code>@</code> completes files, <code>$</code> completes
+  skills, a line-leading <code>/</code> completes commands, and <code>/model </code> switches to
+  models. Paths containing whitespace or special characters are quoted and escaped. Before sending,
+  <code>collectPromptReferences</code> parses and deduplicates file and skill references into
+  structured inputs.
+</p>
+
+<ref
+  file="packages/ui/src/components/prompt-panel.tsx"
+  syntax="ts"
+  name="PromptPanel"
+  type="function"
+/>
+<p>
+  The panel asks separate endpoints for files, skills, commands, and models. Skill search ranks
+  exact, prefix, substring, then subsequence matches. Built-in commands change local state:
+  <code>/plan</code> and <code>/default</code> select mode, while <code>/model</code> leads into
+  model completion. Other commands remain provider commands in the prompt.
+</p>
+<p>
+  Sending prefixes the text with the current note, includes structured references, mode, and
+  optional model, then consumes double-newline-delimited server events from
+  <code>/api/prompt</code>. Core-node “Ask the agent” ribbons use <code>nawc:prompt</code> to
+  prefill and focus this composer.
+</p>
+
+<p>
+  See [[codebase/editor/index]] for shell ownership and [[codebase/editor/core-nodes]] for the
+  blocks embedded in documents.
+</p>

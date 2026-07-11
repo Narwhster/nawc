@@ -1,0 +1,28 @@
+<h1>Providers and event streams</h1>
+<p>
+  The provider contract is an anti-corruption layer around an agent harness. NAWC does not need to
+  understand Codex JSONL, subprocess details, or app-server pagination; it consumes a stable async
+  stream.
+</p>
+<pre><code>agent-specific output
+  → provider parser
+  → thread.started | message | command | error | done
+  → NAWC prompt interface</code></pre>
+<p>
+  Codex uses two integration paths. Prompt execution uses <code>codex exec --json</code>. Skills and
+  models use short-lived JSON-RPC app-server requests; model listing follows cursors and filters
+  hidden entries. The adapter caches neither—the NAWC server owns request-level caching and retries
+  failed listings on the next request.
+</p>
+<ref file="provider/codex/src/index.ts" syntax="ts" name="parseCodexEvent" type="function"></ref>
+<ref
+  file="provider/codex/src/index.ts"
+  syntax="ts"
+  name="parseCodexModelsResponse"
+  type="function"
+></ref>
+<p>
+  Plan mode is semantic as well as mechanical: it selects read-only sandboxing and appends an
+  instruction to inspect and propose without editing. See [[Creating a provider]] for the contract
+  and [[Safe notebook workflows]] for its trust model.
+</p>

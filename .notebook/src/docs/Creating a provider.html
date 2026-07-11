@@ -1,0 +1,25 @@
+<h1>Creating a provider</h1>
+<p>
+  A provider connects the prompt panel to an agent harness without coupling the server to that
+  harness. Implement <code>NawcProvider</code> and return an async iterable of normalized events.
+</p>
+<ref file="packages/config/src/index.ts" syntax="ts" name="NawcProvider" type="type"></ref>
+<ref file=".notebook/src/docs/provider.example.ts" syntax="ts" name="myAgent" type="function"></ref>
+<p>
+  Events may be <code>thread.started</code>, <code>message</code>, <code>command</code>,
+  <code>error</code>, or <code>done</code>. Optional <code>listSkills</code> and
+  <code>listModels</code> populate the composer. References distinguish project files from generated
+  or provider-discovered skills.
+</p>
+<h2>Codex as a worked example</h2>
+<p>
+  The Codex adapter invokes <code>codex exec --json</code>, translates JSONL events, supplies the
+  configured working directory, and tells Codex where generated plugin skills live. Plan mode forces
+  a read-only sandbox; normal mode defaults to <code>workspace-write</code>. Options can choose the
+  executable, default model, or a stricter read-only sandbox.
+</p>
+<ref file="provider/codex/src/index.ts" syntax="ts" name="codex" type="function"></ref>
+<p>
+  Prefer argv-based process APIs, preserve provider errors as visible error events, and never
+  interpret prompt text as a shell command.
+</p>

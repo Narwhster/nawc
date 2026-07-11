@@ -1,0 +1,24 @@
+<h1>Plugins and skills</h1>
+<p>
+  A plugin extends both sides of the human–agent loop. Its client extensions teach the browser
+  editor new note vocabulary; its skills teach the configured agent how to author that vocabulary
+  correctly.
+</p>
+<p>
+  The core plugin makes the relationship concrete. Its metadata advertises three nodes and embeds a
+  concise authoring skill. Its client implements the corresponding Tiptap nodes, React views, source
+  fetching, prompt actions, terminal UI, and sandboxed interactive rendering.
+</p>
+<ref file="plugins/core/src/index.ts" syntax="ts" name="coreSkill" type="variable"></ref>
+<ref file="plugins/core/src/index.ts" syntax="ts" name="core" type="function"></ref>
+<p>
+  On startup, NAWC writes generated skills beneath a managed skills directory and labels them as
+  generated. It then merges those skills with provider-discovered skills for the prompt UI. Existing
+  unmarked skill files are protected from replacement.
+</p>
+<p>
+  This is a useful design rule for extensions: represent the same concept in executable editor
+  behavior and in agent-readable instructions, but keep source code itself live through references
+  rather than copying it into notes.
+</p>
+<p>See [[Creating a plugin]] and [[Safe notebook workflows]].</p>

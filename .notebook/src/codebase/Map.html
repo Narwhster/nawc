@@ -1,0 +1,47 @@
+<h1>Codebase map</h1>
+<p>Use this page when you know the capability you want to change but not its owning package.</p>
+<ul>
+  <li>
+    <code>packages/nawc</code> — CLI, server, workspace safety, note search, editor launching, and
+    generated skills.
+  </li>
+  <li>
+    <code>packages/ui</code> — React shell, Tiptap editor, panes, navigation, prompt composer, and
+    API client.
+  </li>
+  <li><code>packages/config</code> — shared contracts and default themes/editor integration.</li>
+  <li><code>packages/plugin</code> — the server and browser plugin shapes.</li>
+  <li><code>plugins/core</code> — built-in interactive, reference, and runnable editor nodes.</li>
+  <li><code>provider/codex</code> — Codex process adapter and event translation.</li>
+  <li>
+    <code>syntax/typescript</code> and <code>syntax/vitest</code> — focused source selection and
+    runners.
+  </li>
+  <li><code>packages/create-nawc</code> — project scaffolding and starter content.</li>
+</ul>
+<h2>Maintainer routes</h2>
+<p>
+  For HTTP orchestration start at [[codebase/runtime/Runtime architecture]]; for filesystem
+  confinement and Git-backed discovery use [[codebase/runtime/Workspace and search]]. For the
+  document model, panels, history, and serialization start at [[codebase/editor/index]]; use
+  [[codebase/editor/workspace-tools]] for tree/search/prompt behavior and
+  [[codebase/editor/core-nodes]] for plugin rendering and highlighting. For public seams start at
+  [[concepts/extensions/Extension architecture]]. Each detailed note links live declarations rather
+  than embedding source snapshots.
+</p>
+<h2>Runtime routes</h2>
+<ul>
+  <li>
+    Typed syntax, provider, editor, and theme interfaces: [[codebase/runtime/Configuration
+    contracts]].
+  </li>
+  <li>
+    Interactive PTY messages, origin validation, buffering, and shutdown: [[codebase/runtime/Run
+    protocol]].
+  </li>
+  <li>
+    Generated plugin skills and the starter project scaffold: [[codebase/runtime/Skills and project
+    creation]].
+  </li>
+</ul>
+<ref file="pnpm-workspace.yaml"></ref>

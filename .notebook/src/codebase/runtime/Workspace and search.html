@@ -1,0 +1,63 @@
+<h1>Workspace and search</h1>
+<p>
+  The workspace module is the runtime's trust boundary between browser-supplied paths and local
+  files. Notebook operations are rooted at <code>projectDir/src</code>; source operations are rooted
+  at configured <code>baseDir</code>.
+</p>
+<h2>Path safety</h2>
+<p>
+  <code>safePath</code> rejects absolute paths and lexical traversal outside a root.
+  <code>safeExistingPath</code> additionally resolves symbolic links on both target and root,
+  rejecting a symlink whose real target escapes. Existing source and editor targets use the stronger
+  form. Note creation uses <code>safePath</code> because the destination need not exist yet.
+</p>
+<ref file="packages/nawc/src/workspace.ts" syntax="ts" name="safePath" type="function"></ref>
+<ref
+  file="packages/nawc/src/workspace.ts"
+  syntax="ts"
+  name="safeExistingPath"
+  type="function"
+></ref>
+<h2>Notes and tree mutations</h2>
+<p>
+  <code>listNotes</code> returns sorted recursive <code>.html</code> paths.
+  <code>listEntries</code> also includes folders for the UI tree. Writes and renames create parent
+  directories; new note names must end in <code>.html</code>. Entry moves can optionally replace a
+  target, but forbid moving a folder inside itself.
+</p>
+<ref file="packages/nawc/src/workspace.ts" syntax="ts" name="moveEntry" type="function"></ref>
+<h2>Project file discovery</h2>
+<p>
+  Prompt references come from <code>git ls-files -co --exclude-standard</code>: tracked files plus
+  untracked, non-ignored files. Generated directory segments such as <code>.git</code>,
+  <code>.skills</code>, <code>dist</code>, and <code>node_modules</code> are excluded. Results are
+  cached for two seconds, and candidates are still passed through real-path validation. Directories
+  are derived from file path prefixes.
+</p>
+<p>
+  This makes Git the definition of a selectable project file, not an unrestricted filesystem walk. A
+  submitted prompt reference must appear in that candidate set and still exist safely beneath
+  <code>baseDir</code>.
+</p>
+<h2>Source resolution</h2>
+<p>
+  Without a syntax attribute, <code>resolveSource</code> returns the whole UTF-8 file and its line
+  span. With syntax, it selects an adapter by canonical name or alias and delegates symbol/test
+  extraction to its <code>resolve</code> function. A missing adapter or unresolved symbol is an
+  error.
+</p>
+<ref file="packages/nawc/src/workspace.ts" syntax="ts" name="resolveSource" type="function"></ref>
+<h2>Search index</h2>
+<p>
+  <code>NoteSearchIndex</code> parses each note as an HTML fragment, ignores text inside
+  <code>script</code> and <code>style</code>, and indexes title, path, and visible text with
+  MiniSearch. Titles receive the largest boost, then paths, then body text. Search uses AND
+  combination, prefix matching, and modest fuzzy matching.
+</p>
+<p>
+  Filesystem events and API mutations invalidate the index. Rebuilds are coalesced through one
+  promise; a revision counter ensures a change that occurs during a rebuild triggers another pass
+  instead of publishing stale state as fresh.
+</p>
+<ref file="packages/nawc/src/note-search.ts" syntax="ts" name="NoteSearchIndex" type="class"></ref>
+<p>See [[Runtime architecture]] for endpoints consuming these helpers.</p>

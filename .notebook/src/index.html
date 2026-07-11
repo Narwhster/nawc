@@ -1,0 +1,113 @@
+<h1>NAWC, explained by NAWC</h1>
+<p>
+  NAWC is a notebook that lives beside your code. Its notes are ordinary HTML, but they can point at
+  live source, run focused examples, host interactive prototypes, and give coding agents a
+  persistent place to explain or refine their work.
+</p>
+<h2>The gap it closes</h2>
+<ol>
+  <li>
+    <strong>Reviewing agent-written code.</strong> An agent can leave an explanation connected to
+    the implementation instead of asking a developer to reconstruct its reasoning from a diff.
+  </li>
+  <li>
+    <strong>Thinking together before implementation.</strong> Notes provide durable, disposable
+    space for plans, prototypes, and runnable sketches without mixing them into production code.
+  </li>
+  <li>
+    <strong>Keeping specifications without keeping throwaway tests.</strong> Implementation-shaping
+    examples can live beside a note and be run while the feature is built; the product test suite
+    can stay focused on lasting behavior.
+  </li>
+</ol>
+<p>
+  This notebook applies that idea to NAWC itself. It is both a guided tour and an example of the
+  artifact the repository produces.
+</p>
+<h2>Choose a reading depth</h2>
+<ul>
+  <li>
+    <a href="#concepts/Architecture">[[concepts/Architecture]]</a> — a visual, high-level system
+    tour.
+  </li>
+  <li>
+    <a href="#codebase/Map">[[codebase/Map]]</a> — package and source-file entry points for
+    maintainers.
+  </li>
+  <li>
+    <a href="#docs/Creating a notebook">[[docs/Creating a notebook]]</a> — create a project and
+    write live notes.
+  </li>
+  <li>
+    <a href="#docs/Creating a plugin">[[docs/Creating a plugin]]</a> — extend the editor and teach
+    the agent new note vocabulary.
+  </li>
+  <li>
+    <a href="#concepts/extensions/Extension architecture"
+      >[[concepts/extensions/Extension architecture]]</a
+    >
+    — plugins, providers, syntax adapters, and configuration.
+  </li>
+  <li>
+    <a href="#docs/Testing with runnable specifications"
+      >[[docs/Testing with runnable specifications]]</a
+    >
+    — executable, implementation-shaping examples.
+  </li>
+  <li>
+    <a href="#docs/Safe notebook workflows">[[docs/Safe notebook workflows]]</a> — understand the
+    local tool's trust boundaries.
+  </li>
+</ul>
+<h2>A live proof</h2>
+<p>
+  The declaration below is not copied into this page. NAWC resolves it from the repository, so the
+  explanation stays attached to the current contract.
+</p>
+<ref file="packages/config/src/index.ts" syntax="ts" name="NawcConfig" type="type"></ref>
+<interactive>
+  <style>
+    body {
+      margin: 0;
+      min-height: 240px;
+      display: grid;
+      place-items: center;
+      color: #e8edf2;
+      background: radial-gradient(circle at 20% 10%, #24344d, #10141b 55%);
+      font:
+        14px ui-monospace,
+        monospace;
+    }
+    main {
+      width: min(560px, 86vw);
+    }
+    button {
+      border: 1px solid #f0c75e;
+      color: #f0c75e;
+      background: #171d26;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    #flow {
+      margin-top: 18px;
+      line-height: 1.8;
+    }
+  </style>
+  <main>
+    <strong>One note, three feedback loops</strong>
+    <div id="flow">Choose a loop to trace.</div>
+    <button onclick="show('review')">Review</button>
+    <button onclick="show('plan')">Plan</button>
+    <button onclick="show('spec')">Specify</button>
+  </main>
+  <script>
+    const loops = {
+      review: "source → live reference → explanation → informed review",
+      plan: "idea → prototype → agent conversation → implementation",
+      spec: "desired API → runnable example → implementation → durable docs",
+    };
+    function show(name) {
+      document.querySelector("#flow").textContent = loops[name];
+    }
+  </script>
+</interactive>

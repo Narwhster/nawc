@@ -1,0 +1,98 @@
+<h1>The editor's mental model</h1>
+<p>A NAWC note has three forms, each optimized for a different job:</p>
+<ol>
+  <li><b>HTML on disk</b> is portable, diffable, and agent-editable.</li>
+  <li>
+    <b>A TipTap document</b> gives structure, selection, input rules, and plugin extension points.
+  </li>
+  <li>
+    <b>React node views</b> turn selected custom elements into live tools such as prototypes, source
+    viewers, and terminals.
+  </li>
+</ol>
+
+<interactive>
+  <!doctype html><meta charset="utf-8" /><style>
+    body {
+      font: 14px system-ui;
+      background: #fafafa;
+      color: #172033;
+      padding: 20px;
+    }
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .card {
+      border: 2px solid #94a3b8;
+      border-radius: 10px;
+      padding: 14px;
+      width: 170px;
+      min-height: 100px;
+      background: white;
+    }
+    .arrow {
+      font-size: 24px;
+      color: #2563eb;
+    }
+    code {
+      color: #7c3aed;
+    }
+    .hint {
+      margin-top: 18px;
+      padding: 10px;
+      background: #e0f2fe;
+      border-radius: 8px;
+    }
+  </style>
+  <h2>One note, three representations</h2>
+  <div class="flow">
+    <div class="card">
+      <b>File</b>
+      <p><code>&lt;ref file="x.ts" /&gt;</code></p>
+      <small>source of truth</small>
+    </div>
+    <div class="arrow">→ parse →</div>
+    <div class="card">
+      <b>TipTap node</b>
+      <p>attrs: file, name, type, syntax</p>
+    </div>
+    <div class="arrow">→ view →</div>
+    <div class="card">
+      <b>React UI</b>
+      <p>highlighted source + ribbon</p>
+      <small>reloads on file events</small>
+    </div>
+  </div>
+  <div class="hint">On save, serialization travels back toward plain custom-element HTML.</div>
+</interactive>
+
+<h2>Why the browser events matter</h2>
+<p>
+  The shell, document editor, plugin blocks, and prompt are not wired through one enormous React
+  state tree. Small browser events form a local protocol: <code>nawc:open-note</code> requests
+  navigation, <code>nawc:files-changed</code> invalidates live content, and
+  <code>nawc:prompt</code> seeds the agent composer. Server-sent filesystem events enter at the
+  shell and fan out through that protocol.
+</p>
+
+<h2>Design consequences</h2>
+<ul>
+  <li>A plugin can extend editing without inventing a new file format.</li>
+  <li>
+    Moving a note requires updating panel state and navigation history, not rewriting the note.
+  </li>
+  <li>Live references deliberately trade static snapshots for fidelity to current code.</li>
+  <li>
+    Interactive HTML is isolated in a sandbox, but it is still active content and should be authored
+    intentionally.
+  </li>
+  <li>Autosave is eventual (350 ms), so the in-memory editor briefly leads the disk file.</li>
+</ul>
+
+<p>
+  Implementation detail: [[codebase/editor/index]], [[codebase/editor/workspace-tools]], and
+  [[codebase/editor/core-nodes]].
+</p>
