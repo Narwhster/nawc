@@ -20,6 +20,14 @@ export async function safePath(root: string, relative: string): Promise<string> 
   return target;
 }
 
+export async function safeExistingPath(root: string, relative: string): Promise<string> {
+  const target = await realpath(await safePath(root, relative));
+  const resolvedRoot = await realpath(root);
+  if (target !== resolvedRoot && !target.startsWith(`${resolvedRoot}${path.sep}`))
+    throw new Error("Path escapes the configured directory through a symbolic link");
+  return target;
+}
+
 export async function listNotes(srcDir: string): Promise<string[]> {
   const notes: string[] = [];
   const walk = async (directory: string): Promise<void> => {

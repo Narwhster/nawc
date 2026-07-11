@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@nawc/ui/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@nawc/ui/components/ui/tooltip";
+import { EditorAction } from "@nawc/ui/components/editor-action";
 import { ChevronDownIcon, PencilIcon, PlayIcon, SparklesIcon, Trash2Icon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NawcClientPlugin } from "@nawc/plugin";
@@ -42,11 +43,13 @@ function Ribbon({
   onEdit,
   onPrompt,
   onRun,
+  source,
 }: {
   onDelete: () => void;
   onEdit?: () => void;
   onPrompt: () => void;
   onRun?: () => void;
+  source?: SourceResult;
 }) {
   return (
     <div className="nawc-node-ribbon" contentEditable={false}>
@@ -54,6 +57,9 @@ function Ribbon({
         <IconAction label="Run" onClick={onRun}>
           <PlayIcon />
         </IconAction>
+      )}
+      {source && (
+        <EditorAction file={source.file} line={source.startLine} scope="source" side="right" />
       )}
       {onEdit && (
         <IconAction label="Edit source" onClick={onEdit}>
@@ -211,6 +217,7 @@ function SourceView({ node, deleteNode, runnable }: NodeViewProps & { runnable: 
         onDelete={deleteNode}
         onPrompt={() => promptForNode(runnable ? "runnable" : "ref", attrs)}
         onRun={runnable ? () => setRunId((id) => id + 1) : undefined}
+        source={source}
       />
     </NodeViewWrapper>
   );

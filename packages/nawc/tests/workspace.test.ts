@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -9,6 +9,7 @@ import {
   renameEntry,
   renameNote,
   safePath,
+  safeExistingPath,
   writeNote,
 } from "../src/workspace.ts";
 import { syncSkills } from "../src/skills.ts";
@@ -16,6 +17,14 @@ import { syncSkills } from "../src/skills.ts";
 describe("workspace boundaries", () => {
   it("rejects traversal outside a notebook", async () => {
     await expect(safePath("/tmp/notebook", "../secret")).rejects.toThrow("escapes");
+  });
+
+  it("rejects existing paths that escape through a symbolic link", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "nawc-"));
+    const outside = await mkdtemp(path.join(tmpdir(), "outside-"));
+    await writeFile(path.join(outside, "secret.ts"), "secret", "utf8");
+    await symlink(outside, path.join(root, "linked"));
+    await expect(safeExistingPath(root, "linked/secret.ts")).rejects.toThrow("symbolic link");
   });
 
   it("writes nested HTML notes", async () => {

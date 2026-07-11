@@ -23,11 +23,14 @@ import {
   renameEntry,
   renameNote,
   resolveSource,
+  safeExistingPath,
   safePath,
   writeNote,
 } from "./workspace.ts";
 import { syncSkills } from "./skills.ts";
 import { isSameOrigin, parseRunClientEvent } from "./run-protocol.ts";
+import { launchEditor } from "./editor.ts";
+import { vscode } from "@nawc/config";
 
 type ServerOptions = {
   readonly projectDir: string;
@@ -81,6 +84,11 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     context.json({
       provider: config.provider.name,
       baseDir,
+      editor: {
+        name: (config.editor ?? vscode()).name,
+        label: (config.editor ?? vscode()).label,
+        icon: (config.editor ?? vscode()).icon,
+      },
       plugins: config.plugins.map(({ name, nodes }) => ({ name, nodes })),
     }),
   );
@@ -142,6 +150,27 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     const selection = await context.req.json<SourceSelection>();
     watcher.add(await safePath(baseDir, selection.file));
     return context.json(await resolveSource(config, baseDir, selection));
+  });
+  app.post("/api/editor/open", async (context) => {
+    const request = await context.req.json<{
+      file: string;
+      scope: "note" | "source";
+      line?: number;
+      column?: number;
+    }>();
+    if (request.scope !== "note" && request.scope !== "source")
+      throw new Error("Invalid editor scope");
+    if (request.line !== undefined && (!Number.isInteger(request.line) || request.line < 1))
+      throw new Error("Invalid editor line");
+    if (request.column !== undefined && (!Number.isInteger(request.column) || request.column < 1))
+      throw new Error("Invalid editor column");
+    const file = await safeExistingPath(request.scope === "note" ? srcDir : baseDir, request.file);
+    await launchEditor(config.editor ?? vscode(), {
+      file,
+      line: request.line,
+      column: request.column,
+    });
+    return context.json({ ok: true });
   });
   app.post("/api/prompt", async (context) => {
     const { prompt } = await context.req.json<{ prompt: string }>();

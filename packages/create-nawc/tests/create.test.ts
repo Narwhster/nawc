@@ -15,6 +15,9 @@ describe("create-nawc", () => {
     await expect(readFile(path.join(root, "nawc.config.ts"), "utf8")).resolves.toContain(
       "plugins: [core()]",
     );
+    await expect(readFile(path.join(root, "nawc.config.ts"), "utf8")).resolves.toContain(
+      "editor: vscode()",
+    );
     await expect(readFile(path.join(root, "src/Welcome.html"), "utf8")).resolves.toContain(
       "<interactive>",
     );

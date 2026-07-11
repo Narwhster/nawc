@@ -25,6 +25,7 @@ import { DocumentPane } from "@/components/document-pane";
 import { FileTree, type FileTreeActions } from "@/components/file-tree";
 import { PromptPanel } from "@/components/prompt-panel";
 import { WorkspaceDialog, type WorkspaceDialogState } from "@/components/workspace-dialog";
+import { EditorAction } from "@/components/editor-action";
 import { api, json } from "@/lib/api";
 import {
   createNoteHistory,
@@ -286,6 +287,7 @@ export default function App() {
             </Tooltip>
           </span>
           <span className="flex-1" />
+          <EditorAction file={active} scope="note" />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

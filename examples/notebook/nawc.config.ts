@@ -1,4 +1,4 @@
-import { defineConfig } from "nawc";
+import { defineConfig, vscode } from "nawc";
 import { core } from "@nawc/core";
 import { codex } from "@nawc/provider-codex";
 import { typescript } from "@nawc/syntax-typescript";
@@ -8,5 +8,6 @@ export default defineConfig({
   plugins: [core()],
   provider: codex(),
   syntax: [typescript(), vitest()],
+  editor: vscode(),
   baseDir: "../..",
 });
