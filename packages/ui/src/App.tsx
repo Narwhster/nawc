@@ -5,6 +5,7 @@ import type {
   IDockviewPanel,
   IDockviewPanelProps,
 } from "dockview-react";
+import type { PanelImperativeHandle } from "react-resizable-panels";
 import { DockviewReact } from "dockview-react";
 import "dockview-react/dist/styles/dockview.css";
 import {
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -69,6 +71,8 @@ function getNoteHistory(histories: Map<string, NoteHistory>, panel: IDockviewPan
 export default function App() {
   const dockview = useRef<DockviewApi>(undefined);
   const noteHistories = useRef(new Map<string, NoteHistory>());
+  const sidebarPanel = useRef<PanelImperativeHandle | null>(null);
+  const agentPanel = useRef<PanelImperativeHandle | null>(null);
   const [entries, setEntries] = useState<WorkspaceEntry[]>([]);
   const [active, setActive] = useState<string>();
   const [navigation, setNavigation] = useState<NavigationState>({
@@ -80,6 +84,16 @@ export default function App() {
   const [dialog, setDialog] = useState<WorkspaceDialogState>();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchRevision, setSearchRevision] = useState(0);
+
+  useEffect(() => {
+    if (sidebarOpen) sidebarPanel.current?.expand();
+    else sidebarPanel.current?.collapse();
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    if (agentOpen) agentPanel.current?.expand();
+    else agentPanel.current?.collapse();
+  }, [agentOpen]);
 
   const refresh = useCallback(
     async () => setEntries(await api<WorkspaceEntry[]>("/api/files")),
@@ -254,7 +268,7 @@ export default function App() {
 
   return (
     <TooltipProvider>
-      <main className="nawc-app" data-sidebar-open={sidebarOpen} data-agent-open={agentOpen}>
+      <main className="nawc-app">
         <header className="nawc-topbar">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -317,55 +331,81 @@ export default function App() {
             <TooltipContent>Toggle agent</TooltipContent>
           </Tooltip>
         </header>
-        {sidebarOpen && (
-          <aside className="nawc-sidebar">
-            <header>
-              <Button
-                className="nawc-search-trigger"
-                variant="ghost"
-                onClick={() => setSearchOpen(true)}
-              >
-                <SearchIcon />
-                <span>Search</span>
-                <kbd>⌘K</kbd>
-              </Button>
-              <span className="flex gap-1">
-                <Button size="icon-sm" variant="ghost" onClick={() => actions.createNote()}>
-                  <FilePlus2Icon />
-                  <span className="sr-only">New note</span>
+        <ResizablePanelGroup className="nawc-panel-group" id="nawc-panels" orientation="horizontal">
+          <ResizablePanel
+            id="files"
+            className="nawc-resizable-panel"
+            style={{ overflow: "hidden" }}
+            defaultSize="20rem"
+            collapsible
+            panelRef={sidebarPanel}
+          >
+            <aside className="nawc-sidebar">
+              <header>
+                <Button
+                  className="nawc-search-trigger"
+                  variant="ghost"
+                  onClick={() => setSearchOpen(true)}
+                >
+                  <SearchIcon />
+                  <span>Search</span>
+                  <kbd>⌘K</kbd>
                 </Button>
-                <Button size="icon-sm" variant="ghost" onClick={() => actions.createFolder()}>
-                  <FolderPlusIcon />
-                  <span className="sr-only">New folder</span>
-                </Button>
-              </span>
-            </header>
-            <Separator />
-            <ScrollArea className="min-h-0 flex-1">
-              <FileTree entries={entries} active={active} actions={actions} />
-            </ScrollArea>
-            <Separator />
-            <footer>
-              <span>src</span>
-              <span>{entries.filter((entry) => entry.type === "file").length} notes</span>
-            </footer>
-          </aside>
-        )}
-        <section className="nawc-workspace">
-          <DockviewReact
-            className="h-full w-full"
-            theme={theme}
-            components={panels}
-            onReady={({ api: dock }: DockviewReadyEvent) => {
-              dockview.current = dock;
-              dock.onDidActivePanelChange((panel) => {
-                setActive(panelPath(panel));
-                updateNavigation(panel);
-              });
-            }}
-          />
-        </section>
-        {agentOpen && <PromptPanel note={active} />}
+                <span className="flex gap-1">
+                  <Button size="icon-sm" variant="ghost" onClick={() => actions.createNote()}>
+                    <FilePlus2Icon />
+                    <span className="sr-only">New note</span>
+                  </Button>
+                  <Button size="icon-sm" variant="ghost" onClick={() => actions.createFolder()}>
+                    <FolderPlusIcon />
+                    <span className="sr-only">New folder</span>
+                  </Button>
+                </span>
+              </header>
+              <Separator />
+              <ScrollArea className="min-h-0 flex-1">
+                <FileTree entries={entries} active={active} actions={actions} />
+              </ScrollArea>
+              <Separator />
+              <footer>
+                <span>src</span>
+                <span>{entries.filter((entry) => entry.type === "file").length} notes</span>
+              </footer>
+            </aside>
+          </ResizablePanel>
+          <ResizableHandle />
+          <ResizablePanel
+            id="workspace"
+            className="nawc-resizable-panel"
+            style={{ overflow: "hidden" }}
+          >
+            <section className="nawc-workspace">
+              <DockviewReact
+                className="h-full w-full"
+                theme={theme}
+                components={panels}
+                onReady={({ api: dock }: DockviewReadyEvent) => {
+                  dockview.current = dock;
+                  dock.onDidActivePanelChange((panel) => {
+                    setActive(panelPath(panel));
+                    updateNavigation(panel);
+                  });
+                }}
+              />
+            </section>
+          </ResizablePanel>
+          <ResizableHandle />
+          <ResizablePanel
+            id="agent"
+            className="nawc-resizable-panel"
+            style={{ overflow: "hidden" }}
+            defaultSize="20rem"
+            collapsible
+            panelRef={agentPanel}
+          >
+            <PromptPanel note={active} />
+          </ResizablePanel>
+        </ResizablePanelGroup>
         <WorkspaceDialog
           state={dialog}
           onOpenChange={(open) => {

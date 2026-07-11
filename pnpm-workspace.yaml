@@ -25,6 +25,7 @@ catalog:
   minisearch: ^7.2.0
   parse5: ^8.0.1
   cmdk: ^1.1.1
+  react-resizable-panels: ^4.12.1
 
 minimumReleaseAgeExclude:
   - hono@4.12.29
