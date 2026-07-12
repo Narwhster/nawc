@@ -36,6 +36,7 @@
     "react-dom": "^19.2.7",
     "react-resizable-panels": "catalog:",
     "shadcn": "catalog:",
+    "sonner": "catalog:",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.1.18",
     "tw-animate-css": "catalog:",

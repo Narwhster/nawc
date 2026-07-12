@@ -8,6 +8,7 @@ import type {
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { DockviewReact } from "dockview-react";
 import "dockview-react/dist/styles/dockview.css";
+import { toast } from "sonner";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -22,6 +23,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Toaster } from "@/components/ui/sonner";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DocumentPane } from "@/components/document-pane";
@@ -190,6 +192,10 @@ export default function App() {
 
   const actions: FileTreeActions = {
     open: openNote,
+    copyPath: async (path) => {
+      await navigator.clipboard.writeText(`src/${path}`);
+      toast.success("Path copied");
+    },
     createNote: (parent = "") => setDialog({ kind: "create-note", parent }),
     createFolder: (parent = "") => setDialog({ kind: "create-folder", parent }),
     rename: (entry) => setDialog({ kind: "rename", entry }),
@@ -268,6 +274,7 @@ export default function App() {
 
   return (
     <TooltipProvider>
+      <Toaster />
       <main className="nawc-app">
         <header className="nawc-topbar">
           <Tooltip>

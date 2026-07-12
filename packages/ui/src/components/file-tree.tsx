@@ -24,6 +24,7 @@ type MutableNode = WorkspaceEntry & { name: string; children: Map<string, Mutabl
 
 export type FileTreeActions = {
   open(path: string, newPanel?: boolean): void;
+  copyPath(path: string): Promise<void>;
   createNote(parent?: string): void;
   createFolder(parent?: string): void;
   rename(entry: WorkspaceEntry): void;
@@ -260,6 +261,9 @@ function FileTreeItem({
                 <ContextMenuItem onClick={() => actions.open(node.path, true)}>
                   Open in New Tab
                 </ContextMenuItem>
+                <ContextMenuItem onClick={() => void actions.copyPath(node.path)}>
+                  Copy Path
+                </ContextMenuItem>
                 <ContextMenuSeparator />
               </>
             )}
@@ -270,6 +274,9 @@ function FileTreeItem({
                 </ContextMenuItem>
                 <ContextMenuItem onClick={() => actions.createFolder(node.path)}>
                   New Folder
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => void actions.copyPath(node.path)}>
+                  Copy Path
                 </ContextMenuItem>
                 <ContextMenuSeparator />
               </>
