@@ -1,6 +1,8 @@
 import type { NawcPlugin } from "@nawc/plugin";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
+export * from "./agent.ts";
+import type { NawcProvider } from "./agent.ts";
 
 export type SourceSelection = {
   readonly file: string;
@@ -146,69 +148,6 @@ export type NawcSyntax = {
   readonly aliases: readonly string[];
   resolve(source: string, selection: SourceSelection): ResolvedSource | undefined;
   run?(request: RunRequest): RunResult;
-};
-
-export type ProviderEvent =
-  | { readonly type: "thread.started"; readonly threadId: string }
-  | { readonly type: "message"; readonly text: string }
-  | { readonly type: "command"; readonly command: string; readonly status: string }
-  | { readonly type: "error"; readonly message: string }
-  | { readonly type: "done" };
-
-export type NawcProviderReasoningEffort = {
-  readonly id: string;
-  readonly description?: string;
-};
-
-export type NawcProviderSettings = {
-  readonly model?: string;
-  readonly reasoningEffort?: string;
-  readonly reasoningEfforts?: readonly NawcProviderReasoningEffort[];
-};
-
-export type NawcProvider = {
-  readonly name: string;
-  readonly getSettings?: (input: { readonly cwd: string }) => Promise<NawcProviderSettings>;
-  readonly listSkills?: (input: { readonly cwd: string }) => Promise<readonly NawcProviderSkill[]>;
-  readonly listModels?: (input: { readonly cwd: string }) => Promise<readonly NawcProviderModel[]>;
-  readonly slashCommands?: readonly NawcProviderSlashCommand[];
-  prompt(input: {
-    readonly prompt: string;
-    readonly cwd: string;
-    readonly skillsDir: string;
-    readonly references?: readonly PromptReference[];
-    readonly model?: string;
-    readonly reasoningEffort?: string;
-    readonly mode?: "default" | "plan";
-  }): AsyncIterable<ProviderEvent>;
-};
-
-export type PromptReference =
-  | { readonly type: "file"; readonly path: string }
-  | { readonly type: "skill"; readonly name: string; readonly path: string };
-
-export type NawcProviderSkill = {
-  readonly name: string;
-  readonly path: string;
-  readonly enabled?: boolean;
-  readonly scope?: string;
-  readonly displayName?: string;
-  readonly shortDescription?: string;
-  readonly description?: string;
-};
-
-export type NawcProviderModel = {
-  readonly id: string;
-  readonly name: string;
-  readonly description?: string;
-  readonly reasoningEfforts?: readonly NawcProviderReasoningEffort[];
-  readonly defaultReasoningEffort?: string;
-  readonly isDefault?: boolean;
-};
-
-export type NawcProviderSlashCommand = {
-  readonly name: string;
-  readonly description?: string;
 };
 
 export type NawcConfig = {

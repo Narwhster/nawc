@@ -27,6 +27,8 @@ catalog:
   cmdk: ^1.1.1
   react-resizable-panels: ^4.12.1
   sonner: ^2.0.7
+  react-markdown: ^10.1.0
+  remark-gfm: ^4.0.1
 
 minimumReleaseAgeExclude:
   - hono@4.12.29

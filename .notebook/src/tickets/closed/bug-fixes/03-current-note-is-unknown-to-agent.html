@@ -1,0 +1,14 @@
+<h1>03-current-note-is-unknown-to-agent</h1>
+<h2>Issue</h2>
+<p>
+  When you prompt an agent in the prompt screen, it doesn't know about which note is currently open,
+  unless you explicitly mention it.
+</p>
+<p></p>
+<h2>Resolution</h2>
+<p>
+  The active note is now a typed reference. The server reads and validates its content, the composer
+  displays it as an attachment, the persisted user message records it, and the provider receives it
+  separately from the user's prose.
+</p>
+<ref file="packages/config/src/agent.ts" syntax="ts" name="PromptReference" type="type"></ref>

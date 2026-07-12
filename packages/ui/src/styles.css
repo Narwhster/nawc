@@ -289,85 +289,6 @@ body {
   .nawc-empty {
     @apply grid flex-1 place-items-center text-sm text-muted-foreground;
   }
-  .nawc-prompt-panel {
-    @apply flex h-full min-h-0 flex-col border-l bg-background;
-  }
-  .nawc-prompt-panel > header {
-    @apply flex h-11 shrink-0 items-center justify-between gap-2 border-b px-3 text-xs;
-  }
-  .nawc-prompt-header-main,
-  .nawc-prompt-header-meta {
-    @apply flex min-w-0 items-center gap-2;
-  }
-  .nawc-prompt-header-meta {
-    @apply justify-end;
-  }
-  .nawc-prompt-panel > header small {
-    @apply inline-flex items-center leading-none;
-  }
-  .nawc-prompt-panel > header svg {
-    @apply size-3.5;
-  }
-  .nawc-prompt-events {
-    @apply flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-3 text-xs leading-5;
-  }
-  .nawc-prompt-events > p {
-    @apply text-muted-foreground;
-  }
-  .nawc-agent-event {
-    @apply rounded-md bg-muted p-2 whitespace-pre-wrap;
-  }
-  .nawc-agent-event.error {
-    @apply text-destructive;
-  }
-  .nawc-prompt-compose {
-    @apply relative flex flex-col gap-2 border-t p-3;
-  }
-  .nawc-prompt-compose textarea {
-    @apply max-h-40 min-h-20 resize-none text-xs;
-  }
-  .nawc-prompt-compose button {
-    @apply self-end;
-  }
-  .nawc-completion-menu {
-    @apply absolute right-3 bottom-full left-3 z-30 mb-1 max-h-72 min-w-0 overflow-x-hidden overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg;
-  }
-  .nawc-completion-heading {
-    @apply flex items-center justify-between px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground;
-  }
-  .nawc-completion-heading span {
-    @apply font-normal normal-case tracking-normal;
-  }
-  .nawc-completion-menu > button {
-    @apply flex min-w-0 w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs outline-none;
-  }
-  .nawc-completion-menu > button[aria-selected="true"] {
-    @apply bg-accent text-accent-foreground;
-  }
-  .nawc-completion-menu > button svg {
-    @apply size-3.5 shrink-0 text-muted-foreground;
-  }
-  .nawc-completion-menu > button span {
-    @apply min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono;
-  }
-  .nawc-completion-menu > button small {
-    @apply min-w-0 max-w-[55%] overflow-hidden text-ellipsis whitespace-nowrap text-[10px] text-muted-foreground;
-  }
-  .nawc-completion-state {
-    @apply px-2 py-4 text-center text-xs text-muted-foreground;
-  }
-  .nawc-completion-state.error {
-    @apply text-destructive;
-  }
-  .nawc-prompt-references {
-    @apply flex flex-wrap gap-1;
-  }
-  .nawc-prompt-references span {
-    @apply inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-1.5 py-1 font-mono text-[10px] text-muted-foreground;
-  }
-  .nawc-prompt-references svg {
-    @apply size-3 shrink-0;
-  }
   .nawc-node-shell {
     @apply relative my-5 rounded-md border bg-card;
   }
@@ -478,7 +399,90 @@ body {
     @apply h-full;
   }
   .nawc-node-error {
-    @apply p-4 text-xs text-destructive;
+    @apply flex flex-col gap-3 p-4 text-xs text-destructive select-text;
+  }
+  .nawc-node-error [data-slot="button"] {
+    color: white;
+  }
+  .nawc-node-error [data-slot="button"]:hover {
+    color: white;
+  }
+}
+
+.nawc-agent-panel {
+  min-width: 0;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.nawc-agent-composer,
+.nawc-agent-input-addon,
+.nawc-agent-controls {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.nawc-agent-composer {
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.nawc-agent-input-addon {
+  flex-wrap: wrap;
+}
+
+.nawc-agent-controls {
+  overflow: hidden;
+}
+
+.nawc-agent-controls [data-slot="select-trigger"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.nawc-agent-controls [data-slot="select-value"] {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@container (max-width: 5rem) {
+  .nawc-agent-header,
+  .nawc-agent-composer {
+    padding-inline: 0;
+  }
+
+  .nawc-agent-input-addon {
+    flex-direction: column;
+    align-items: stretch;
+    padding-inline: 0;
+  }
+
+  .nawc-agent-header > svg,
+  .nawc-agent-header > strong,
+  .nawc-agent-header [data-slot="select-trigger"],
+  .nawc-agent-header [data-slot="badge"] {
+    display: none;
+  }
+
+  .nawc-agent-controls {
+    width: 100%;
+    flex: none;
+  }
+
+  .nawc-agent-input-addon > button {
+    align-self: flex-end;
+    max-width: 100%;
+    flex-shrink: 1;
+  }
+
+  .nawc-agent-composer textarea[data-slot="input-group-control"] {
+    field-sizing: fixed;
+    height: 4rem;
+    min-height: 4rem;
+    max-height: 4rem;
+    overflow-y: auto;
   }
 }
 

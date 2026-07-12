@@ -1,4 +1,8 @@
 import { spawn as spawnProcess } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { execa } from "execa";
 import type {
   NawcProvider,
@@ -28,7 +32,24 @@ export function parseCodexEvent(line: string): ProviderEvent | undefined {
       message: typeof event.message === "string" ? event.message : "Codex failed",
     };
   }
-  if (event.type === "turn.completed") return { type: "done" };
+  if (event.type === "turn.started") return { type: "turn.started" };
+  if (event.type === "turn.completed") {
+    const usage =
+      event.usage && typeof event.usage === "object"
+        ? (event.usage as Record<string, unknown>)
+        : undefined;
+    return {
+      type: "turn.completed",
+      ...(usage
+        ? {
+            usage: {
+              ...(typeof usage.input_tokens === "number" ? { input: usage.input_tokens } : {}),
+              ...(typeof usage.output_tokens === "number" ? { output: usage.output_tokens } : {}),
+            },
+          }
+        : {}),
+    };
+  }
 
   const item =
     typeof event.item === "object" && event.item ? (event.item as JsonObject) : undefined;
@@ -37,19 +58,54 @@ export function parseCodexEvent(line: string): ProviderEvent | undefined {
     item?.type === "agent_message" &&
     typeof item.text === "string"
   ) {
-    return { type: "message", text: item.text };
+    return {
+      type: "message.completed",
+      ...(typeof item.id === "string" ? { itemId: item.id } : {}),
+      text: item.text,
+    };
   }
   if (
     (event.type === "item.started" || event.type === "item.completed") &&
     item?.type === "command_execution"
   ) {
     return {
-      type: "command",
-      command: typeof item.command === "string" ? item.command : "",
-      status: event.type === "item.started" ? "running" : "completed",
+      type: event.type === "item.started" ? "tool.started" : "tool.completed",
+      ...(typeof item.id === "string" ? { itemId: item.id } : {}),
+      tool: "command_execution",
+      title: typeof item.command === "string" ? item.command : "Command",
+      status:
+        event.type === "item.started"
+          ? "running"
+          : item.status === "failed"
+            ? "failed"
+            : "completed",
+      ...(typeof item.aggregated_output === "string" ? { output: item.aggregated_output } : {}),
     };
   }
-  return undefined;
+  if (
+    (event.type === "item.started" || event.type === "item.completed") &&
+    typeof item?.type === "string"
+  ) {
+    const title =
+      typeof item.name === "string"
+        ? item.name
+        : typeof item.path === "string"
+          ? item.path
+          : item.type.replaceAll("_", " ");
+    return {
+      type: event.type === "item.started" ? "tool.started" : "tool.completed",
+      ...(typeof item.id === "string" ? { itemId: item.id } : {}),
+      tool: item.type,
+      title,
+      status: event.type === "item.started" ? "running" : "completed",
+      ...(typeof item.text === "string" ? { output: item.text } : {}),
+    };
+  }
+  return {
+    type: "unknown",
+    sourceType: typeof event.type === "string" ? event.type : "codex.unknown",
+    payload: event,
+  };
 }
 
 export type CodexOptions = {
@@ -237,6 +293,28 @@ export function parseCodexModelsResponse(value: unknown): readonly NawcProviderM
             : [];
         })
       : undefined;
+    const speedTiers = Array.isArray(item.serviceTiers)
+      ? item.serviceTiers.flatMap((tier): { id: string; label: string; description?: string }[] => {
+          if (typeof tier === "string")
+            return [{ id: tier, label: tier === "fast" ? "Fast" : tier }];
+          if (!tier || typeof tier !== "object") return [];
+          const entry = tier as Record<string, unknown>;
+          if (typeof entry.id !== "string") return [];
+          return [
+            {
+              id: entry.id,
+              label: typeof entry.name === "string" ? entry.name : entry.id,
+              ...(typeof entry.description === "string" && entry.description
+                ? { description: entry.description }
+                : {}),
+            },
+          ];
+        })
+      : Array.isArray(item.additionalSpeedTiers)
+        ? item.additionalSpeedTiers.flatMap((tier) =>
+            typeof tier === "string" ? [{ id: tier, label: tier === "fast" ? "Fast" : tier }] : [],
+          )
+        : [];
     return [
       {
         id,
@@ -247,6 +325,22 @@ export function parseCodexModelsResponse(value: unknown): readonly NawcProviderM
           ? { defaultReasoningEffort: item.defaultReasoningEffort }
           : {}),
         ...(item.isDefault === true ? { isDefault: true } : {}),
+        ...(speedTiers.length
+          ? {
+              options: [
+                {
+                  id: "serviceTier",
+                  label: "Service tier",
+                  type: "select" as const,
+                  choices: [{ id: "default", label: "Standard" }, ...speedTiers],
+                  defaultValue:
+                    typeof item.defaultServiceTier === "string"
+                      ? item.defaultServiceTier
+                      : "default",
+                },
+              ],
+            }
+          : {}),
       },
     ];
   });
@@ -293,39 +387,93 @@ async function getCodexSettings(
 }
 
 export function codex(options: CodexOptions = {}): NawcProvider {
-  return {
-    name: "codex",
-    getSettings: ({ cwd }) =>
-      getCodexSettings(options.executable ?? "codex", cwd, options.model, options.reasoningEffort),
-    listSkills: ({ cwd }) => listCodexSkills(options.executable ?? "codex", cwd),
-    listModels: ({ cwd }) => listCodexModels(options.executable ?? "codex", cwd),
-    async *prompt({ prompt, cwd, skillsDir, model, reasoningEffort, mode }) {
-      const skillInstruction = `\n\nNAWC plugin skills are available in ${skillsDir}. Read the relevant SKILL.md files before editing NAWC notes.`;
-      const modeInstruction =
-        mode === "plan"
-          ? "\n\nWork in plan mode: inspect the request and repository, then explain the proposed changes without editing files."
+  const active = new Map<string, ReturnType<typeof execa>>();
+  const runTurn = async function* (
+    session: { readonly id: string; readonly providerThreadId?: string },
+    {
+      prompt,
+      cwd,
+      skillsDir,
+      references,
+      attachments,
+      model,
+      reasoningEffort,
+      options: modelOptions,
+      mode,
+      signal,
+    }: Parameters<NonNullable<NawcProvider["prompt"]>>[0],
+  ): AsyncIterable<ProviderEvent> {
+    const referenceInstruction = references.length
+      ? `\n\nContext selected in NAWC:\n${references
+          .map((reference) => {
+            switch (reference.type) {
+              case "file":
+                return `- Project file: ${JSON.stringify(reference.path)}`;
+              case "skill":
+                return `- Skill $${reference.name}: ${JSON.stringify(reference.path)} (read it before acting)`;
+              case "note":
+                return `- Current note ${JSON.stringify(reference.path)}:\n\n${reference.content ?? ""}`;
+              case "diagnostic":
+                return `- Diagnostic${reference.file ? ` in ${reference.file}${reference.line ? `:${reference.line}` : ""}` : ""}: ${reference.message}`;
+            }
+          })
+          .join("\n")}`
+      : "";
+    const skillInstruction = `\n\nNAWC plugin skills are available in ${skillsDir}. Read the relevant SKILL.md files before editing NAWC notes.`;
+    const modeInstruction =
+      mode === "plan"
+        ? "\n\nWork in plan mode: inspect the request and repository, then explain the proposed changes without editing files."
+        : mode === "review"
+          ? "\n\nReview the current work. Report concrete findings without editing files."
           : "";
-      const args = [
-        "exec",
-        "--json",
-        "--color",
-        "never",
-        "--sandbox",
-        mode === "plan" ? "read-only" : (options.sandbox ?? "workspace-write"),
-        "-C",
-        cwd,
-      ];
-      if (model ?? options.model) args.push("--model", model ?? options.model!);
-      if (reasoningEffort ?? options.reasoningEffort)
-        args.push(
-          "--config",
-          `model_reasoning_effort=${JSON.stringify(reasoningEffort ?? options.reasoningEffort)}`,
-        );
-      args.push("-");
-      const child = execa(options.executable ?? "codex", args, {
-        input: prompt + skillInstruction + modeInstruction,
-        reject: false,
-      });
+    const resume = session.providerThreadId;
+    const args = resume
+      ? ["exec", "resume", "--json"]
+      : [
+          "exec",
+          "--json",
+          "--color",
+          "never",
+          "--sandbox",
+          mode === "plan" || mode === "review"
+            ? "read-only"
+            : (options.sandbox ?? "workspace-write"),
+          "-C",
+          cwd,
+        ];
+    if (model ?? options.model) args.push("--model", model ?? options.model!);
+    if (reasoningEffort ?? options.reasoningEffort)
+      args.push(
+        "--config",
+        `model_reasoning_effort=${JSON.stringify(reasoningEffort ?? options.reasoningEffort)}`,
+      );
+    for (const selection of modelOptions ?? []) {
+      if (selection.id === "serviceTier" && typeof selection.value === "string")
+        args.push("--config", `service_tier=${JSON.stringify(selection.value)}`);
+    }
+    const attachmentDirectory = attachments?.length
+      ? await mkdtemp(path.join(os.tmpdir(), "nawc-codex-"))
+      : undefined;
+    if (attachmentDirectory) {
+      for (const [index, attachment] of attachments!.entries()) {
+        const safeName = path.basename(attachment.name).replaceAll(/[^a-zA-Z0-9._-]/g, "-");
+        const file = path.join(attachmentDirectory, `${index}-${safeName || "image"}`);
+        const encoded = attachment.dataUrl.slice(attachment.dataUrl.indexOf(",") + 1);
+        await writeFile(file, Buffer.from(encoded, "base64"));
+        args.push("--image", file);
+      }
+    }
+    if (resume) args.push(resume);
+    args.push("-");
+    const child = execa(options.executable ?? "codex", args, {
+      cwd,
+      input: prompt + referenceInstruction + skillInstruction + modeInstruction,
+      reject: false,
+    });
+    active.set(session.id, child);
+    const abort = () => child.kill("SIGTERM");
+    signal?.addEventListener("abort", abort, { once: true });
+    try {
       if (!child.stdout) {
         yield { type: "error", message: "Codex did not expose an output stream" };
         return;
@@ -335,9 +483,9 @@ export function codex(options: CodexOptions = {}): NawcProvider {
         buffer += chunk;
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const parsed = parseCodexEvent(line);
+        for (const eventLine of lines) {
+          if (!eventLine.trim()) continue;
+          const parsed = parseCodexEvent(eventLine);
           if (parsed) yield parsed;
         }
       }
@@ -346,11 +494,51 @@ export function codex(options: CodexOptions = {}): NawcProvider {
         if (parsed) yield parsed;
       }
       const result = await child;
-      if (result.exitCode !== 0)
+      if (result.exitCode !== 0 && !signal?.aborted)
         yield {
           type: "error",
           message: result.stderr || `Codex exited with code ${result.exitCode}`,
         };
+    } finally {
+      signal?.removeEventListener("abort", abort);
+      active.delete(session.id);
+      if (attachmentDirectory) await rm(attachmentDirectory, { recursive: true, force: true });
+    }
+  };
+  return {
+    name: "codex",
+    label: "Codex",
+    capabilities: ["attachments", "resume", "interrupt", "session-model-switch"],
+    modes: [
+      {
+        id: "default",
+        label: "Build",
+        description: "Allow Codex to inspect and edit the workspace",
+      },
+      {
+        id: "plan",
+        label: "Plan",
+        description: "Inspect and propose changes without editing files",
+      },
+      {
+        id: "review",
+        label: "Review",
+        description: "Review the current work without editing files",
+      },
+    ],
+    getSettings: ({ cwd }) =>
+      getCodexSettings(options.executable ?? "codex", cwd, options.model, options.reasoningEffort),
+    listSkills: ({ cwd }) => listCodexSkills(options.executable ?? "codex", cwd),
+    listModels: ({ cwd }) => listCodexModels(options.executable ?? "codex", cwd),
+    async startSession({ providerThreadId }) {
+      return { id: randomUUID(), providerThreadId };
+    },
+    sendTurn: runTurn,
+    async interrupt(session) {
+      active.get(session.id)?.kill("SIGTERM");
+    },
+    async *prompt(input) {
+      yield* runTurn({ id: randomUUID() }, input);
     },
   };
 }

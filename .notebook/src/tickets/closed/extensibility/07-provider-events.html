@@ -27,14 +27,25 @@
   supply presentation.
 </p>
 <ref
-  file=".notebook/src/tickets/open/extensibility/07-provider-events.test.ts"
+  file=".notebook/src/tickets/closed/extensibility/07-provider-events.test.ts"
   syntax="ts"
   name="renderProviderEvent"
   type="function"
 ></ref>
 <runnable
-  file=".notebook/src/tickets/open/extensibility/07-provider-events.test.ts"
+  file=".notebook/src/tickets/closed/extensibility/07-provider-events.test.ts"
   syntax="vitest"
   name="preserves provider-specific event payloads"
   type="it"
 ></runnable>
+<h2>Resolution</h2>
+<p>
+  Common message, tool, plan, request, warning, error, and lifecycle semantics are normalized. Every
+  event may retain an opaque payload, and unknown native events are persisted instead of discarded.
+</p>
+<ref
+  file="packages/nawc/src/agent-thread.ts"
+  syntax="ts"
+  name="projectProviderEvent"
+  type="function"
+></ref>

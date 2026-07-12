@@ -13,7 +13,14 @@ import {
 } from "@nawc/ui/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@nawc/ui/components/ui/tooltip";
 import { EditorAction } from "@nawc/ui/components/editor-action";
-import { ChevronDownIcon, PencilIcon, PlayIcon, SparklesIcon, Trash2Icon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  CopyIcon,
+  PencilIcon,
+  PlayIcon,
+  SparklesIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NawcClientPlugin } from "@nawc/plugin";
 import { highlightSource } from "./source-highlighting.js";
@@ -80,6 +87,22 @@ function promptForNode(kind: string, attrs: Record<string, unknown>) {
   window.dispatchEvent(
     new CustomEvent("nawc:prompt", {
       detail: `Update this ${kind} block (${JSON.stringify(attrs)}): `,
+    }),
+  );
+}
+
+function fixSourceError(error: string, attrs: SourceAttrs) {
+  window.dispatchEvent(new Event("nawc:open-agent"));
+  window.dispatchEvent(
+    new CustomEvent("nawc:agent-context", {
+      detail: {
+        prompt: `Fix the failing ${attrs.file} source reference.`,
+        reference: {
+          type: "diagnostic",
+          message: error,
+          file: attrs.file,
+        },
+      },
     }),
   );
 }
@@ -191,7 +214,7 @@ function SourceView({ node, deleteNode, runnable }: NodeViewProps & { runnable: 
   }, [load]);
   return (
     <NodeViewWrapper className="nawc-node-shell">
-      <details className="nawc-source-block">
+      <details className="nawc-source-block" open={error ? true : undefined}>
         <summary>
           <ChevronDownIcon /> <span>{attrs.file}</span>
           {attrs.name && (
@@ -201,7 +224,21 @@ function SourceView({ node, deleteNode, runnable }: NodeViewProps & { runnable: 
           )}
         </summary>
         {error ? (
-          <p className="nawc-node-error">{error}</p>
+          <div className="nawc-node-error" role="alert">
+            <p>{error}</p>
+            <div className="flex gap-1" contentEditable={false}>
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => void navigator.clipboard.writeText(error)}
+              >
+                <CopyIcon data-icon="inline-start" /> Copy
+              </Button>
+              <Button size="xs" variant="outline" onClick={() => fixSourceError(error, attrs)}>
+                <SparklesIcon data-icon="inline-start" /> Fix with agent
+              </Button>
+            </div>
+          </div>
         ) : (
           <pre className="nawc-source-code">
             <HighlightedCode

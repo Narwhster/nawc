@@ -28,14 +28,19 @@
   selected ID without interpreting it.
 </p>
 <ref
-  file=".notebook/src/tickets/open/extensibility/06-provider-modes.test.ts"
+  file=".notebook/src/tickets/closed/extensibility/06-provider-modes.test.ts"
   syntax="ts"
   name="providerModes"
   type="function"
 ></ref>
 <runnable
-  file=".notebook/src/tickets/open/extensibility/06-provider-modes.test.ts"
+  file=".notebook/src/tickets/closed/extensibility/06-provider-modes.test.ts"
   syntax="vitest"
   name="exposes provider-defined prompt modes"
   type="it"
 ></runnable>
+<h2>Resolution</h2>
+<p>
+  Providers now publish mode IDs, labels, and descriptions. The panel renders that metadata and
+  forwards the selected ID without interpreting it; the provider adapter owns its semantics.
+</p>

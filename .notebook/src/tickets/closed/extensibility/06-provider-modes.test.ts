@@ -10,5 +10,7 @@ export function providerModes() {
 }
 
 it("exposes provider-defined prompt modes", () => {
-  expect(providerModes().modes ?? []).toContainEqual({ id: "review", label: "Review" });
+  expect(providerModes().modes ?? []).toContainEqual(
+    expect.objectContaining({ id: "review", label: "Review" }),
+  );
 });

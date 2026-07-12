@@ -41,6 +41,8 @@ import { isSameOrigin, parseRunClientEvent } from "./run-protocol.ts";
 import { launchEditor } from "./editor.ts";
 import { nawcLight, vscode } from "@nawc/config";
 import { NoteSearchIndex } from "./note-search.ts";
+import { AgentManager } from "./agent-manager.ts";
+import { validateAgentAttachments } from "./agent-input.ts";
 
 type ServerOptions = {
   readonly projectDir: string;
@@ -118,6 +120,13 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   const noteSearch = new NoteSearchIndex(srcDir);
   await assertGitRepository(baseDir);
   const skillsDir = await syncSkills(projectDir, config.plugins);
+  const agentManager = new AgentManager({
+    provider: config.provider,
+    cwd: baseDir,
+    skillsDir,
+    storageFile: path.join(projectDir, ".nawc", "agent-threads.json"),
+  });
+  await agentManager.load();
   let providerSkillsPromise: Promise<readonly NawcProviderSkill[]> | undefined;
   let providerModelsPromise: Promise<readonly NawcProviderModel[]> | undefined;
   let providerSettingsPromise: Promise<NawcProviderSettings> | undefined;
@@ -158,6 +167,37 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
       });
     }
     return providerSettingsPromise;
+  };
+  const validateAgentSelection = async (selection: {
+    readonly model?: string;
+    readonly reasoningEffort?: string;
+    readonly options?: readonly { readonly id: string; readonly value: string | boolean }[];
+  }) => {
+    const models = await getProviderModels();
+    const settings = await getProviderSettings();
+    const modelId = selection.model ?? settings.model;
+    const model = modelId ? models.find((item) => item.id === modelId) : undefined;
+    if (selection.model && !model) throw new Error(`Unknown model: ${selection.model}`);
+    if (
+      selection.reasoningEffort &&
+      model?.reasoningEfforts &&
+      !model.reasoningEfforts.some((effort) => effort.id === selection.reasoningEffort)
+    )
+      throw new Error(`Unknown reasoning effort: ${selection.reasoningEffort}`);
+    const seen = new Set<string>();
+    for (const option of selection.options ?? []) {
+      if (seen.has(option.id)) throw new Error(`Duplicate provider option: ${option.id}`);
+      seen.add(option.id);
+      const descriptor = model?.options?.find((item) => item.id === option.id);
+      if (!descriptor) throw new Error(`Unknown provider option: ${option.id}`);
+      if (
+        (descriptor.type === "boolean" && typeof option.value !== "boolean") ||
+        (descriptor.type === "select" &&
+          (typeof option.value !== "string" ||
+            !descriptor.choices.some((choice) => choice.id === option.value)))
+      )
+        throw new Error(`Invalid value for provider option: ${option.id}`);
+    }
   };
   const fileListeners = new Set<(event: string, file: string) => void>();
   const watcher = watch(srcDir, {
@@ -212,7 +252,116 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   });
   app.get("/api/prompt/models", async (context) => context.json(await getProviderModels()));
   app.get("/api/prompt/settings", async (context) => context.json(await getProviderSettings()));
-  app.get("/api/prompt/commands", (context) => context.json(config.provider.slashCommands ?? []));
+  app.get("/api/prompt/commands", async (context) =>
+    context.json(
+      config.provider.listCommands
+        ? await config.provider.listCommands({ cwd: baseDir })
+        : (config.provider.slashCommands ?? []),
+    ),
+  );
+  app.get("/api/agent/provider", (context) => context.json(agentManager.metadata()));
+  app.get("/api/agent/threads", (context) => context.json(agentManager.listThreads()));
+  app.get("/api/agent/threads/:id", (context) => {
+    const thread = agentManager.getThread(context.req.param("id"));
+    if (!thread) throw new Error("Unknown agent thread");
+    return context.json(thread);
+  });
+  app.post("/api/agent/threads", async (context) => {
+    const body = await context.req.json<{
+      model?: string;
+      reasoningEffort?: string;
+      options?: readonly { readonly id: string; readonly value: string | boolean }[];
+      mode?: string;
+    }>();
+    await validateAgentSelection(body);
+    return context.json(await agentManager.createThread(body));
+  });
+  app.delete("/api/agent/threads/:id", async (context) => {
+    await agentManager.deleteThread(context.req.param("id"));
+    return context.json({ ok: true });
+  });
+  app.post("/api/agent/threads/:id/interrupt", async (context) => {
+    await agentManager.interrupt(context.req.param("id"));
+    return context.json({ ok: true });
+  });
+  app.post("/api/agent/threads/:id/requests/:requestId", async (context) => {
+    const body = await context.req.json<{ decision: string }>();
+    if (typeof body.decision !== "string" || !body.decision) throw new Error("Invalid decision");
+    await agentManager.respondToRequest(
+      context.req.param("id"),
+      context.req.param("requestId"),
+      body.decision,
+    );
+    return context.json({ ok: true });
+  });
+  app.post("/api/agent/threads/:id/turns", async (context) => {
+    const body = await context.req.json<{
+      prompt: string;
+      note?: string;
+      noteContent?: string;
+      model?: string;
+      reasoningEffort?: string;
+      options?: readonly { readonly id: string; readonly value: string | boolean }[];
+      mode?: string;
+      attachments?: readonly {
+        readonly type: "image";
+        readonly id: string;
+        readonly name: string;
+        readonly mimeType: string;
+        readonly sizeBytes: number;
+        readonly dataUrl: string;
+      }[];
+      references?: readonly (
+        | { readonly type: "file"; readonly path: string }
+        | { readonly type: "skill"; readonly name: string }
+        | {
+            readonly type: "diagnostic";
+            readonly message: string;
+            readonly file?: string;
+            readonly line?: number;
+          }
+      )[];
+    }>();
+    if (typeof body.prompt !== "string" || !body.prompt.trim())
+      throw new Error("Prompt is required");
+    if ((body.references?.length ?? 0) > 50) throw new Error("Too many agent references");
+    const attachments = validateAgentAttachments(body.attachments);
+    await validateAgentSelection(body);
+    const availableSkills = new Map(
+      (await getPromptSkills()).map((skill) => [skill.name, skill.path]),
+    );
+    const references: PromptReference[] = [];
+    if (body.note) {
+      const content = body.noteContent ?? (await readNote(srcDir, body.note));
+      references.push({ type: "note", path: body.note, content });
+    }
+    for (const reference of body.references ?? []) {
+      if (reference.type === "file") {
+        if (!(await isProjectPath(baseDir, reference.path)))
+          throw new Error(`Unknown or ignored file reference: ${reference.path}`);
+        references.push(reference);
+      } else if (reference.type === "skill") {
+        const skillPath = availableSkills.get(reference.name);
+        if (!skillPath) throw new Error(`Unknown skill reference: ${reference.name}`);
+        references.push({ ...reference, path: skillPath });
+      } else if (reference.type === "diagnostic" && reference.message) {
+        references.push(reference);
+      } else throw new Error("Invalid agent reference");
+    }
+    return streamSSE(context, async (stream) => {
+      for await (const event of agentManager.sendTurn({
+        threadId: context.req.param("id"),
+        prompt: body.prompt,
+        references,
+        attachments,
+        model: body.model,
+        reasoningEffort: body.reasoningEffort,
+        options: body.options,
+        mode: body.mode,
+      }))
+        await stream.writeSSE({ data: JSON.stringify(event), event: event.type });
+    });
+  });
   app.get("/api/events", (context) =>
     streamSSE(context, async (stream) => {
       await stream.writeSSE({ data: JSON.stringify({ event: "ready" }) });
@@ -350,11 +499,17 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
           .map((reference) =>
             reference.type === "file"
               ? `- File: ${JSON.stringify(reference.path)} (relative to the working directory)`
-              : `- Skill: ${JSON.stringify(`$${reference.name}`)} (${JSON.stringify(reference.path)}); read this SKILL.md before acting`,
+              : reference.type === "skill"
+                ? `- Skill: ${JSON.stringify(`$${reference.name}`)} (${JSON.stringify(reference.path)}); read this SKILL.md before acting`
+                : reference.type === "note"
+                  ? `- Note: ${JSON.stringify(reference.path)}`
+                  : `- Diagnostic: ${reference.message}`,
           )
           .join("\n")}`
       : "";
     return streamSSE(context, async (stream) => {
+      if (!config.provider.prompt)
+        throw new Error("Provider does not support the legacy prompt API");
       for await (const event of config.provider.prompt({
         prompt: body.prompt + referenceContext,
         cwd: baseDir,
@@ -525,6 +680,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     url: `http://localhost:${port}`,
     async close() {
       for (const webSocket of runSockets.clients) webSocket.close(1001, "Server shutting down");
+      await agentManager.close();
       runSockets.close();
       await watcher.close();
       await vite.close();

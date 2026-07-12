@@ -28,7 +28,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DocumentPane } from "@/components/document-pane";
 import { FileTree, type FileTreeActions } from "@/components/file-tree";
-import { PromptPanel } from "@/components/prompt-panel";
+import { AgentPanel } from "@/components/agent-panel";
 import { WorkspaceDialog, type WorkspaceDialogState } from "@/components/workspace-dialog";
 import { EditorAction } from "@/components/editor-action";
 import { NoteSearchDialog } from "@/components/note-search";
@@ -179,6 +179,12 @@ export default function App() {
     window.addEventListener("nawc:open-note", onOpenNote);
     return () => window.removeEventListener("nawc:open-note", onOpenNote);
   }, [openNote]);
+
+  useEffect(() => {
+    const openAgent = () => setAgentOpen(true);
+    window.addEventListener("nawc:open-agent", openAgent);
+    return () => window.removeEventListener("nawc:open-agent", openAgent);
+  }, []);
 
   useEffect(() => {
     const openSearch = (event: KeyboardEvent) => {
@@ -406,11 +412,11 @@ export default function App() {
             id="agent"
             className="nawc-resizable-panel"
             style={{ overflow: "hidden" }}
-            defaultSize="20rem"
+            defaultSize="36rem"
             collapsible
             panelRef={agentPanel}
           >
-            <PromptPanel note={active} />
+            <AgentPanel note={active} />
           </ResizablePanel>
         </ResizablePanelGroup>
         <WorkspaceDialog

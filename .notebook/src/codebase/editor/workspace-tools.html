@@ -51,22 +51,20 @@
 </p>
 
 <ref
-  file="packages/ui/src/components/prompt-panel.tsx"
+  file="packages/ui/src/components/agent-panel.tsx"
   syntax="tsx"
-  name="PromptPanel"
+  name="AgentPanel"
   type="function"
 />
 <p>
-  The panel asks separate endpoints for files, skills, commands, and models. Skill search ranks
-  exact, prefix, substring, then subsequence matches. Built-in commands change local state:
-  <code>/plan</code> and <code>/default</code> select mode, while <code>/model</code> leads into
-  model completion. Other commands remain provider commands in the prompt.
+  The panel asks separate endpoints for files, skills, commands, models, provider metadata, and
+  durable threads. Provider modes and reasoning options are controls rather than hard-coded command
+  behavior. Provider commands remain in the prompt for the adapter to interpret.
 </p>
 <p>
-  Sending prefixes the text with the current note, includes structured references, mode, and
-  optional model, then consumes double-newline-delimited server events from
-  <code>/api/prompt</code>. Core-node “Ask the agent” ribbons use <code>nawc:prompt</code> to
-  prefill and focus this composer.
+  Sending includes the current note as a typed reference, then consumes a turn stream while the
+  server persists its projection. Core-node actions use <code>nawc:prompt</code> or structured
+  <code>nawc:agent-context</code> events to prefill and focus the composer.
 </p>
 
 <p>

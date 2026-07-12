@@ -13,7 +13,27 @@ describe("Codex JSONL", () => {
     });
     expect(
       parseCodexEvent('{"type":"item.completed","item":{"type":"agent_message","text":"Done"}}'),
-    ).toEqual({ type: "message", text: "Done" });
+    ).toEqual({ type: "message.completed", text: "Done" });
+  });
+
+  it("preserves tool lifecycle, usage, and unknown native events", () => {
+    expect(
+      parseCodexEvent(
+        '{"type":"item.completed","item":{"id":"tool-1","type":"command_execution","command":"vp test","aggregated_output":"passed"}}',
+      ),
+    ).toEqual({
+      type: "tool.completed",
+      itemId: "tool-1",
+      tool: "command_execution",
+      title: "vp test",
+      status: "completed",
+      output: "passed",
+    });
+    expect(parseCodexEvent('{"type":"future.event","value":1}')).toEqual({
+      type: "unknown",
+      sourceType: "future.event",
+      payload: { type: "future.event", value: 1 },
+    });
   });
 
   it("turns malformed output into a visible error", () => {
@@ -84,6 +104,32 @@ describe("Codex JSONL", () => {
         ],
         defaultReasoningEffort: "low",
         isDefault: true,
+      },
+    ]);
+  });
+
+  it("maps Codex speed tiers to a provider-neutral model option", () => {
+    expect(
+      parseCodexModelsResponse({
+        data: [
+          {
+            id: "gpt",
+            displayName: "GPT",
+            supportedReasoningEfforts: [],
+            additionalSpeedTiers: ["fast"],
+          },
+        ],
+      })[0]?.options,
+    ).toEqual([
+      {
+        id: "serviceTier",
+        label: "Service tier",
+        type: "select",
+        choices: [
+          { id: "default", label: "Standard" },
+          { id: "fast", label: "Fast" },
+        ],
+        defaultValue: "default",
       },
     ]);
   });

@@ -7,7 +7,8 @@ export function renderProviderEvent(line: string) {
 
 it("preserves provider-specific event payloads", () => {
   expect(renderProviderEvent('{"type":"approval.requested","action":"write"}')).toEqual({
-    type: "approval.requested",
-    action: "write",
+    type: "unknown",
+    sourceType: "approval.requested",
+    payload: { type: "approval.requested", action: "write" },
   });
 });

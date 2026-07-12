@@ -1,0 +1,79 @@
+<h1>Agent conversations</h1>
+<p>
+  NAWC treats a provider stream as an event log and the visible conversation as a projection. This
+  is the boundary that keeps provider protocols out of React and prevents transport chunks from
+  becoming accidental chat messages.
+</p>
+<pre><code>provider session
+  → normalized ProviderEvent stream
+  → AgentManager lifecycle and persistence
+  → pure thread projection
+  → message, activity, request, and plan UI</code></pre>
+<h2>Contracts</h2>
+<p>
+  Providers declare capabilities, modes, and typed per-model options; start or resume sessions; send
+  turns; interrupt active work; and optionally answer interactive requests. References are typed:
+  project file, skill, current note snapshot, or diagnostic. The server validates model option IDs
+  and values against provider metadata before dispatch.
+</p>
+<ref file="packages/config/src/agent.ts" syntax="ts" name="NawcProvider" type="type"></ref>
+<ref file="packages/config/src/agent.ts" syntax="ts" name="PromptReference" type="type"></ref>
+<h2>Projection</h2>
+<p>
+  <code>projectProviderEvent</code> appends deltas to one assistant message, updates tool items by
+  stable ID, resolves approvals, records plans and usage, and retains unknown events. It is pure
+  apart from updating its supplied aggregate, so provider behavior is testable without HTTP or
+  React.
+</p>
+<ref
+  file="packages/nawc/src/agent-thread.ts"
+  syntax="ts"
+  name="projectProviderEvent"
+  type="function"
+></ref>
+<runnable
+  file="packages/nawc/tests/agent-thread.test.ts"
+  syntax="vitest"
+  name="keeps user and streamed assistant messages in one durable turn"
+  type="it"
+></runnable>
+<h2>Lifecycle and persistence</h2>
+<p>
+  <code>AgentManager</code> owns active sessions and abort controllers. It persists thread versioned
+  projections atomically to <code>.nawc/agent-threads.json</code>, restores them on startup,
+  recovers abandoned running turns as interrupted, passes a native thread ID back to providers, and
+  finishes interrupted or failed turns explicitly.
+</p>
+<ref file="packages/nawc/src/agent-manager.ts" syntax="ts" name="AgentManager" type="class"></ref>
+<runnable
+  file="packages/nawc/tests/agent-manager.test.ts"
+  syntax="vitest"
+  name="resumes one provider thread across turns and reloads its projection"
+  type="it"
+></runnable>
+<h2>HTTP surface</h2>
+<p>
+  The server exposes provider metadata, thread snapshots, turn streaming, interruption, deletion,
+  and request responses. It resolves current-note content and validates file and skill references
+  before a provider sees them.
+</p>
+<ref file="packages/nawc/src/server.ts" syntax="ts" name="createNawcServer" type="function"></ref>
+<h2>Conversation UI</h2>
+<p>
+  The panel composes message-scroller, message, bubble, attachment, and marker primitives with
+  shadcn controls. Drafts and provider selections survive reloads. The current note is always
+  visible as context, while <code>@</code>, <code>$</code>, slash completion, diagnostics, image
+  paste/upload, stop, copy, model, reasoning, and provider modes remain available at the composer.
+</p>
+<ref
+  file="packages/ui/src/components/agent-panel.tsx"
+  syntax="tsx"
+  name="AgentPanel"
+  type="function"
+></ref>
+<ref
+  file="packages/ui/src/components/ui/chat.tsx"
+  syntax="tsx"
+  name="MessageScroller"
+  type="function"
+></ref>
