@@ -70,7 +70,7 @@
 </interactive>
 
 <h2>Shell and panels</h2>
-<ref file="packages/ui/src/App.tsx" syntax="ts" name="App" type="function" />
+<ref file="packages/ui/src/App.tsx" syntax="tsx" name="App" type="function" />
 <p>
   <code>App</code> keeps the Dockview API in a ref and registers only one panel component,
   <code>note</code>. Opening normally reuses the active panel by replacing its
@@ -85,7 +85,7 @@
 
 <ref
   file="packages/ui/src/components/document-pane.tsx"
-  syntax="ts"
+  syntax="tsx"
   name="DocumentPane"
   type="function"
 />
@@ -96,7 +96,7 @@
 </p>
 
 <h2>Document model and persistence</h2>
-<ref file="packages/ui/src/components/editor.tsx" syntax="ts" name="Editor" type="function" />
+<ref file="packages/ui/src/components/editor.tsx" syntax="tsx" name="Editor" type="function" />
 <p>
   The extension order is <code>WikiLink</code>, TipTap StarterKit, then every extension exposed by
   configured plugins. <code>useEditor</code> is keyed by note path, while later content changes are
@@ -114,7 +114,7 @@
 </p>
 
 <h2>Wiki links and history</h2>
-<ref file="packages/ui/src/lib/wiki-link.ts" syntax="ts" name="WikiLink" type="const" />
+<ref file="packages/ui/src/lib/wiki-link.ts" syntax="ts" name="WikiLink" type="variable" />
 <p>
   Typing <code>[[architecture/editor]]</code> at the end of input creates an inline atomic node. It
   serializes as an anchor with <code>data-wiki-link</code>, displays the bracket syntax, and

@@ -13,7 +13,7 @@
 </p>
 
 <h2>Interactive prototypes</h2>
-<ref file="plugins/core/src/client.tsx" syntax="ts" name="Interactive" type="const" />
+<ref file="plugins/core/src/client.tsx" syntax="tsx" name="Interactive" type="variable" />
 <p>
   On parse, the custom element's inner HTML becomes a <code>source</code> attribute.
   <code>InteractiveView</code> renders that source through iframe <code>srcDoc</code> with
@@ -23,7 +23,7 @@
 </p>
 
 <h2>Live source references</h2>
-<ref file="plugins/core/src/client.tsx" syntax="ts" name="SourceView" type="function" />
+<ref file="plugins/core/src/client.tsx" syntax="tsx" name="SourceView" type="function" />
 <p>
   Both source nodes carry <code>file</code>, optional <code>syntax</code>, and optional declaration
   selectors <code>name</code>/<code>type</code>. The view POSTs these attributes to
@@ -33,7 +33,7 @@
 </p>
 
 <h2>Runnable references</h2>
-<ref file="plugins/core/src/client.tsx" syntax="ts" name="RunnableTerminal" type="function" />
+<ref file="plugins/core/src/client.tsx" syntax="tsx" name="RunnableTerminal" type="function" />
 <p>
   Run mounts xterm and opens <code>/api/run</code> over WebSocket. The start message includes the
   selection and terminal dimensions. Subsequent messages carry terminal input, resizes, process

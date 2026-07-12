@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "notebook": "nawc"
+    "notebook": "nawc",
+    "notebook:test": "vp test",
+    "check": "vp check"
   },
   "dependencies": {
     "@nawc/config": "workspace:*",
@@ -13,6 +15,15 @@
     "@nawc/provider-codex": "workspace:*",
     "@nawc/syntax-typescript": "workspace:*",
     "@nawc/syntax-vitest": "workspace:*",
-    "nawc": "workspace:*"
+    "@nawc/ui": "workspace:*",
+    "nawc": "workspace:*",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "jsdom": "catalog:",
+    "vitest": "catalog:"
   }
 }

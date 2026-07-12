@@ -1,0 +1,40 @@
+<h1>Make provider event rendering extensible</h1>
+<h2>Issue</h2>
+<p>
+  Provider events are a closed union and the prompt panel knows only how to display messages,
+  errors, and command strings. Provider-specific progress, tool calls, approvals, citations, or
+  structured output either cannot satisfy the type contract or are reduced to the event type name.
+</p>
+<h2>Current behavior</h2>
+<p>
+  <code>ProviderEvent</code> defines thread-started, message, command, error, and done variants. The
+  server forwards events unchanged over SSE, but <code>PromptPanel</code> renders
+  <code>event.text</code>, <code>event.message</code>, or a command/status string and otherwise
+  falls back to <code>event.type</code>. The provider has no renderer registration or opaque payload
+  channel in the public contract.
+</p>
+<ref file="packages/config/src/index.ts" syntax="ts" name="ProviderEvent" type="type"></ref>
+<ref file="packages/nawc/src/server.ts" syntax="ts" name="createNawcServer" type="function"></ref>
+<ref
+  file="packages/ui/src/components/prompt-panel.tsx"
+  syntax="tsx"
+  name="PromptPanel"
+  type="function"
+></ref>
+<h2>Prototype</h2>
+<p>
+  An event renderer registry can preserve provider payloads while letting the provider or plugin
+  supply presentation.
+</p>
+<ref
+  file=".notebook/src/tickets/open/extensibility/07-provider-events.test.ts"
+  syntax="ts"
+  name="renderProviderEvent"
+  type="function"
+></ref>
+<runnable
+  file=".notebook/src/tickets/open/extensibility/07-provider-events.test.ts"
+  syntax="vitest"
+  name="preserves provider-specific event payloads"
+  type="it"
+></runnable>

@@ -1,0 +1,41 @@
+<h1>Resolve highlighting from configured syntax aliases</h1>
+<h2>Issue</h2>
+<p>
+  Even when a custom syntax has a valid alias for source extraction, the same alias is not shared
+  with the highlighter. This creates a split contract: <code>syntax="diagram"</code> may resolve
+  through the server, while the browser independently decides whether <code>diagram</code> is a
+  language known to Highlight.js.
+</p>
+<h2>Current behavior</h2>
+<p>
+  <code>syntaxFor</code> and <code>resolveSource</code> match canonical names and configured
+  aliases. The core plugin's <code>sourceLanguage</code> instead checks its local
+  <code>languageAliases</code> map and then <code>hljs.getLanguage</code>; neither function receives
+  the configured syntax list. The existing tests only cover built-in aliases such as
+  <code>ts</code>, <code>vitest</code>, and file extensions.
+</p>
+<ref file="packages/config/src/index.ts" syntax="ts" name="syntaxFor" type="function"></ref>
+<ref file="packages/nawc/src/workspace.ts" syntax="ts" name="resolveSource" type="function"></ref>
+<runnable
+  file="plugins/core/tests/source-highlighting.test.ts"
+  syntax="vitest"
+  name="maps syntax names and file extensions to highlight.js languages"
+  type="it"
+></runnable>
+<h2>Prototype</h2>
+<p>
+  The adapter registry should be the source of truth for alias lookup; a syntax can then return a
+  renderer or highlighting language.
+</p>
+<ref
+  file=".notebook/src/tickets/open/extensibility/04-syntax-highlighting-aliases.test.ts"
+  syntax="ts"
+  name="findSyntaxByAlias"
+  type="function"
+></ref>
+<runnable
+  file=".notebook/src/tickets/open/extensibility/04-syntax-highlighting-aliases.test.ts"
+  syntax="vitest"
+  name="shares configured aliases with the browser highlighter"
+  type="it"
+></runnable>

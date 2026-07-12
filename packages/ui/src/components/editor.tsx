@@ -2,18 +2,21 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import configuredPlugins from "virtual:nawc-plugins";
 import { useEffect, useRef } from "react";
+import { shouldApplyExternalContent } from "@/lib/editor-sync";
 import { serializeNote } from "@/lib/serialize";
 import { notePath, WikiLink } from "@/lib/wiki-link";
 
 type EditorProps = {
   note?: string;
   content: string;
-  onSave: (content: string) => void;
+  onSave: (content: string) => Promise<void>;
   onNavigate: (note: string, newPanel: boolean) => void;
 };
 
 export function Editor({ note, content, onSave, onNavigate }: EditorProps) {
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const saveQueue = useRef(Promise.resolve());
+  const hasLocalChanges = useRef(false);
   const editor = useEditor(
     {
       extensions: [
@@ -32,15 +35,32 @@ export function Editor({ note, content, onSave, onNavigate }: EditorProps) {
         },
       },
       onUpdate: ({ editor: current }) => {
+        hasLocalChanges.current = true;
         clearTimeout(saveTimer.current);
-        saveTimer.current = setTimeout(() => onSave(serializeNote(current)), 350);
+        saveTimer.current = setTimeout(() => {
+          const next = serializeNote(current);
+          const save = saveQueue.current.then(() => onSave(next));
+          saveQueue.current = save.then(
+            () => undefined,
+            () => undefined,
+          );
+          void save.then(
+            () => {
+              if (serializeNote(current) === next) hasLocalChanges.current = false;
+            },
+            () => undefined,
+          );
+        }, 350);
       },
     },
     [note],
   );
 
   useEffect(() => {
-    if (editor && content && editor.getHTML() !== content) {
+    if (
+      editor &&
+      shouldApplyExternalContent(serializeNote(editor), content, hasLocalChanges.current)
+    ) {
       const timer = setTimeout(() => editor.commands.setContent(content, { emitUpdate: false }), 0);
       return () => clearTimeout(timer);
     }

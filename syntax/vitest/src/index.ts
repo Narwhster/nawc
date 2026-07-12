@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
+import path from "node:path";
 import ts from "typescript";
-import type { NawcSyntax, ResolvedSource, SourceSelection } from "@nawc/config";
+import type { NawcSyntax, ResolvedSource, RunResult, SourceSelection } from "@nawc/config";
 
 export function resolveVitest(
   source: string,
@@ -39,15 +40,33 @@ export function resolveVitest(
   };
 }
 
+export function vitestRunCommand(file: string, cwd: string, name?: string): RunResult {
+  const notebookConfig =
+    file === ".notebook" || file.startsWith(".notebook/") || file.startsWith(".notebook\\");
+  const configArgs = notebookConfig
+    ? ["--config", path.join(cwd, ".notebook", "vite.config.ts")]
+    : [];
+  const runFile = notebookConfig
+    ? path.relative(path.join(cwd, ".notebook"), path.resolve(cwd, file))
+    : file;
+  return {
+    command: [
+      process.execPath,
+      fileURLToPath(new URL("../vitest.mjs", import.meta.resolve("vitest"))),
+      "run",
+      ...configArgs,
+      runFile,
+      ...(name ? ["-t", name] : []),
+    ],
+    cwd,
+  };
+}
+
 export function vitest(): NawcSyntax {
-  const cli = fileURLToPath(new URL("../vitest.mjs", import.meta.resolve("vitest")));
   return {
     name: "vitest",
     aliases: ["test"],
     resolve: resolveVitest,
-    run: ({ file, name, cwd }) => ({
-      command: [process.execPath, cli, "run", file, ...(name ? ["-t", name] : [])],
-      cwd,
-    }),
+    run: ({ file, name, cwd }) => vitestRunCommand(file, cwd, name),
   };
 }

@@ -1,0 +1,37 @@
+<h1>Editor icons belong to the editor contract</h1>
+<h2>Issue</h2>
+<p>
+  The configured editor can provide an icon name, but the UI only recognizes the literal
+  <code>vscode</code> value and renders every other editor with the same generic code icon. Adding
+  an editor therefore requires editing NAWC UI code, and an editor package cannot provide its own
+  recognizable presentation.
+</p>
+<h2>Current behavior</h2>
+<p>
+  <code>NawcEditor</code> exposes an optional string <code>icon</code>, while
+  <code>configuredEditor</code> fetches that metadata for <code>EditorAction</code>. The action uses
+  <code>VsCodeIcon</code> only when the value is exactly <code>vscode</code>; all other values
+  select <code>Code2Icon</code>. The server returns the configured editor's name, label, and icon
+  through <code>/api/meta</code>.
+</p>
+<ref file="packages/config/src/index.ts" syntax="ts" name="NawcEditor" type="type"></ref>
+<ref
+  file="packages/ui/src/components/editor-action.tsx"
+  syntax="tsx"
+  name="EditorAction"
+  type="function"
+></ref>
+<h2>Prototype</h2>
+<p>This prototype models an editor-owned icon payload rather than a NAWC-owned string switch.</p>
+<ref
+  file=".notebook/src/tickets/open/extensibility/01-editor-icons.test.ts"
+  syntax="ts"
+  name="editorPresentation"
+  type="function"
+></ref>
+<runnable
+  file=".notebook/src/tickets/open/extensibility/01-editor-icons.test.ts"
+  syntax="vitest"
+  name="renders a configured non-VS-Code editor icon"
+  type="it"
+></runnable>

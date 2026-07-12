@@ -1,0 +1,38 @@
+<h1>Pass editor context through the open contract</h1>
+<h2>Issue</h2>
+<p>
+  The editor action distinguishes opening a notebook note from opening project source, but that
+  information is discarded before the configured editor's <code>open</code> function runs. Editors
+  cannot use different URI schemes, workspaces, or commands for notes and source files without
+  guessing from the path.
+</p>
+<h2>Current behavior</h2>
+<p>
+  <code>EditorAction</code> sends <code>scope</code>, line, and column to
+  <code>/api/editor/open</code>. The route uses scope only to choose <code>srcDir</code> or
+  <code>baseDir</code>, then calls <code>launchEditor</code> with an
+  <code>EditorLocation</code> containing only file, line, and column. The
+  <code>NawcEditor</code> contract has no scope field.
+</p>
+<ref
+  file="packages/ui/src/components/editor-action.tsx"
+  syntax="tsx"
+  name="EditorAction"
+  type="function"
+></ref>
+<ref file="packages/nawc/src/server.ts" syntax="ts" name="launchEditor" type="function"></ref>
+<ref file="packages/config/src/index.ts" syntax="ts" name="EditorLocation" type="type"></ref>
+<h2>Prototype</h2>
+<p>The proposed contract makes scope part of the editor-owned location.</p>
+<ref
+  file=".notebook/src/tickets/open/extensibility/02-editor-context.test.ts"
+  syntax="ts"
+  name="editorLocation"
+  type="function"
+></ref>
+<runnable
+  file=".notebook/src/tickets/open/extensibility/02-editor-context.test.ts"
+  syntax="vitest"
+  name="passes note/source context to the configured editor"
+  type="it"
+></runnable>

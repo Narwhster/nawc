@@ -5,4 +5,7 @@ export default defineConfig({
     "*": "vp check --fix",
   },
   lint: { options: { typeAware: true, typeCheck: true } },
+  test: {
+    exclude: ["**/node_modules/**", "**/.git/**", "**/.notebook/**"],
+  },
 });

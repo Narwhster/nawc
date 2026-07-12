@@ -21,6 +21,17 @@
   name="extracts an exact test"
   type="it"
 ></runnable>
+<h2>Run a failing extensibility ticket</h2>
+<p>
+  Ticket tests are real workspace tests. They are expected to fail until the corresponding issue is
+  implemented.
+</p>
+<runnable
+  file=".notebook/src/tickets/open/extensibility/03-syntax-highlighting.test.ts"
+  syntax="vitest"
+  name="uses a configured syntax adapter for highlighting"
+  type="it"
+></runnable>
 <h2>Run a TypeScript example</h2>
 <runnable file=".notebook/src/docs/builder.example.ts" syntax="ts"></runnable>
 <p>
@@ -29,6 +40,7 @@
   displayed declaration selection.
 </p>
 <p>
-  For repository validation, runnable examples complement rather than replace the project's standard
-  <code>vp check</code> and <code>vp test</code> commands.
+  For repository validation, <code>vp test</code> runs package tests and intentionally excludes the
+  self-notebook. Run <code>vp run notebook:test</code> to execute the notebook's ticket tests and
+  runnable specifications.
 </p>

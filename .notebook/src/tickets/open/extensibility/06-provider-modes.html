@@ -1,0 +1,41 @@
+<h1>Let providers define prompt modes</h1>
+<h2>Issue</h2>
+<p>
+  The provider contract exposes only two prompt modes, and the UI hard-codes their labels and
+  behavior. A provider that supports review, explain, draft, or another mode cannot describe that
+  mode to the prompt panel or receive a typed mode identifier without changing NAWC itself.
+</p>
+<h2>Current behavior</h2>
+<p>
+  <code>NawcProvider.prompt</code> accepts <code>mode?: "default" | "plan"</code>. The server
+  rejects every other value, while <code>PromptPanel</code> injects <code>plan</code> and
+  <code>default</code> into the slash-command list and changes local state for those exact strings.
+  The Codex provider maps only <code>plan</code> to a read-only sandbox and ignores any
+  provider-defined mode concept.
+</p>
+<ref file="packages/config/src/index.ts" syntax="ts" name="NawcProvider" type="type"></ref>
+<ref file="packages/nawc/src/server.ts" syntax="ts" name="createNawcServer" type="function"></ref>
+<ref
+  file="packages/ui/src/components/prompt-panel.tsx"
+  syntax="tsx"
+  name="PromptPanel"
+  type="function"
+></ref>
+<ref file="provider/codex/src/index.ts" syntax="ts" name="codex" type="function"></ref>
+<h2>Prototype</h2>
+<p>
+  Modes can be provider metadata with an ID and display information, while the UI forwards the
+  selected ID without interpreting it.
+</p>
+<ref
+  file=".notebook/src/tickets/open/extensibility/06-provider-modes.test.ts"
+  syntax="ts"
+  name="providerModes"
+  type="function"
+></ref>
+<runnable
+  file=".notebook/src/tickets/open/extensibility/06-provider-modes.test.ts"
+  syntax="vitest"
+  name="exposes provider-defined prompt modes"
+  type="it"
+></runnable>

@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "ready": "vp check && vp test && vp run -r build",
+    "test": "vp test",
     "notebook": "vp run @nawc/self-notebook#notebook",
+    "notebook:test": "vp run @nawc/self-notebook#notebook:test",
     "prepare": "vp config"
   },
   "devDependencies": {
