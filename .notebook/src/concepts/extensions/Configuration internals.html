@@ -1,14 +1,14 @@
 <h1>Configuration internals</h1>
 <p>
   Configuration is dependency injection for the whole notebook. One typed object chooses plugins,
-  one provider, zero or more syntax adapters, the project boundary, editor integration, theme, and
-  port.
+  one provider, zero or more plugins (including syntax adapters), the project boundary, editor
+  integration, theme, and port.
 </p>
 <ref file="packages/config/src/index.ts" syntax="ts" name="defineConfig" type="function"></ref>
 <p>
   <code>defineConfig</code> uses a Zod shape for runtime validation while preserving the caller's
   inferred TypeScript type. It then materializes default VS Code and light-theme values. Syntax
-  lookup accepts either a canonical adapter name or alias.
+  lookup searches plugin contributions and accepts either a canonical adapter name or alias.
 </p>
 <ref file="packages/config/src/index.ts" syntax="ts" name="syntaxFor" type="function"></ref>
 <p>

@@ -1,15 +1,16 @@
 <h1>Creating a plugin</h1>
 <p>
-  A plugin has two halves: server-readable metadata and a browser client module. The server
-  definition names the plugin, points to the client module, and may advertise custom nodes and
-  generated agent skills.
+  A plugin has server-readable metadata and may optionally provide a browser client module. The
+  definition names the plugin and may advertise custom nodes, syntax adapters, and generated agent
+  skills.
 </p>
 <ref file="packages/plugin/src/index.ts" syntax="ts" name="NawcPlugin" type="type"></ref>
 <ref file=".notebook/src/docs/plugin.example.ts" syntax="ts" name="diagrams" type="variable"></ref>
 <p>
-  The package must make the <code>client</code> specifier resolvable from the notebook project. At
-  startup NAWC resolves every configured client, generates a Vite virtual module, and loads the
-  resulting client plugins into the editor.
+  When present, the package must make the <code>client</code> specifier resolvable from the notebook
+  project. At startup NAWC resolves configured clients, generates a Vite virtual module, and loads
+  the resulting client plugins into the editor. Syntax-only and skills-only plugins do not need a
+  client.
 </p>
 <h2>Client module</h2>
 <p>
@@ -19,8 +20,8 @@
 </p>
 <ref file="packages/plugin/src/index.ts" syntax="ts" name="NawcClientPlugin" type="type"></ref>
 <p>
-  The core plugin is the reference implementation: its server entry declares nodes and a skill,
-  while its client implements editor rendering for <code>interactive</code>, <code>ref</code>, and
+  The core plugin is the reference implementation: its server entry declares nodes, while its client
+  implements editor rendering for <code>interactive</code>, <code>ref</code>, and
   <code>runnable</code>.
 </p>
 <ref file="plugins/core/src/index.ts" syntax="ts" name="core" type="function"></ref>

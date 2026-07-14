@@ -13,7 +13,10 @@ describe("create-nawc", () => {
     const root = path.join(parent, "docs");
     await createProject({ directory: root, packageManager: "pnpm", install: false });
     await expect(readFile(path.join(root, "nawc.config.ts"), "utf8")).resolves.toContain(
-      "plugins: [core()]",
+      "plugins: [core(), nawcSkills(), typescript(), vitest()]",
+    );
+    await expect(readFile(path.join(root, "nawc.config.ts"), "utf8")).resolves.not.toContain(
+      "syntax:",
     );
     await expect(readFile(path.join(root, "nawc.config.ts"), "utf8")).resolves.toContain(
       "editor: vscode()",

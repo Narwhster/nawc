@@ -1,27 +1,14 @@
-import type { NawcPlugin } from "@nawc/plugin";
+import type { NawcPlugin, NawcSyntax } from "@nawc/plugin";
 import { z } from "zod";
 export * from "./agent.ts";
+export type {
+  NawcSyntax,
+  ResolvedSource,
+  RunRequest,
+  RunResult,
+  SourceSelection,
+} from "@nawc/plugin";
 import type { NawcProvider } from "./agent.ts";
-
-export type SourceSelection = {
-  readonly file: string;
-  readonly syntax?: string;
-  readonly name?: string;
-  readonly type?: string;
-};
-
-export type ResolvedSource = SourceSelection & {
-  readonly code: string;
-  readonly startLine: number;
-  readonly endLine: number;
-};
-
-export type RunRequest = SourceSelection & { readonly cwd: string };
-export type RunResult = {
-  readonly command: readonly string[];
-  readonly cwd: string;
-  readonly script?: string;
-};
 
 export type EditorLocation = {
   readonly file: string;
@@ -52,27 +39,18 @@ export type NawcTheme = {
   readonly variables: Readonly<Record<`--${string}`, string>>;
 };
 
-export type NawcSyntax = {
-  readonly name: string;
-  readonly aliases: readonly string[];
-  resolve(source: string, selection: SourceSelection): ResolvedSource | undefined;
-  run?(request: RunRequest): RunResult;
-};
-
 export type NawcConfig = {
   readonly plugins: readonly NawcPlugin[];
   readonly provider: NawcProvider;
-  readonly syntax: readonly NawcSyntax[];
   readonly baseDir: string;
   readonly editor?: NawcEditor;
   readonly theme?: NawcTheme;
   readonly port?: number;
 };
 
-export const configShape = z.object({
+export const configShape = z.strictObject({
   plugins: z.array(z.custom<NawcPlugin>()),
   provider: z.custom<NawcProvider>(),
-  syntax: z.array(z.custom<NawcSyntax>()),
   baseDir: z.string().min(1),
   editor: z.custom<NawcEditor>().optional(),
   theme: z.custom<NawcTheme>().optional(),
@@ -81,5 +59,7 @@ export const configShape = z.object({
 
 export function syntaxFor(config: NawcConfig, name?: string): NawcSyntax | undefined {
   if (!name) return undefined;
-  return config.syntax.find((item) => item.name === name || item.aliases.includes(name));
+  return config.plugins
+    .flatMap((plugin) => plugin.syntax ?? [])
+    .find((item) => item.name === name || item.aliases.includes(name));
 }

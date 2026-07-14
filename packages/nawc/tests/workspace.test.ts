@@ -157,4 +157,19 @@ describe("workspace boundaries", () => {
       ]),
     ).rejects.toThrow("user-owned");
   });
+
+  it("removes stale generated skills without touching user-owned skills", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "nawc-"));
+    await syncSkills(root, [
+      { name: "old", client: "old/client", skills: [{ name: "old", content: "# Old" }] },
+    ]);
+    await syncSkills(root, []);
+    await expect(readFile(path.join(root, ".skills/old/SKILL.md"), "utf8")).rejects.toThrow();
+
+    const userSkill = path.join(root, ".skills/user/SKILL.md");
+    await mkdir(path.dirname(userSkill), { recursive: true });
+    await writeFile(userSkill, "# User", "utf8");
+    await syncSkills(root, []);
+    await expect(readFile(userSkill, "utf8")).resolves.toBe("# User");
+  });
 });

@@ -1,6 +1,30 @@
 import { parse, BaseJavaCstVisitorWithDefaults } from "java-parser";
-import type { NawcSyntax, ResolvedSource, RunResult, SourceSelection } from "@nawc/config";
+import {
+  definePlugin,
+  type NawcPlugin,
+  type ResolvedSource,
+  type RunResult,
+  type SourceSelection,
+} from "@nawc/plugin";
 import path from "node:path";
+
+export const junitSkill = `---
+name: junit
+description: Use when writing ref or runnable blocks for JUnit tests.
+---
+
+# JUnit syntax
+
+Use \`syntax="junit"\` or \`syntax="test"\` for JUnit source.
+
+## Ref blocks
+
+Without \`name\`, the whole test file is referenced. With \`name\`, select a test method annotated with \`@Test\` or \`@org.junit.Test\`. The name is the Java method name; no declaration type is required.
+
+## Runnable blocks
+
+Without \`name\`, run the whole test class. With \`name\`, run the selected method. The runner uses the JUnit Platform Console Standalone JAR, configurable with \`jar\`, and classpath configurable with \`classpath\`.
+`;
 
 type TestMethodInfo = {
   readonly name: string;
@@ -106,26 +130,32 @@ export type JUnitOptions = {
   readonly classpath?: string;
 };
 
-export function junit(options?: JUnitOptions): NawcSyntax {
-  return {
+export function junit(options?: JUnitOptions): NawcPlugin {
+  return definePlugin({
     name: "junit",
-    aliases: ["test"],
-    resolve: resolveJunit,
-    run: ({ file, name, cwd }): RunResult => {
-      const javaPath = javaBin(options?.jdk);
-      const jar = options?.jar ?? "junit-platform-console-standalone.jar";
-      const classpath = options?.classpath ?? ".";
-      const className = file
-        .replace(/\.java$/, "")
-        .split(/[\\/]/)
-        .pop();
-      const args = ["-jar", jar, "-cp", classpath];
-      if (name) {
-        args.push("--select-method", `${className}#${name}`);
-      } else {
-        args.push("--select-class", className!);
-      }
-      return { command: [javaPath, ...args], cwd };
-    },
-  };
+    syntax: [
+      {
+        name: "junit",
+        aliases: ["test"],
+        resolve: resolveJunit,
+        run: ({ file, name, cwd }): RunResult => {
+          const javaPath = javaBin(options?.jdk);
+          const jar = options?.jar ?? "junit-platform-console-standalone.jar";
+          const classpath = options?.classpath ?? ".";
+          const className = file
+            .replace(/\.java$/, "")
+            .split(/[\\/]/)
+            .pop();
+          const args = ["-jar", jar, "-cp", classpath];
+          if (name) {
+            args.push("--select-method", `${className}#${name}`);
+          } else {
+            args.push("--select-class", className!);
+          }
+          return { command: [javaPath, ...args], cwd };
+        },
+      },
+    ],
+    skills: [{ name: "junit", content: junitSkill }],
+  });
 }

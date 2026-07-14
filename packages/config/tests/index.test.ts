@@ -7,9 +7,8 @@ const provider = { name: "test", async *prompt() {} };
 describe("configuration", () => {
   it("validates a valid config shape", () => {
     const config = {
-      plugins: [],
+      plugins: [{ name: "typescript", syntax: [syntax] }],
       provider,
-      syntax: [syntax],
       baseDir: "..",
       port: 6292,
     };
@@ -17,13 +16,21 @@ describe("configuration", () => {
   });
 
   it("finds syntax adapters by alias", () => {
-    const config = { plugins: [], provider, syntax: [syntax], baseDir: "." } satisfies NawcConfig;
+    const config = {
+      plugins: [{ name: "typescript", syntax: [syntax] }],
+      provider,
+      baseDir: ".",
+    } satisfies NawcConfig;
     expect(syntaxFor(config, "ts")).toBe(syntax);
+  });
+
+  it("rejects the legacy top-level syntax configuration", () => {
+    expect(() => configShape.parse({ plugins: [], provider, syntax: [], baseDir: "." })).toThrow();
   });
 
   it("rejects invalid ports", () => {
     expect(() =>
-      configShape.parse({ plugins: [], provider, syntax: [], baseDir: ".", port: 70_000 }),
+      configShape.parse({ plugins: [], provider, baseDir: ".", port: 70_000 }),
     ).toThrow();
   });
 });

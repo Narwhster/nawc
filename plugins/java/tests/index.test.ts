@@ -52,14 +52,14 @@ describe("Java syntax", () => {
 
 describe("Java runner", () => {
   it("runs a whole file without a selector", () => {
-    const syntax = java();
+    const syntax = java().syntax![0];
     const result = syntax.run!({ file: "Calculator.java", cwd: "/repo" });
     expect(result.command[0]).toMatch(/java$/);
     expect(result.command).toContain("Calculator.java");
   });
 
   it("runs a class by name", () => {
-    const syntax = java();
+    const syntax = java().syntax![0];
     const result = syntax.run!({
       file: "Calculator.java",
       type: "class",
@@ -70,7 +70,7 @@ describe("Java runner", () => {
   });
 
   it("runs a static method via JShell", () => {
-    const syntax = java();
+    const syntax = java().syntax![0];
     const result = syntax.run!({
       file: "Calculator.java",
       type: "method",

@@ -31,9 +31,8 @@ Use `theme: nawcLight()` (the default) or `theme: nawcDark()` in `nawc.config.ts
 ## Workspace
 
 - `packages/` — CLI/server, creator, config, plugin contracts, and React UI
-- `plugins/` — editor node plugins
+- `plugins/` — editor, syntax, and skills plugins
 - `provider/` — agent harness adapters
-- `syntax/` — source resolvers and runners
 - `examples/` — working notebooks
 
 Run `pnpm ready` before submitting changes.

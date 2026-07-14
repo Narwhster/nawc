@@ -11,6 +11,7 @@
   "dependencies": {
     "@nawc/config": "workspace:*",
     "@nawc/core": "workspace:*",
+    "@nawc/nawc-skills": "workspace:*",
     "@nawc/plugin": "workspace:*",
     "@nawc/provider-codex": "workspace:*",
     "@nawc/provider-opencode": "workspace:*",

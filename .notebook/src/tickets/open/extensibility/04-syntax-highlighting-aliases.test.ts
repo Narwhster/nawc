@@ -7,9 +7,8 @@ const diagram = { name: "diagram", aliases: ["diag"], resolve: () => undefined }
 export function findSyntaxByAlias(value: string) {
   return syntaxFor(
     {
-      plugins: [],
+      plugins: [{ name: "diagram", syntax: [diagram] }],
       provider: { name: "test", async *prompt() {} },
-      syntax: [diagram],
       baseDir: ".",
     },
     value,

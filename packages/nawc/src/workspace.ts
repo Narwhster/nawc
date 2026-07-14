@@ -12,7 +12,7 @@ import {
 import { execFile } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
-import type { NawcConfig, SourceSelection } from "@nawc/config";
+import { syntaxFor, type NawcConfig, type SourceSelection } from "@nawc/config";
 
 const execFileAsync = promisify(execFile);
 const GENERATED_DIRECTORY_NAMES = new Set([
@@ -272,9 +272,7 @@ export async function resolveSource(
   const source = await readFile(file, "utf8");
   if (!selection.syntax)
     return { ...selection, code: source, startLine: 1, endLine: source.split("\n").length };
-  const syntax = config.syntax.find(
-    (item) => item.name === selection.syntax || item.aliases.includes(selection.syntax!),
-  );
+  const syntax = syntaxFor(config, selection.syntax);
   if (!syntax) throw new Error(`Unknown syntax: ${selection.syntax}`);
   const resolved = syntax.resolve(source, selection);
   if (!resolved)

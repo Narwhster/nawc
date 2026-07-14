@@ -5,12 +5,13 @@
   correctly.
 </p>
 <p>
-  The core plugin makes the relationship concrete. Its metadata advertises three nodes and embeds a
-  concise authoring skill. Its client implements the corresponding Tiptap nodes, React views, source
-  fetching, prompt actions, terminal UI, and sandboxed interactive rendering.
+  The core plugin makes the relationship concrete. Its metadata advertises three nodes, while the
+  separate <code>nawcSkills</code> plugin provides the authoring workflow skills. The core client
+  implements the corresponding Tiptap nodes, React views, source fetching, prompt actions, terminal
+  UI, and sandboxed interactive rendering.
 </p>
-<ref file="plugins/core/src/index.ts" syntax="ts" name="coreSkill" type="variable"></ref>
 <ref file="plugins/core/src/index.ts" syntax="ts" name="core" type="function"></ref>
+<ref file="plugins/nawc-skills/src/index.ts" syntax="ts" name="nawcSkills" type="function"></ref>
 <p>
   On startup, NAWC writes generated skills beneath a managed skills directory and labels them as
   generated. It then merges those skills with provider-discovered skills for the prompt UI. Existing

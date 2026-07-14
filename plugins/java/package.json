@@ -15,7 +15,7 @@
     "check": "vp check"
   },
   "dependencies": {
-    "@nawc/config": "workspace:*",
+    "@nawc/plugin": "workspace:*",
     "java-parser": "^3.0.1"
   },
   "devDependencies": {

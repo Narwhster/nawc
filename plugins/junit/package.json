@@ -1,5 +1,5 @@
 {
-  "name": "@nawc/syntax-vitest",
+  "name": "@nawc/syntax-junit",
   "version": "0.0.0",
   "files": [
     "dist"
@@ -15,9 +15,8 @@
     "check": "vp check"
   },
   "dependencies": {
-    "@nawc/config": "workspace:*",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "@nawc/plugin": "workspace:*",
+    "java-parser": "^3.0.1"
   },
   "devDependencies": {
     "@types/node": "catalog:",

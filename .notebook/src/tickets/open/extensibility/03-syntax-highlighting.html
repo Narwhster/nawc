@@ -8,8 +8,8 @@
 </p>
 <h2>Current behavior</h2>
 <p>
-  <code>resolveSource</code> and <code>startRun</code> locate adapters from
-  <code>config.syntax</code> and call <code>resolve</code> or <code>run</code>. In contrast,
+  <code>resolveSource</code> and <code>startRun</code> locate adapters from the configured syntax
+  plugin and call <code>resolve</code> or <code>run</code>. In contrast,
   <code>sourceLanguage</code> normalizes the raw <code>syntax</code> attribute and file extension
   against a hard-coded map, then <code>highlightSource</code> invokes <code>highlight.js</code>. A
   custom adapter can work for extraction while still rendering as plain escaped text.

@@ -1,6 +1,6 @@
-import type { NawcSyntax } from "@nawc/config";
+import { definePlugin, type NawcSyntax } from "@nawc/plugin";
 
-export const json = (): NawcSyntax => ({
+const jsonSyntax: NawcSyntax = {
   name: "json",
   aliases: ["jsonc"],
   resolve(source, selection) {
@@ -15,4 +15,10 @@ export const json = (): NawcSyntax => ({
     command: [process.execPath, "tool.mjs", file],
     cwd,
   }),
-});
+};
+
+export const json = () =>
+  definePlugin({
+    name: "json",
+    syntax: [jsonSyntax],
+  });

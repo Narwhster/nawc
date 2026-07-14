@@ -3,13 +3,14 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getRequestListener } from "@hono/node-server";
-import type {
-  NawcConfig,
-  NawcProviderModel,
-  NawcProviderSettings,
-  NawcProviderSkill,
-  PromptReference,
-  SourceSelection,
+import {
+  syntaxFor,
+  type NawcConfig,
+  type NawcProviderModel,
+  type NawcProviderSettings,
+  type NawcProviderSkill,
+  type PromptReference,
+  type SourceSelection,
 } from "@nawc/config";
 import { watch } from "chokidar";
 import { Hono } from "hono";
@@ -526,12 +527,15 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   const uiRoot = path.dirname(fileURLToPath(import.meta.resolve("@nawc/ui/package.json")));
   const projectRequire = createRequire(path.join(projectDir, "package.json"));
   const pluginImports = config.plugins
-    .map(
-      (plugin, index) =>
-        `import plugin${index} from ${JSON.stringify(projectRequire.resolve(plugin.client))};`,
+    .flatMap((plugin, index) =>
+      plugin.client
+        ? [`import plugin${index} from ${JSON.stringify(projectRequire.resolve(plugin.client))};`]
+        : [],
     )
     .join("\n");
-  const pluginArray = config.plugins.map((_, index) => `plugin${index}`).join(", ");
+  const pluginArray = config.plugins
+    .flatMap((plugin, index) => (plugin.client ? [`plugin${index}`] : []))
+    .join(", ");
   const vite = await createViteServer({
     root: uiRoot,
     appType: "spa",
@@ -576,9 +580,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     size: { cols: number; rows: number },
   ): Promise<IPty | undefined> => {
     try {
-      const syntax = config.syntax.find(
-        (item) => item.name === selection.syntax || item.aliases.includes(selection.syntax ?? ""),
-      );
+      const syntax = syntaxFor(config, selection.syntax);
       if (!syntax?.run) throw new Error(`Syntax ${selection.syntax ?? ""} is not runnable`);
       await safePath(baseDir, selection.file);
       const run = syntax.run({ ...selection, cwd: baseDir });

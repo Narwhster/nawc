@@ -32,18 +32,19 @@
 <h2>Concrete integrations</h2>
 <ul>
   <li>
-    <code>plugins/core</code>: declares the interactive, ref, and runnable nodes, ships their Tiptap
-    node views, and contributes the core authoring skill.
+    <code>plugins/core</code>: declares the interactive, ref, and runnable nodes and ships their
+    Tiptap node views.
   </li>
+  <li><code>plugins/nawc-skills</code>: contributes the NAWC authoring workflow skills.</li>
   <li>
     <code>provider/codex</code>: launches the local Codex CLI and translates its JSONL event stream.
   </li>
   <li>
-    <code>syntax/typescript</code>: extracts whole files or named TypeScript declarations and runs
+    <code>plugins/typescript</code>: extracts whole files or named TypeScript declarations and runs
     files through <code>tsx</code>.
   </li>
   <li>
-    <code>syntax/vitest</code>: extracts exact <code>it</code>/<code>test</code> calls and runs
+    <code>plugins/vitest</code>: extracts exact <code>it</code>/<code>test</code> calls and runs
     Vitest with an optional title filter.
   </li>
   <li>

@@ -1,5 +1,6 @@
 import { defineConfig, nawcDark, vscode, type NawcTheme } from "nawc";
 import { core } from "@nawc/core";
+import { nawcSkills } from "@nawc/nawc-skills";
 import { codex } from "@nawc/provider-codex";
 import { typescript } from "@nawc/syntax-typescript";
 import { vitest } from "@nawc/syntax-vitest";
@@ -13,9 +14,8 @@ export const ocean: NawcTheme = {
 };
 
 export default defineConfig({
-  plugins: [core()],
+  plugins: [core(), nawcSkills(), typescript(), vitest()],
   provider: codex({ sandbox: "read-only" }),
-  syntax: [typescript(), vitest()],
   editor: vscode(),
   theme: ocean,
   baseDir: "..",

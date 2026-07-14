@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, rmdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { NawcPlugin } from "@nawc/plugin";
 
@@ -9,8 +9,10 @@ export async function syncSkills(
   plugins: readonly NawcPlugin[],
 ): Promise<string> {
   const skillsDir = path.join(projectDir, ".skills");
+  const generatedSkills = new Set<string>();
   for (const plugin of plugins) {
     for (const skill of plugin.skills ?? []) {
+      generatedSkills.add(skill.name);
       const directory = path.join(skillsDir, skill.name);
       const file = path.join(directory, "SKILL.md");
       await mkdir(directory, { recursive: true });
@@ -22,6 +24,22 @@ export async function syncSkills(
         if (error instanceof Error && !error.message.includes("ENOENT")) throw error;
       }
       await writeFile(file, header + skill.content.trim() + "\n", "utf8");
+    }
+  }
+  for (const entry of await readdir(skillsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || generatedSkills.has(entry.name)) continue;
+    const file = path.join(skillsDir, entry.name, "SKILL.md");
+    try {
+      const existing = await readFile(file, "utf8");
+      if (!existing.startsWith(header)) continue;
+      await rm(file);
+      await rmdir(path.join(skillsDir, entry.name));
+    } catch (error) {
+      const code =
+        error && typeof error === "object" && "code" in error && typeof error.code === "string"
+          ? error.code
+          : undefined;
+      if (code !== "ENOENT" && code !== "ENOTEMPTY") throw error;
     }
   }
   return skillsDir;

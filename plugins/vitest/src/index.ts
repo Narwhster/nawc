@@ -1,7 +1,33 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import ts from "typescript";
-import type { NawcSyntax, ResolvedSource, RunResult, SourceSelection } from "@nawc/config";
+import {
+  definePlugin,
+  type NawcPlugin,
+  type ResolvedSource,
+  type RunResult,
+  type SourceSelection,
+} from "@nawc/plugin";
+
+export const vitestSkill = `---
+name: vitest
+description: Use when writing ref or runnable blocks for Vitest tests.
+---
+
+# Vitest syntax
+
+Use \`syntax="vitest"\` or \`syntax="test"\` for Vitest source.
+
+## Ref blocks
+
+Use \`name\` for the exact test title. The default test type is \`it\`; \`type="it"\` selects \`it\` and \`test\` calls, while \`type="test"\` selects only \`test\` calls.
+
+Without \`name\`, the whole file is referenced.
+
+## Runnable blocks
+
+Runnable blocks execute the file with Vitest. When \`name\` is present, it is passed as Vitest's \`-t\` title filter. Without a name, all tests in the file run.
+`;
 
 export function resolveVitest(
   source: string,
@@ -62,11 +88,17 @@ export function vitestRunCommand(file: string, cwd: string, name?: string): RunR
   };
 }
 
-export function vitest(): NawcSyntax {
-  return {
+export function vitest(): NawcPlugin {
+  return definePlugin({
     name: "vitest",
-    aliases: ["test"],
-    resolve: resolveVitest,
-    run: ({ file, name, cwd }) => vitestRunCommand(file, cwd, name),
-  };
+    syntax: [
+      {
+        name: "vitest",
+        aliases: ["test"],
+        resolve: resolveVitest,
+        run: ({ file, name, cwd }) => vitestRunCommand(file, cwd, name),
+      },
+    ],
+    skills: [{ name: "vitest", content: vitestSkill }],
+  });
 }

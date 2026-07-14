@@ -54,7 +54,7 @@ describe("JUnit syntax", () => {
 
 describe("JUnit runner", () => {
   it("runs a specific test method", () => {
-    const syntax = junit();
+    const syntax = junit().syntax![0];
     const result = syntax.run!({
       file: "CalculatorTest.java",
       name: "testAdd",
@@ -66,7 +66,7 @@ describe("JUnit runner", () => {
   });
 
   it("runs all tests in a class when no name specified", () => {
-    const syntax = junit();
+    const syntax = junit().syntax![0];
     const result = syntax.run!({
       file: "CalculatorTest.java",
       cwd: "/repo",
@@ -79,7 +79,7 @@ describe("JUnit runner", () => {
     const syntax = junit({
       jar: "/path/to/junit.jar",
       classpath: "/path/to/classes",
-    });
+    }).syntax![0];
     const result = syntax.run!({
       file: "CalculatorTest.java",
       name: "testAdd",

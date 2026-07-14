@@ -1,13 +1,13 @@
 import { defineConfig, nawcDark, vscode } from "nawc";
 import { core } from "@nawc/core";
+import { nawcSkills } from "@nawc/nawc-skills";
 import { codex } from "@nawc/provider-codex";
 import { java } from "@nawc/syntax-java";
 import { junit } from "@nawc/syntax-junit";
 
 export default defineConfig({
-  plugins: [core()],
+  plugins: [core(), nawcSkills(), java(), junit()],
   provider: codex(),
-  syntax: [java(), junit()],
   editor: vscode(),
   theme: nawcDark(),
   baseDir: ".",

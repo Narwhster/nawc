@@ -1,5 +1,37 @@
 import ts from "typescript";
-import type { NawcSyntax, ResolvedSource, SourceSelection } from "@nawc/config";
+import {
+  definePlugin,
+  type NawcPlugin,
+  type ResolvedSource,
+  type SourceSelection,
+} from "@nawc/plugin";
+
+export const typescriptSkill = `---
+name: typescript
+description: Use when writing ref or runnable blocks for TypeScript source.
+---
+
+# TypeScript syntax
+
+Use \`syntax="typescript"\`, \`syntax="ts"\`, or \`syntax="tsx"\` for TypeScript source.
+
+## Ref blocks
+
+Use \`name\` and \`type\` to select a declaration. Supported declaration types are:
+
+- \`function\` for functions, methods, arrow functions, and function expressions
+- \`class\`
+- \`type\`
+- \`interface\`
+- \`variable\`
+- \`enum\`
+
+Without both \`name\` and \`type\`, the whole file is referenced.
+
+## Runnable blocks
+
+Runnable TypeScript blocks execute the selected file with \`tsx\`. The runner ignores declaration selectors, so use a file whose top-level execution is the desired example.
+`;
 
 const kinds: Record<string, readonly ts.SyntaxKind[]> = {
   function: [
@@ -55,14 +87,20 @@ export function resolveTypescript(
   };
 }
 
-export function typescript(): NawcSyntax {
-  return {
+export function typescript(): NawcPlugin {
+  return definePlugin({
     name: "typescript",
-    aliases: ["ts", "tsx"],
-    resolve: resolveTypescript,
-    run: ({ file, cwd }) => ({
-      command: [process.execPath, "--import", import.meta.resolve("tsx"), file],
-      cwd,
-    }),
-  };
+    syntax: [
+      {
+        name: "typescript",
+        aliases: ["ts", "tsx"],
+        resolve: resolveTypescript,
+        run: ({ file, cwd }) => ({
+          command: [process.execPath, "--import", import.meta.resolve("tsx"), file],
+          cwd,
+        }),
+      },
+    ],
+    skills: [{ name: "typescript", content: typescriptSkill }],
+  });
 }

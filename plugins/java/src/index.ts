@@ -1,6 +1,30 @@
 import { parse, BaseJavaCstVisitorWithDefaults } from "java-parser";
-import type { NawcSyntax, ResolvedSource, RunResult, SourceSelection } from "@nawc/config";
+import {
+  definePlugin,
+  type NawcPlugin,
+  type ResolvedSource,
+  type RunResult,
+  type SourceSelection,
+} from "@nawc/plugin";
 import path from "node:path";
+
+export const javaSkill = `---
+name: java
+description: Use when writing ref or runnable blocks for Java source.
+---
+
+# Java syntax
+
+Use \`syntax="java"\` for Java source.
+
+## Ref blocks
+
+Use \`name\` and \`type\` to select a declaration. Supported types are \`class\`, \`interface\`, \`enum\`, \`method\`, and \`constructor\`. Without both selectors, the whole file is referenced.
+
+## Runnable blocks
+
+Without a selector, the Java file runs with \`java\`. A class selector runs the named class. A method selector opens the file in JShell and invokes the named method with no arguments.
+`;
 
 type DeclarationInfo = {
   readonly name: string;
@@ -157,29 +181,35 @@ export type JavaOptions = {
   readonly jdk?: string;
 };
 
-export function java(options?: JavaOptions): NawcSyntax {
-  return {
+export function java(options?: JavaOptions): NawcPlugin {
+  return definePlugin({
     name: "java",
-    aliases: [],
-    resolve: resolveJava,
-    run: ({ file, name, type, cwd }): RunResult => {
-      const javaPath = javaBin(options?.jdk);
-      if (!name || !type) {
-        return { command: [javaPath, file], cwd };
-      }
-      if (type === "class") {
-        return { command: [javaPath, name], cwd };
-      }
-      if (type === "method") {
-        const className = file
-          .replace(/\.java$/, "")
-          .split(/[\\/]/)
-          .pop();
-        const jshellPath = jshellBin(options?.jdk);
-        const script = `/open ${file}\n${className}.${name}()\n/exit\n`;
-        return { command: [jshellPath, "-q", "-s", "-"], cwd, script };
-      }
-      throw new Error(`Unsupported selector type: ${type}`);
-    },
-  };
+    syntax: [
+      {
+        name: "java",
+        aliases: [],
+        resolve: resolveJava,
+        run: ({ file, name, type, cwd }): RunResult => {
+          const javaPath = javaBin(options?.jdk);
+          if (!name || !type) {
+            return { command: [javaPath, file], cwd };
+          }
+          if (type === "class") {
+            return { command: [javaPath, name], cwd };
+          }
+          if (type === "method") {
+            const className = file
+              .replace(/\.java$/, "")
+              .split(/[\\/]/)
+              .pop();
+            const jshellPath = jshellBin(options?.jdk);
+            const script = `/open ${file}\n${className}.${name}()\n/exit\n`;
+            return { command: [jshellPath, "-q", "-s", "-"], cwd, script };
+          }
+          throw new Error(`Unsupported selector type: ${type}`);
+        },
+      },
+    ],
+    skills: [{ name: "java", content: javaSkill }],
+  });
 }
