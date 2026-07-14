@@ -1,0 +1,24 @@
+{
+  "name": "@nawc/react-notebook",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nawc"
+  },
+  "dependencies": {
+    "@nawc/core": "workspace:*",
+    "@nawc/nawc-skills": "workspace:*",
+    "@nawc/provider-codex": "workspace:*",
+    "@nawc/react": "workspace:*",
+    "nawc": "workspace:*",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

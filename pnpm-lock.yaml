@@ -183,7 +183,7 @@ importers:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@24.13.3)(@vitest/browser-preview@4.1.10)(jsdom@29.1.1)(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
 
-  examples/notebook:
+  examples/react-notebook:
     dependencies:
       '@nawc/core':
         specifier: workspace:*
@@ -194,15 +194,31 @@ importers:
       '@nawc/provider-codex':
         specifier: workspace:*
         version: link:../../provider/codex
-      '@nawc/syntax-typescript':
+      '@nawc/react':
         specifier: workspace:*
-        version: link:../../plugins/typescript
-      '@nawc/syntax-vitest':
-        specifier: workspace:*
-        version: link:../../plugins/vitest
+        version: link:../../plugins/react
       nawc:
         specifier: workspace:*
         version: link:../../packages/nawc
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.2.7
+        version: 19.2.7(react@19.2.7)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vite:
+        specifier: 'catalog:'
+        version: 8.1.4(@types/node@25.9.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)
 
   packages/config:
     dependencies:
@@ -311,6 +327,9 @@ importers:
       '@tiptap/core':
         specifier: ^3.27.3
         version: 3.27.3(@tiptap/pm@3.27.3)
+      vite:
+        specifier: 'catalog:'
+        version: 8.1.4(@types/node@25.9.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)
     devDependencies:
       typescript:
         specifier: 'catalog:'
@@ -503,6 +522,43 @@ importers:
       vite-plus:
         specifier: 'catalog:'
         version: 0.2.4(@types/node@25.9.5)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1)(tsx@4.23.0)(typescript@6.0.3)(vite@8.1.4(@types/node@25.9.5)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(yaml@2.9.0)
+
+  plugins/react:
+    dependencies:
+      '@nawc/plugin':
+        specifier: workspace:*
+        version: link:../../packages/plugin
+      '@nawc/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@tiptap/core':
+        specifier: ^3.27.3
+        version: 3.27.3(@tiptap/pm@3.27.3)
+      '@tiptap/react':
+        specifier: ^3.27.3
+        version: 3.27.3(@floating-ui/dom@1.7.6)(@tiptap/core@3.27.3(@tiptap/pm@3.27.3))(@tiptap/pm@3.27.3)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      lucide-react:
+        specifier: ^1.24.0
+        version: 1.24.0(react@19.2.7)
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      vite:
+        specifier: 'catalog:'
+        version: 8.1.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0)
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      '@types/react':
+        specifier: ^19.2.17
+        version: 19.2.17
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.2.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(jsdom@29.1.1)(tsx@4.23.0)(typescript@6.0.3)(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))(yaml@2.9.0)
 
   plugins/typescript:
     dependencies:

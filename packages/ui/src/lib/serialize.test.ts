@@ -10,6 +10,22 @@ describe("note serialization", () => {
     expect(serializeHtml(html)).toBe(`<interactive>${source}</interactive>`);
   });
 
+  it("preserves file-backed interactive references", () => {
+    expect(
+      serializeHtml(
+        '<interactive data-nawc-node="interactive" data-nawc-source="" file="src/demo.html"></interactive>',
+      ),
+    ).toBe('<interactive file="src/demo.html"></interactive>');
+  });
+
+  it("preserves React interactive references", () => {
+    expect(
+      serializeHtml(
+        '<react-interactive data-nawc-node="react-interactive" file="src/Demo.tsx"></react-interactive>',
+      ),
+    ).toBe('<react-interactive file="src/Demo.tsx"></react-interactive>');
+  });
+
   it("keeps source references free of copied code", () => {
     expect(serializeHtml('<ref data-nawc-node="ref" file="src/foo.ts" syntax="ts"></ref>')).toBe(
       '<ref file="src/foo.ts" syntax="ts"></ref>',

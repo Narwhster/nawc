@@ -536,6 +536,9 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   const pluginArray = config.plugins
     .flatMap((plugin, index) => (plugin.client ? [`plugin${index}`] : []))
     .join(", ");
+  const vitePlugins = config.plugins.flatMap((plugin) =>
+    plugin.vite ? [plugin.vite({ baseDir })] : [],
+  );
   const vite = await createViteServer({
     root: uiRoot,
     appType: "spa",
@@ -551,6 +554,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
       fs: { allow: [projectDir, baseDir, uiRoot] },
     },
     plugins: [
+      ...vitePlugins,
       {
         name: "nawc-configured-plugins",
         resolveId(id) {
@@ -566,7 +570,11 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   });
   const api = getRequestListener(app.fetch);
   const server = createServer((request, response) => {
-    if (request.url?.startsWith("/api/")) void api(request, response);
+    const previewRequest = request.headers.host?.startsWith("127.0.0.1:") ?? false;
+    if (previewRequest && request.url?.startsWith("/api/")) {
+      response.statusCode = 403;
+      response.end("NAWC APIs are unavailable to interactive previews");
+    } else if (request.url?.startsWith("/api/")) void api(request, response);
     else
       vite.middlewares(request, response, (error: unknown) => {
         response.statusCode = 500;

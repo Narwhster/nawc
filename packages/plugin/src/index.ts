@@ -1,4 +1,5 @@
 import type { AnyExtension } from "@tiptap/core";
+import type { PluginOption } from "vite";
 
 export type NawcSkill = {
   readonly name: string;
@@ -46,6 +47,8 @@ export type NawcPlugin = {
   readonly nodes?: readonly NawcNode[];
   readonly syntax?: readonly NawcSyntax[];
   readonly skills?: readonly NawcSkill[];
+  /** Vite integration created after NAWC has resolved the configured project directory. */
+  readonly vite?: (context: { readonly baseDir: string }) => PluginOption;
 };
 
 export type NawcClientPlugin = {

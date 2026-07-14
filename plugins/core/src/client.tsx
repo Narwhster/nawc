@@ -28,6 +28,22 @@ import { highlightSource } from "./source-highlighting.js";
 type SourceAttrs = { file: string; syntax?: string; name?: string; type?: string };
 type SourceResult = SourceAttrs & { code: string; startLine: number; endLine: number };
 
+const resizeReporter = `<script>
+(() => {
+  const report = () => {
+    const body = document.body;
+    if (!body) return;
+    const style = getComputedStyle(body);
+    const margins = parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+    parent.postMessage({ type: "nawc:interactive-resize", height: Math.ceil(body.scrollHeight + margins) }, "*");
+  };
+  new ResizeObserver(report).observe(document.documentElement);
+  new ResizeObserver(report).observe(document.body);
+  addEventListener("load", report);
+  requestAnimationFrame(report);
+})();
+</script>`;
+
 function IconAction({
   label,
   children,
@@ -147,24 +163,85 @@ function HighlightedTextarea({
   );
 }
 
+function useSource(attrs: SourceAttrs | undefined) {
+  const [source, setSource] = useState<SourceResult>();
+  const [error, setError] = useState<string>();
+  const load = useCallback(async () => {
+    if (!attrs) return;
+    const response = await fetch("/api/source", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(attrs),
+    });
+    const body = (await response.json()) as SourceResult | { error: string };
+    if (!response.ok) setError("error" in body ? body.error : "Unable to load source");
+    else {
+      setSource(body as SourceResult);
+      setError(undefined);
+    }
+  }, [attrs?.file, attrs?.name, attrs?.syntax, attrs?.type]);
+  useEffect(() => {
+    if (!attrs) return;
+    void load();
+    const refresh = () => void load();
+    window.addEventListener("nawc:files-changed", refresh);
+    return () => window.removeEventListener("nawc:files-changed", refresh);
+  }, [attrs?.file, load]);
+  return { error, source };
+}
+
 function InteractiveView({ node, deleteNode, updateAttributes }: NodeViewProps) {
+  const file = String(node.attrs.file ?? "");
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState<number>();
   const [editing, setEditing] = useState(false);
   const [source, setSource] = useState(String(node.attrs.source ?? ""));
+  const { error, source: externalSource } = useSource(file ? { file } : undefined);
+  const html = file ? externalSource?.code : String(node.attrs.source ?? "");
+  useEffect(() => {
+    const resize = (event: MessageEvent) => {
+      if (event.source !== frame.current?.contentWindow) return;
+      const message = event.data as { type?: unknown; height?: unknown };
+      if (
+        message?.type === "nawc:interactive-resize" &&
+        typeof message.height === "number" &&
+        Number.isFinite(message.height)
+      )
+        setHeight(Math.max(256, Math.min(768, message.height)));
+    };
+    window.addEventListener("message", resize);
+    return () => window.removeEventListener("message", resize);
+  }, []);
   return (
     <NodeViewWrapper className="nawc-node-shell">
-      <iframe
-        title="Interactive prototype"
-        sandbox="allow-scripts"
-        srcDoc={String(node.attrs.source ?? "")}
-        className="nawc-interactive-frame"
-      />
+      {error ? (
+        <div className="nawc-node-error" role="alert">
+          <p>{error}</p>
+        </div>
+      ) : (
+        <iframe
+          ref={frame}
+          title="Interactive prototype"
+          sandbox="allow-scripts"
+          srcDoc={`${html ?? ""}${resizeReporter}`}
+          style={{ height }}
+          className="nawc-interactive-frame"
+        />
+      )}
       <Ribbon
         onDelete={deleteNode}
-        onEdit={() => {
-          setSource(String(node.attrs.source ?? ""));
-          setEditing(true);
-        }}
-        onPrompt={() => promptForNode("interactive", { source: node.attrs.source })}
+        onEdit={
+          file
+            ? undefined
+            : () => {
+                setSource(String(node.attrs.source ?? ""));
+                setEditing(true);
+              }
+        }
+        onPrompt={() =>
+          promptForNode("interactive", file ? { file } : { source: node.attrs.source })
+        }
+        source={externalSource}
       />
       <Dialog open={editing} onOpenChange={setEditing}>
         <DialogContent size="editor" instant>
@@ -190,28 +267,8 @@ function InteractiveView({ node, deleteNode, updateAttributes }: NodeViewProps) 
 
 function SourceView({ node, deleteNode, runnable }: NodeViewProps & { runnable: boolean }) {
   const attrs = node.attrs as SourceAttrs;
-  const [source, setSource] = useState<SourceResult>();
-  const [error, setError] = useState<string>();
+  const { error, source } = useSource(attrs);
   const [runId, setRunId] = useState(0);
-  const load = useCallback(async () => {
-    const response = await fetch("/api/source", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(attrs),
-    });
-    const body = (await response.json()) as SourceResult | { error: string };
-    if (!response.ok) setError("error" in body ? body.error : "Unable to load source");
-    else {
-      setSource(body as SourceResult);
-      setError(undefined);
-    }
-  }, [attrs.file, attrs.name, attrs.syntax, attrs.type]);
-  useEffect(() => {
-    void load();
-    const refresh = () => void load();
-    window.addEventListener("nawc:files-changed", refresh);
-    return () => window.removeEventListener("nawc:files-changed", refresh);
-  }, [load]);
   return (
     <NodeViewWrapper className="nawc-node-shell">
       <details className="nawc-source-block" open={error ? true : undefined}>
@@ -349,7 +406,10 @@ export const Interactive = Node.create({
   atom: true,
   draggable: true,
   addAttributes() {
-    return { source: { default: "", parseHTML: (element) => element.innerHTML } };
+    return {
+      file: { default: undefined },
+      source: { default: "", parseHTML: (element) => element.innerHTML },
+    };
   },
   parseHTML() {
     return [{ tag: "interactive" }];
