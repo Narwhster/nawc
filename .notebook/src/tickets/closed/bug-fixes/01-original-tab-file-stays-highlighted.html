@@ -1,0 +1,13 @@
+<h1>01-original-tab-file-stays-highlighted</h1>
+<h2>Issue</h2>
+<p>
+  You click a file, then it stays highlighted even if you then click another file (which opens it in
+  the same tab).
+</p>
+
+<h2>Resolution</h2>
+<p>
+  Reusing the active tab now synchronizes the file tree selection with the tab's updated note path.
+  Back/forward navigation and active-tab rename or move updates keep the selection synchronized too.
+</p>
+<ref file="packages/ui/src/App.tsx" syntax="tsx" name="App" type="function"></ref>

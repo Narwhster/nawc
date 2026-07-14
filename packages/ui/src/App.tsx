@@ -122,6 +122,7 @@ export default function App() {
         panel.api.setTitle(displayName(path));
         panel.api.updateParameters({ path });
         panel.api.setActive();
+        setActive(path);
         updateNavigation(panel);
         return;
       }
@@ -153,6 +154,7 @@ export default function App() {
       panel.api.setTitle(displayName(path));
       panel.api.updateParameters({ path });
       panel.api.setActive();
+      setActive(path);
       updateNavigation(panel);
     },
     [openNote, updateNavigation],
@@ -237,6 +239,7 @@ export default function App() {
       const nextPath = updatePath(oldPath);
       panel.api.setTitle(displayName(nextPath));
       panel.api.updateParameters({ path: nextPath });
+      if (panel === dockview.current?.activePanel) setActive(nextPath);
     }
     updateNavigation(dockview.current?.activePanel);
   };
