@@ -1,8 +1,9 @@
 <h1>Using the agent panel</h1>
 <p>
-  The right panel is a durable conversation attached to the notebook. A sent prompt appears as a
-  user message immediately, and follow-ups resume the same provider thread. Use the plus button for
-  a clean conversation and the trash button to delete the current history.
+  The right panel is an in-memory conversation for the current NAWC server process. A sent prompt
+  appears as a user message immediately, and follow-ups resume the same provider thread while the
+  process is running. Restarting NAWC clears conversation history. Use the plus button for a clean
+  conversation and the trash button to delete the current history.
 </p>
 <h2>Context</h2>
 <ul>
@@ -15,7 +16,8 @@
 <h2>Provider controls</h2>
 <p>
   Model, reasoning effort, and interaction modes come from the configured provider. Selections and
-  unsent drafts persist across reloads. While a turn runs, the send action becomes a stop action.
+  unsent drafts are stored in browser local storage. While a turn runs, the send action becomes a
+  stop action.
 </p>
 <h2>Reading a turn</h2>
 <p>

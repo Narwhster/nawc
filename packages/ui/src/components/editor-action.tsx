@@ -1,10 +1,11 @@
+import type { NawcEditorIcon } from "@nawc/config";
 import { Code2Icon } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { api, json } from "../lib/api";
 
-type EditorInfo = { name: string; label: string; icon?: string };
+type EditorInfo = { name: string; label: string; icon?: NawcEditorIcon };
 type Meta = { editor: EditorInfo };
 
 let editorInfo: Promise<EditorInfo> | undefined;
@@ -13,10 +14,13 @@ function configuredEditor() {
   return editorInfo;
 }
 
-function VsCodeIcon() {
+function EditorIcon({ icon }: { icon?: NawcEditorIcon }) {
+  if (!icon) return <Code2Icon />;
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M17.6 2.1 8.4 10.4 3.2 6.5 1 7.8v8.4l2.2 1.3 5.2-3.9 9.2 8.3L23 19.3V4.7l-5.4-2.6Zm0 5.2v9.4l-6.2-4.7 6.2-4.7Z" />
+    <svg aria-hidden="true" viewBox={icon.viewBox} fill="currentColor" data-editor-icon={icon.name}>
+      {icon.paths.map((path, index) => (
+        <path key={`${path}-${index}`} d={path} />
+      ))}
     </svg>
   );
 }
@@ -64,7 +68,7 @@ export function EditorAction({
               );
             }}
           >
-            {editor?.icon === "vscode" ? <VsCodeIcon /> : <Code2Icon />}
+            <EditorIcon icon={editor?.icon} />
           </Button>
         </TooltipTrigger>
         <TooltipContent side={side}>{label}</TooltipContent>

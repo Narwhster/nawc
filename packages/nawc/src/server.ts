@@ -124,9 +124,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     provider: config.provider,
     cwd: baseDir,
     skillsDir,
-    storageFile: path.join(projectDir, ".nawc", "agent-threads.json"),
   });
-  await agentManager.load();
   let providerSkillsPromise: Promise<readonly NawcProviderSkill[]> | undefined;
   let providerModelsPromise: Promise<readonly NawcProviderModel[]> | undefined;
   let providerSettingsPromise: Promise<NawcProviderSettings> | undefined;

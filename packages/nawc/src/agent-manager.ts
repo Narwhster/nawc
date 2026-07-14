@@ -1,5 +1,3 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import path from "node:path";
 import type {
   NawcProvider,
   NawcProviderSession,
@@ -17,89 +15,22 @@ type SendTurnInput = Omit<NawcProviderTurnInput, "cwd" | "skillsDir" | "signal">
   readonly threadId: string;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isAgentThread(value: unknown): value is AgentThread {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.id === "string" &&
-    typeof value.provider === "string" &&
-    typeof value.createdAt === "string" &&
-    typeof value.updatedAt === "string" &&
-    (value.status === "idle" || value.status === "running" || value.status === "error") &&
-    Array.isArray(value.turns) &&
-    value.turns.every(
-      (turn) =>
-        isRecord(turn) &&
-        typeof turn.id === "string" &&
-        typeof turn.createdAt === "string" &&
-        typeof turn.updatedAt === "string",
-    ) &&
-    Array.isArray(value.messages) &&
-    value.messages.every(
-      (entry) =>
-        isRecord(entry) &&
-        typeof entry.id === "string" &&
-        typeof entry.text === "string" &&
-        typeof entry.turnId === "string",
-    ) &&
-    Array.isArray(value.activities) &&
-    Array.isArray(value.requests) &&
-    Array.isArray(value.warnings) &&
-    value.warnings.every((warning) => typeof warning === "string") &&
-    Array.isArray(value.unknownEvents)
-  );
-}
-
 export class AgentManager {
   readonly #provider: NawcProvider;
   readonly #cwd: string;
   readonly #skillsDir: string;
-  readonly #storageFile: string;
   readonly #threads = new Map<string, AgentThread>();
   readonly #sessions = new Map<string, NawcProviderSession>();
   readonly #controllers = new Map<string, AbortController>();
-  #persisting = Promise.resolve();
 
   constructor(input: {
     readonly provider: NawcProvider;
     readonly cwd: string;
     readonly skillsDir: string;
-    readonly storageFile: string;
   }) {
     this.#provider = input.provider;
     this.#cwd = input.cwd;
     this.#skillsDir = input.skillsDir;
-    this.#storageFile = input.storageFile;
-  }
-
-  async load(): Promise<void> {
-    try {
-      const value: unknown = JSON.parse(await readFile(this.#storageFile, "utf8"));
-      const entries = Array.isArray(value)
-        ? value
-        : isRecord(value) && value.version === 1 && Array.isArray(value.threads)
-          ? value.threads
-          : [];
-      let recovered = false;
-      for (const thread of entries) {
-        if (!isAgentThread(thread) || thread.provider !== this.#provider.name) continue;
-        if (thread.status === "running") {
-          recovered = true;
-          thread.status = "idle";
-          thread.warnings.push("The previous agent process stopped before this turn completed.");
-          for (const turn of thread.turns)
-            if (turn.status === "running") turn.status = "interrupted";
-          for (const entry of thread.messages) entry.streaming = false;
-        }
-        this.#threads.set(thread.id, thread);
-      }
-      if (recovered) await this.#persist();
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
   }
 
   metadata() {
@@ -133,7 +64,6 @@ export class AgentManager {
     thread.options = settings.options;
     thread.mode = settings.mode;
     this.#threads.set(thread.id, thread);
-    await this.#persist();
     return thread;
   }
 
@@ -145,7 +75,6 @@ export class AgentManager {
     this.#controllers.delete(id);
     this.#sessions.delete(id);
     this.#threads.delete(thread.id);
-    await this.#persist();
   }
 
   async *sendTurn(input: SendTurnInput): AsyncIterable<ProviderEvent> {
@@ -162,7 +91,6 @@ export class AgentManager {
     });
     const controller = new AbortController();
     this.#controllers.set(thread.id, controller);
-    await this.#persist();
     try {
       let session = this.#sessions.get(thread.id);
       if (!session) {
@@ -202,13 +130,11 @@ export class AgentManager {
           this.#sessions.set(thread.id, session);
         }
         if (event.type === "turn.completed" || event.type === "done") completed = true;
-        await this.#persist();
         yield { ...event, turnId: event.turnId ?? turn.id };
       }
       if (!completed && !controller.signal.aborted) {
         const event = { type: "turn.completed", turnId: turn.id } as const;
         projectProviderEvent(thread, turn.id, event);
-        await this.#persist();
         yield event;
       }
     } catch (error) {
@@ -220,7 +146,6 @@ export class AgentManager {
           : { message: error instanceof Error ? error.message : String(error) }),
       } as ProviderEvent;
       projectProviderEvent(thread, turn.id, event);
-      await this.#persist();
       yield event;
     } finally {
       this.#controllers.delete(thread.id);
@@ -243,27 +168,11 @@ export class AgentManager {
   async close(): Promise<void> {
     for (const threadId of this.#controllers.keys()) await this.interrupt(threadId);
     for (const session of this.#sessions.values()) await this.#provider.closeSession?.(session);
-    await this.#persisting;
   }
 
   #requireThread(id: string): AgentThread {
     const thread = this.#threads.get(id);
     if (!thread) throw new Error(`Unknown agent thread: ${id}`);
     return thread;
-  }
-
-  #persist(): Promise<void> {
-    this.#persisting = this.#persisting
-      .catch(() => undefined)
-      .then(async () => {
-        await mkdir(path.dirname(this.#storageFile), { recursive: true });
-        const temporary = `${this.#storageFile}.tmp`;
-        await writeFile(
-          temporary,
-          `${JSON.stringify({ version: 1, threads: this.listThreads() }, undefined, 2)}\n`,
-        );
-        await rename(temporary, this.#storageFile);
-      });
-    return this.#persisting;
   }
 }

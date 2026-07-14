@@ -1,6 +1,3 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { NawcProvider } from "@nawc/config";
 import { AgentManager } from "../src/agent-manager.ts";
@@ -19,16 +16,12 @@ const provider: NawcProvider = {
 };
 
 describe("AgentManager", () => {
-  it("resumes one provider thread across turns and reloads its projection", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "nawc-agent-"));
-    const storageFile = path.join(directory, "threads.json");
+  it("resumes one provider thread across turns in memory", async () => {
     const manager = new AgentManager({
       provider,
-      cwd: directory,
-      skillsDir: directory,
-      storageFile,
+      cwd: process.cwd(),
+      skillsDir: process.cwd(),
     });
-    await manager.load();
     const thread = await manager.createThread({ model: "model-1", mode: "default" });
     for await (const _event of manager.sendTurn({
       threadId: thread.id,
@@ -50,51 +43,21 @@ describe("AgentManager", () => {
       "two",
       "Reply to two",
     ]);
-    expect(JSON.parse(await readFile(storageFile, "utf8"))).toMatchObject({
-      version: 1,
-      threads: [{ id: thread.id }],
-    });
-
-    const restored = new AgentManager({
-      provider,
-      cwd: directory,
-      skillsDir: directory,
-      storageFile,
-    });
-    await restored.load();
-    expect(restored.getThread(thread.id)?.messages).toHaveLength(4);
   });
 
-  it("recovers an in-flight turn after a server restart", async () => {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "nawc-agent-recovery-"));
-    const storageFile = path.join(directory, "threads.json");
+  it("does not restore threads after a manager is recreated", async () => {
     const manager = new AgentManager({
       provider,
-      cwd: directory,
-      skillsDir: directory,
-      storageFile,
+      cwd: process.cwd(),
+      skillsDir: process.cwd(),
     });
-    await manager.load();
     const thread = await manager.createThread({});
-    thread.status = "running";
-    thread.turns.push({
-      id: "turn-running",
-      status: "running",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    await writeFile(storageFile, JSON.stringify({ version: 1, threads: [thread] }));
 
-    const restored = new AgentManager({
+    const recreated = new AgentManager({
       provider,
-      cwd: directory,
-      skillsDir: directory,
-      storageFile,
+      cwd: process.cwd(),
+      skillsDir: process.cwd(),
     });
-    await restored.load();
-    expect(restored.getThread(thread.id)).toMatchObject({
-      status: "idle",
-      turns: [{ status: "interrupted" }],
-    });
+    expect(recreated.getThread(thread.id)).toBeUndefined();
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createAgentThread, projectProviderEvent, startAgentTurn } from "../src/agent-thread.ts";
 
 describe("agent thread projection", () => {
-  it("keeps user and streamed assistant messages in one durable turn", () => {
+  it("keeps user and streamed assistant messages in one turn", () => {
     const thread = createAgentThread("fake", "thread-1");
     const turn = startAgentTurn(thread, { text: "Explain this note", references: [] }, "turn-1");
     projectProviderEvent(thread, turn.id, {

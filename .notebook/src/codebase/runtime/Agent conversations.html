@@ -6,7 +6,7 @@
 </p>
 <pre><code>provider session
   → normalized ProviderEvent stream
-  → AgentManager lifecycle and persistence
+  → AgentManager lifecycle and in-memory projection
   → pure thread projection
   → message, activity, request, and plan UI</code></pre>
 <h2>Contracts</h2>
@@ -34,21 +34,21 @@
 <runnable
   file="packages/nawc/tests/agent-thread.test.ts"
   syntax="vitest"
-  name="keeps user and streamed assistant messages in one durable turn"
+  name="keeps user and streamed assistant messages in one turn"
   type="it"
 ></runnable>
-<h2>Lifecycle and persistence</h2>
+<h2>Lifecycle and in-memory state</h2>
 <p>
-  <code>AgentManager</code> owns active sessions and abort controllers. It persists thread versioned
-  projections atomically to <code>.nawc/agent-threads.json</code>, restores them on startup,
-  recovers abandoned running turns as interrupted, passes a native thread ID back to providers, and
-  finishes interrupted or failed turns explicitly.
+  <code>AgentManager</code> owns active sessions, abort controllers, and the thread projection for
+  the current server process. Threads are intentionally not written to the project or restored on
+  startup, so restarting NAWC clears local conversation state. While the process is alive it passes
+  the native thread ID back to providers and finishes interrupted or failed turns explicitly.
 </p>
 <ref file="packages/nawc/src/agent-manager.ts" syntax="ts" name="AgentManager" type="class"></ref>
 <runnable
   file="packages/nawc/tests/agent-manager.test.ts"
   syntax="vitest"
-  name="resumes one provider thread across turns and reloads its projection"
+  name="resumes one provider thread across turns in memory"
   type="it"
 ></runnable>
 <h2>HTTP surface</h2>
@@ -61,9 +61,10 @@
 <h2>Conversation UI</h2>
 <p>
   The panel composes message-scroller, message, bubble, attachment, and marker primitives with
-  shadcn controls. Drafts and provider selections survive reloads. The current note is always
-  visible as context, while <code>@</code>, <code>$</code>, slash completion, diagnostics, image
-  paste/upload, stop, copy, model, reasoning, and provider modes remain available at the composer.
+  shadcn controls. Drafts and provider selections use browser storage, but conversation threads live
+  only for the current server process. The current note is always visible as context, while
+  <code>@</code>, <code>$</code>, slash completion, diagnostics, image paste/upload, stop, copy,
+  model, reasoning, and provider modes remain available at the composer.
 </p>
 <ref
   file="packages/ui/src/components/agent-panel.tsx"

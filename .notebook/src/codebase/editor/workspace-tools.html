@@ -58,13 +58,14 @@
 />
 <p>
   The panel asks separate endpoints for files, skills, commands, models, provider metadata, and
-  durable threads. Provider modes and reasoning options are controls rather than hard-coded command
-  behavior. Provider commands remain in the prompt for the adapter to interpret.
+  in-memory threads. Provider modes and reasoning options are controls rather than hard-coded
+  command behavior. Provider commands remain in the prompt for the adapter to interpret.
 </p>
 <p>
   Sending includes the current note as a typed reference, then consumes a turn stream while the
-  server persists its projection. Core-node actions use <code>nawc:prompt</code> or structured
-  <code>nawc:agent-context</code> events to prefill and focus the composer.
+  server holds its projection for the process lifetime. Core-node actions use
+  <code>nawc:prompt</code> or structured <code>nawc:agent-context</code> events to prefill and focus
+  the composer.
 </p>
 
 <p>

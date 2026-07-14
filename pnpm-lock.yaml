@@ -262,6 +262,9 @@ importers:
       '@fontsource-variable/jetbrains-mono':
         specifier: ^5.2.8
         version: 5.2.8
+      '@nawc/config':
+        specifier: workspace:*
+        version: link:../config
       '@nawc/plugin':
         specifier: workspace:*
         version: link:../plugin
