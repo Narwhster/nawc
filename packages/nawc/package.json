@@ -21,7 +21,9 @@
   "dependencies": {
     "@hono/node-server": "^1.19.10",
     "@nawc/config": "workspace:*",
+    "@nawc/editor-vscode": "workspace:*",
     "@nawc/plugin": "workspace:*",
+    "@nawc/theme-nawc": "workspace:*",
     "@nawc/ui": "workspace:*",
     "chokidar": "^5.0.0",
     "commander": "^15.0.0",

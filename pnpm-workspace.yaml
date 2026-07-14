@@ -3,6 +3,8 @@ packages:
   - plugins/*
   - provider/*
   - syntax/*
+  - editor/*
+  - theme/*
   - examples/*
   - .notebook
 

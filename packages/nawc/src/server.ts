@@ -39,7 +39,8 @@ import {
 import { syncSkills } from "./skills.ts";
 import { isSameOrigin, parseRunClientEvent } from "./run-protocol.ts";
 import { launchEditor } from "./editor.ts";
-import { nawcLight, vscode } from "@nawc/config";
+import { vscode } from "@nawc/editor-vscode";
+import { nawcLight } from "@nawc/theme-nawc";
 import { NoteSearchIndex } from "./note-search.ts";
 import { AgentManager } from "./agent-manager.ts";
 import { validateAgentAttachments } from "./agent-input.ts";
