@@ -86,6 +86,7 @@ export default function App() {
   const [dialog, setDialog] = useState<WorkspaceDialogState>();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchRevision, setSearchRevision] = useState(0);
+  const [srcDir, setSrcDir] = useState<string>("");
 
   useEffect(() => {
     if (sidebarOpen) sidebarPanel.current?.expand();
@@ -162,6 +163,7 @@ export default function App() {
 
   useEffect(() => {
     void refresh();
+    void api<{ srcDir: string }>("/api/meta").then((meta) => setSrcDir(meta.srcDir));
     const events = new EventSource("/api/events");
     events.onmessage = (message) => {
       const detail = JSON.parse(message.data) as { event: string; file?: string };
@@ -203,6 +205,10 @@ export default function App() {
     copyPath: async (path) => {
       await navigator.clipboard.writeText(`src/${path}`);
       toast.success("Path copied");
+    },
+    copyAbsolutePath: async (path) => {
+      await navigator.clipboard.writeText(`${srcDir}/${path}`);
+      toast.success("Absolute path copied");
     },
     createNote: (parent = "") => setDialog({ kind: "create-note", parent }),
     createFolder: (parent = "") => setDialog({ kind: "create-folder", parent }),

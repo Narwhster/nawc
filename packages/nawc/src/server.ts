@@ -216,6 +216,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     context.json({
       provider: config.provider.name,
       baseDir,
+      srcDir,
       editor: {
         name: (config.editor ?? vscode()).name,
         label: (config.editor ?? vscode()).label,
