@@ -1,0 +1,54 @@
+<h1>Java Notebook</h1>
+<p>
+  This notebook demonstrates Java syntax support in NAWC. It showcases how to reference Java source
+  files, extract specific declarations, and run code using both the Java and JUnit syntax adapters.
+</p>
+<h2>Tour the notebook</h2>
+<ul>
+  <li>
+    <p>
+      <a target="_blank" rel="noopener noreferrer nofollow" href="#Calculator">[[Calculator]]</a>
+      explores a basic utility class with static methods.
+    </p>
+  </li>
+  <li>
+    <p>
+      <a target="_blank" rel="noopener noreferrer nofollow" href="#Testing%20with%20JUnit"
+        >[[Testing with JUnit]]</a
+      >
+      shows how to reference and run JUnit 5 tests.
+    </p>
+  </li>
+  <li>
+    <p>
+      <a target="_blank" rel="noopener noreferrer nofollow" href="#Generics">[[Generics]]</a>
+      demonstrates a generic Stack data structure.
+    </p>
+  </li>
+  <li>
+    <p>
+      <a target="_blank" rel="noopener noreferrer nofollow" href="#Interfaces%20and%20Enums"
+        >[[Interfaces and Enums]]</a
+      >
+      explores a Shape hierarchy with interfaces and a Color enum.
+    </p>
+  </li>
+</ul>
+<h2>How it works</h2>
+<p>
+  NAWC uses two syntax adapters for Java: <code>@nawc/syntax-java</code> for general Java source and
+  <code>@nawc/syntax-junit</code> for JUnit test methods. Both use <code>java-parser</code> to parse
+  Java source files and extract declarations.
+</p>
+<h3>Referencing code</h3>
+<p>
+  Use <code>&lt;ref file="..." syntax="java" name="..." type="..."&gt;</code> to display specific
+  declarations. Supported types: <code>class</code>, <code>interface</code>, <code>enum</code>,
+  <code>method</code>, <code>constructor</code>.
+</p>
+<h3>Running code</h3>
+<p>
+  Use <code>&lt;runnable file="..." syntax="java"&gt;</code> to run a whole file or class. For
+  static methods, the adapter uses JShell. For JUnit tests, use <code>syntax="junit"</code> to run
+  specific test methods via the JUnit Platform Console.
+</p>

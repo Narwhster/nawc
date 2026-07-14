@@ -1,0 +1,23 @@
+<h1>Interfaces and Enums</h1>
+<p>
+  Java interfaces define contracts that classes must implement. Enums define a fixed set of
+  constants. This example explores a Shape hierarchy and a Color enum.
+</p>
+<h2>The Shape interface</h2>
+<p>An interface defines the methods that implementing classes must provide:</p>
+<ref file="src/Shape.java" syntax="java"></ref>
+<h2>Implementing classes</h2>
+<h3>Circle</h3>
+<p>The Circle class implements Shape with radius-based calculations:</p>
+<ref file="src/Circle.java" syntax="java"></ref>
+<h3>Rectangle</h3>
+<p>The Rectangle class adds a convenience method to check if it's a square:</p>
+<ref file="src/Rectangle.java" syntax="java" name="Rectangle" type="class"></ref>
+<h3>isSquare method</h3>
+<ref file="src/Rectangle.java" syntax="java" name="isSquare" type="method"></ref>
+<h2>The Color enum</h2>
+<p>Enums can have fields, constructors, and methods. This enum maps color names to hex values:</p>
+<ref file="src/Color.java" syntax="java"></ref>
+<h3>fromHex method</h3>
+<p>A static factory method that looks up a color by its hex value:</p>
+<ref file="src/Color.java" syntax="java" name="fromHex" type="method"></ref>

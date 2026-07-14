@@ -1,0 +1,26 @@
+<h1>Testing with JUnit</h1>
+<p>
+  NAWC can reference and run individual JUnit test methods using the
+  <code>@nawc/syntax-junit</code> adapter. It uses <code>java-parser</code> to find methods
+  annotated with <code>@Test</code>.
+</p>
+<h2>The test class</h2>
+<ref file="src/CalculatorTest.java" syntax="junit"></ref>
+<h2>Individual tests</h2>
+<p>Select specific test methods by name:</p>
+<h3>Addition tests</h3>
+<ref file="src/CalculatorTest.java" syntax="junit" name="testAdd"></ref>
+<h3>Division tests</h3>
+<p>The division test includes a check for the divide-by-zero exception:</p>
+<ref file="src/CalculatorTest.java" syntax="junit" name="testDivide"></ref>
+<h2>Running tests</h2>
+<p>
+  To run JUnit tests from the command line, you need the JUnit Platform Console Standalone JAR. The
+  runner executes:
+</p>
+<pre><code>java -jar junit-platform-console-standalone.jar -cp . --select-method CalculatorTest#testAdd</code></pre>
+<p>Configure the JAR path and classpath when creating the syntax adapter:</p>
+<pre><code>junit({
+  jar: "path/to/junit-platform-console-standalone.jar",
+  classpath: "build/classes/java/test"
+})</code></pre>

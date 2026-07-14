@@ -1,0 +1,24 @@
+<h1>Generics</h1>
+<p>
+  Java generics allow you to write type-safe reusable code. This example shows a generic
+  <code>Stack&lt;T&gt;</code> data structure.
+</p>
+<h2>The Stack class</h2>
+<p>A generic stack using <code>ArrayList</code> as the underlying storage:</p>
+<ref file="src/Stack.java" syntax="java"></ref>
+<h2>Key methods</h2>
+<h3>Push</h3>
+<p>Adds an element to the top of the stack:</p>
+<ref file="src/Stack.java" syntax="java" name="push" type="method"></ref>
+<h3>Pop</h3>
+<p>
+  Removes and returns the top element. Throws <code>EmptyStackException</code> if the stack is
+  empty:
+</p>
+<ref file="src/Stack.java" syntax="java" name="pop" type="method"></ref>
+<h3>Peek</h3>
+<p>Returns the top element without removing it:</p>
+<ref file="src/Stack.java" syntax="java" name="peek" type="method"></ref>
+<h2>Run the stack demo</h2>
+<p>The <code>main</code> method demonstrates basic stack operations:</p>
+<runnable file="src/Stack.java" syntax="java"></runnable>

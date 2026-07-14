@@ -592,6 +592,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
         name: "xterm-256color",
         rows: size.rows,
       });
+      if (run.script) child.write(run.script);
       child.onData((data) => {
         if (webSocket.readyState === webSocket.OPEN)
           webSocket.send(JSON.stringify({ type: "output", data }));

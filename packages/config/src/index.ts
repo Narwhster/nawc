@@ -17,7 +17,11 @@ export type ResolvedSource = SourceSelection & {
 };
 
 export type RunRequest = SourceSelection & { readonly cwd: string };
-export type RunResult = { readonly command: readonly string[]; readonly cwd: string };
+export type RunResult = {
+  readonly command: readonly string[];
+  readonly cwd: string;
+  readonly script?: string;
+};
 
 export type EditorLocation = {
   readonly file: string;

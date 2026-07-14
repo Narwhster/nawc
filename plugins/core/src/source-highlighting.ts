@@ -7,6 +7,7 @@ const languageAliases: Record<string, string> = {
   htm: "xml",
   html: "xml",
   js: "javascript",
+  java: "java",
   javascript: "javascript",
   jsx: "javascript",
   json: "json",

@@ -1,0 +1,22 @@
+{
+  "name": "@nawc/java-notebook",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "notebook": "nawc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nawc/core": "workspace:*",
+    "@nawc/provider-codex": "workspace:*",
+    "@nawc/syntax-java": "workspace:*",
+    "@nawc/syntax-junit": "workspace:*",
+    "nawc": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}
