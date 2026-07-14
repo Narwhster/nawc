@@ -79,7 +79,8 @@ export class AgentManager {
 
   async *sendTurn(input: SendTurnInput): AsyncIterable<ProviderEvent> {
     const thread = this.#requireThread(input.threadId);
-    if (thread.status === "running") throw new Error("This agent thread is already running");
+    if (thread.status === "running" || this.#controllers.has(thread.id))
+      throw new Error("This agent thread is already running");
     thread.model = input.model ?? thread.model;
     thread.reasoningEffort = input.reasoningEffort ?? thread.reasoningEffort;
     thread.options = input.options ?? thread.options;
@@ -132,8 +133,10 @@ export class AgentManager {
         if (event.type === "turn.completed" || event.type === "done") completed = true;
         yield { ...event, turnId: event.turnId ?? turn.id };
       }
-      if (!completed && !controller.signal.aborted) {
-        const event = { type: "turn.completed", turnId: turn.id } as const;
+      if (!completed) {
+        const event: ProviderEvent = controller.signal.aborted
+          ? { type: "turn.interrupted", turnId: turn.id }
+          : { type: "turn.completed", turnId: turn.id };
         projectProviderEvent(thread, turn.id, event);
         yield event;
       }
@@ -153,6 +156,11 @@ export class AgentManager {
   }
 
   async interrupt(threadId: string): Promise<void> {
+    const thread = this.#threads.get(threadId);
+    const turn = thread?.turns.findLast((item) => item.status === "running");
+    if (thread?.status === "running" && turn) {
+      projectProviderEvent(thread, turn.id, { type: "turn.interrupted", turnId: turn.id });
+    }
     const session = this.#sessions.get(threadId);
     this.#controllers.get(threadId)?.abort();
     if (session) await this.#provider.interrupt?.(session);

@@ -60,4 +60,41 @@ describe("AgentManager", () => {
     });
     expect(recreated.getThread(thread.id)).toBeUndefined();
   });
+
+  it("marks a turn interrupted when the provider stream ends after abort", async () => {
+    const interruptibleProvider: NawcProvider = {
+      name: "interruptible",
+      async startSession({ providerThreadId }) {
+        return { id: "session-1", providerThreadId };
+      },
+      async *sendTurn(_session, { signal }) {
+        yield { type: "turn.started" };
+        if (signal?.aborted) return;
+        await new Promise<void>((resolve) => {
+          signal?.addEventListener("abort", () => resolve(), { once: true });
+        });
+      },
+    };
+    const manager = new AgentManager({
+      provider: interruptibleProvider,
+      cwd: process.cwd(),
+      skillsDir: process.cwd(),
+    });
+    const thread = await manager.createThread({});
+    const stream = manager.sendTurn({
+      threadId: thread.id,
+      prompt: "interrupt me",
+      references: [],
+    });
+    const iterator = stream[Symbol.asyncIterator]();
+
+    await iterator.next();
+    await manager.interrupt(thread.id);
+    expect(thread.status).toBe("idle");
+    expect(thread.turns[0]?.status).toBe("interrupted");
+    const result = await iterator.next();
+
+    expect(result.done).toBe(false);
+    expect(result.value).toMatchObject({ type: "turn.interrupted" });
+  });
 });

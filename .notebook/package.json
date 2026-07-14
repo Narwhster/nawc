@@ -13,6 +13,7 @@
     "@nawc/core": "workspace:*",
     "@nawc/plugin": "workspace:*",
     "@nawc/provider-codex": "workspace:*",
+    "@nawc/provider-opencode": "workspace:*",
     "@nawc/syntax-typescript": "workspace:*",
     "@nawc/syntax-vitest": "workspace:*",
     "@nawc/ui": "workspace:*",

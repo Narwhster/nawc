@@ -34,6 +34,15 @@ import {
 } from "@/components/ui/chat";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -318,6 +327,75 @@ export function CompletionMenu({
   );
 }
 
+function ModelPicker({
+  models,
+  value,
+  onSelect,
+}: {
+  readonly models: readonly ModelOption[];
+  readonly value: string;
+  readonly onSelect: (model: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = models.find((model) => model.id === value) ?? models[0];
+
+  return (
+    <>
+      <Button
+        aria-label="Model"
+        className="min-w-0 border-0 shadow-none"
+        onClick={() => setOpen(true)}
+        size="sm"
+        type="button"
+        variant="outline"
+      >
+        <span className="truncate">{selected?.name}</span>
+      </Button>
+      <CommandDialog
+        description="Search the available models by name or provider ID."
+        onOpenChange={setOpen}
+        open={open}
+        title="Choose a model"
+      >
+        <Command>
+          <CommandInput placeholder="Search models…" />
+          <CommandList>
+            <CommandEmpty>No matching models.</CommandEmpty>
+            <CommandGroup>
+              {models.map((model) => (
+                <CommandItem
+                  key={model.id}
+                  onSelect={() => {
+                    onSelect(model.id);
+                    setOpen(false);
+                  }}
+                  value={`${model.id} ${model.name}`}
+                >
+                  <span className="min-w-0 flex-1 truncate">{model.name}</span>
+                  <span className="truncate text-muted-foreground">{model.id}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </CommandDialog>
+    </>
+  );
+}
+
+function ThinkingIndicator() {
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <span className="inline-flex items-center gap-0.75">
+        <span className="size-1 animate-pulse rounded-full bg-muted-foreground/40" />
+        <span className="size-1 animate-pulse rounded-full bg-muted-foreground/40 [animation-delay:200ms]" />
+        <span className="size-1 animate-pulse rounded-full bg-muted-foreground/40 [animation-delay:400ms]" />
+      </span>
+      <span>Thinking…</span>
+    </div>
+  );
+}
+
 function TurnActivity({
   turn,
   activities,
@@ -327,7 +405,7 @@ function TurnActivity({
 }) {
   if (activities.length === 0 && !turn.plan) return null;
   return (
-    <Collapsible className="rounded-md border bg-muted/30" defaultOpen={turn.status === "running"}>
+    <Collapsible className="rounded-md border bg-muted/30" defaultOpen={false}>
       <CollapsibleTrigger className="flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs text-muted-foreground">
         {turn.status === "running" ? <Spinner /> : <CheckCircle2Icon />}
         <span className="flex-1">
@@ -386,7 +464,7 @@ export function AgentPanel({ note }: { readonly note?: string }) {
   const draftKey = threadId || `note:${note ?? "none"}`;
   const prompt = drafts[draftKey] ?? "";
   const selectedModel = models.find((item) => item.id === preferences.model);
-  const reasoningOptions = selectedModel?.reasoningEfforts ?? [];
+  const reasoningOptions = useMemo(() => selectedModel?.reasoningEfforts ?? [], [selectedModel]);
 
   const refreshThreads = useCallback(async () => {
     const next = await api<AgentThread[]>("/api/agent/threads");
@@ -541,21 +619,25 @@ export function AgentPanel({ note }: { readonly note?: string }) {
     setTrigger(detectComposerTrigger(value, cursor));
   };
 
+  const selectModel = (model: string) => {
+    const selected = models.find((item) => item.id === model);
+    setPreferences((current) => ({
+      ...current,
+      model,
+      reasoningEffort: selected?.defaultReasoningEffort,
+      options: Object.fromEntries(
+        (selected?.options ?? []).flatMap((option) =>
+          option.defaultValue === undefined ? [] : [[option.id, option.defaultValue]],
+        ),
+      ),
+    }));
+  };
+
   const chooseCompletion = (completion: Completion) => {
     if (!trigger) return;
     if (completion.kind === "model") {
       const replaced = replaceComposerTrigger(prompt, trigger, "", false);
-      const selected = models.find((model) => model.id === completion.value);
-      setPreferences((current) => ({
-        ...current,
-        model: completion.value,
-        reasoningEffort: selected?.defaultReasoningEffort,
-        options: Object.fromEntries(
-          (selected?.options ?? []).flatMap((option) =>
-            option.defaultValue === undefined ? [] : [[option.id, option.defaultValue]],
-          ),
-        ),
-      }));
+      selectModel(completion.value);
       updatePrompt(replaced.text.trimStart());
       setTrigger(undefined);
       return;
@@ -651,8 +733,13 @@ export function AgentPanel({ note }: { readonly note?: string }) {
 
   const interrupt = async () => {
     if (!threadId) return;
-    await api(`/api/agent/threads/${encodeURIComponent(threadId)}/interrupt`, json({}));
-    await refreshThreads();
+    try {
+      await api(`/api/agent/threads/${encodeURIComponent(threadId)}/interrupt`, json({}));
+      setRunning(false);
+      await refreshThreads();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
   };
 
   const turnById = useMemo(() => new Map(thread?.turns.map((turn) => [turn.id, turn])), [thread]);
@@ -742,11 +829,9 @@ export function AgentPanel({ note }: { readonly note?: string }) {
               const pendingRequests = thread.requests.filter(
                 (item) => item.turnId === message.turnId && item.status === "pending",
               );
+              const showTurnActivity = turn !== undefined && message.role === "assistant";
               return (
                 <Message key={message.id} role={message.role}>
-                  {message.role === "assistant" && turn && (
-                    <TurnActivity turn={turn} activities={activities} />
-                  )}
                   <Bubble role={message.role}>
                     {message.role === "assistant" ? (
                       <ChatMarkdown>{message.text}</ChatMarkdown>
@@ -755,6 +840,7 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                     )}
                     {message.streaming && <Spinner className="ml-2 inline-flex" />}
                   </Bubble>
+                  {showTurnActivity && <TurnActivity turn={turn} activities={activities} />}
                   {message.references && message.references.length > 0 && (
                     <div className="flex max-w-[92%] flex-wrap justify-end gap-1">
                       {message.references.map((reference, index) =>
@@ -830,6 +916,27 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                 </Message>
               );
             })}
+            {thread.turns
+              .filter(
+                (turn) =>
+                  turn.status === "running" &&
+                  !thread.messages.some(
+                    (item) => item.role === "assistant" && item.turnId === turn.id,
+                  ),
+              )
+              .map((turn) => {
+                const activities = thread.activities.filter((item) => item.turnId === turn.id);
+                const isThinking = activities.length === 0 && !turn.plan;
+                return (
+                  <Message key={`turn-activity:${turn.id}`} role="assistant">
+                    {isThinking ? (
+                      <ThinkingIndicator />
+                    ) : (
+                      <TurnActivity turn={turn} activities={activities} />
+                    )}
+                  </Message>
+                );
+              })}
             {thread.warnings.map((warning, index) => (
               <Alert variant="destructive" key={`${warning}:${index}`}>
                 <CircleAlertIcon />
@@ -976,39 +1083,11 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                 </Button>
               )}
               {models.length > 0 && (
-                <Select
-                  value={preferences.model ?? models[0]?.id}
-                  onValueChange={(model) =>
-                    setPreferences((current) => ({
-                      ...current,
-                      model,
-                      reasoningEffort: models.find((item) => item.id === model)
-                        ?.defaultReasoningEffort,
-                      options: Object.fromEntries(
-                        (models.find((item) => item.id === model)?.options ?? []).flatMap(
-                          (option) =>
-                            option.defaultValue === undefined
-                              ? []
-                              : [[option.id, option.defaultValue]],
-                        ),
-                      ),
-                    }))
-                  }
-                >
-                  <SelectTrigger size="sm" className="max-w-36 border-0 shadow-none">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectLabel>Model</SelectLabel>
-                      {models.map((model) => (
-                        <SelectItem key={model.id} value={model.id}>
-                          {model.name}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                <ModelPicker
+                  models={models}
+                  onSelect={selectModel}
+                  value={preferences.model ?? models[0]?.id ?? ""}
+                />
               )}
               {reasoningOptions.length > 0 && (
                 <Select

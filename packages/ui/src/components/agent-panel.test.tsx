@@ -38,6 +38,10 @@ describe("CompletionMenu", () => {
         disconnect() {}
       },
     );
+    Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+      configurable: true,
+      value: vi.fn(),
+    });
     container = document.createElement("div");
     anchor = document.createElement("textarea");
     container.append(anchor);
@@ -84,6 +88,160 @@ describe("CompletionMenu", () => {
     expect(completion).toBeInstanceOf(HTMLButtonElement);
     completion?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     expect(choose).toHaveBeenCalledWith({ kind: "file", value: "src/index.ts", detail: "file" });
+  });
+
+  it("keeps model completions stable when models have no reasoning metadata", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/api/agent/provider")) {
+        return Promise.resolve(jsonResponse({ label: "Test agent", capabilities: [], modes: [] }));
+      }
+      if (url.endsWith("/api/prompt/models")) {
+        return Promise.resolve(
+          jsonResponse([
+            { id: "opencode/gpt-5", name: "GPT-5" },
+            { id: "opencode/claude-sonnet-4", name: "Claude Sonnet 4" },
+          ]),
+        );
+      }
+      if (url.endsWith("/api/prompt/settings")) return Promise.resolve(jsonResponse({}));
+      if (url.endsWith("/api/agent/threads")) return Promise.resolve(jsonResponse([]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () =>
+      root.render(
+        <TooltipProvider>
+          <AgentPanel />
+        </TooltipProvider>,
+      ),
+    );
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+
+    const input = container.querySelector<HTMLTextAreaElement>('[aria-label="Message the agent"]');
+    expect(input).not.toBeNull();
+    if (!input) throw new Error("Message input did not render");
+    await act(async () => {
+      Reflect.set(HTMLTextAreaElement.prototype, "value", "/model", input);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => Promise.resolve());
+
+    const listbox = document.body.querySelector('[role="listbox"]');
+    expect(listbox?.textContent).toContain("opencode/gpt-5");
+    expect(listbox?.textContent).toContain("opencode/claude-sonnet-4");
+  });
+
+  it("shows thinking feedback while a turn has no activities yet", async () => {
+    const runningThread = {
+      ...emptyThread,
+      status: "running" as const,
+      messages: [
+        {
+          id: "message-1",
+          role: "user" as const,
+          text: "Think about this",
+          turnId: "turn-1",
+          createdAt: "2026-07-12T00:00:00.000Z",
+          updatedAt: "2026-07-12T00:00:00.000Z",
+          streaming: false,
+        },
+      ],
+      turns: [{ id: "turn-1", status: "running" as const }],
+    };
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/api/agent/provider")) {
+        return Promise.resolve(jsonResponse({ label: "Test agent", capabilities: [], modes: [] }));
+      }
+      if (url.endsWith("/api/prompt/models")) return Promise.resolve(jsonResponse([]));
+      if (url.endsWith("/api/prompt/settings")) return Promise.resolve(jsonResponse({}));
+      if (url.endsWith("/api/agent/threads")) return Promise.resolve(jsonResponse([runningThread]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    localStorage.setItem("nawc:agent-active-thread:v1", runningThread.id);
+
+    await act(async () =>
+      root.render(
+        <TooltipProvider>
+          <AgentPanel />
+        </TooltipProvider>,
+      ),
+    );
+    await act(async () => Promise.resolve());
+
+    expect(container.textContent).toContain("Thinking…");
+  });
+
+  it("clears the local running state after interrupting an in-flight turn", async () => {
+    let interrupted = false;
+    let interruptCalled = false;
+    let closeTurn: (() => void) | undefined;
+    const runningThread = { ...emptyThread, status: "running" as const };
+    const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/api/agent/provider")) {
+        return Promise.resolve(jsonResponse({ label: "Test agent", capabilities: [], modes: [] }));
+      }
+      if (url.endsWith("/api/prompt/models")) return Promise.resolve(jsonResponse([]));
+      if (url.endsWith("/api/prompt/settings")) return Promise.resolve(jsonResponse({}));
+      if (url.endsWith("/api/agent/threads") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse(emptyThread));
+      }
+      if (url.endsWith("/api/agent/threads/thread-1/interrupt")) {
+        interruptCalled = true;
+        interrupted = true;
+        return Promise.resolve(jsonResponse({ ok: true }));
+      }
+      if (url.endsWith("/api/agent/threads/thread-1/turns")) {
+        return Promise.resolve(
+          new Response(
+            new ReadableStream({
+              start(controller) {
+                closeTurn = () => controller.close();
+              },
+            }),
+            { headers: { "content-type": "text/event-stream" } },
+          ),
+        );
+      }
+      if (url.endsWith("/api/agent/threads")) {
+        return Promise.resolve(jsonResponse(interrupted ? [emptyThread] : [runningThread]));
+      }
+      throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () =>
+      root.render(
+        <TooltipProvider>
+          <AgentPanel />
+        </TooltipProvider>,
+      ),
+    );
+    await act(async () => Promise.resolve());
+
+    const input = container.querySelector<HTMLTextAreaElement>('[aria-label="Message the agent"]');
+    if (!input) throw new Error("Message input did not render");
+    await act(async () => {
+      Reflect.set(HTMLTextAreaElement.prototype, "value", "keep working", input);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="Send message"]')?.click(),
+    );
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+
+    const stop = container.querySelector<HTMLButtonElement>('[aria-label="Stop agent"]');
+    expect(stop).not.toBeNull();
+    await act(async () => stop?.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+
+    expect(container.querySelector('[aria-label="Send message"]')).not.toBeNull();
+    expect(interruptCalled).toBe(true);
+    closeTurn?.();
   });
 
   it("keeps a newly created first conversation selected after sending", async () => {
