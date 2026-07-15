@@ -5,6 +5,7 @@ import type {
   IDockviewPanel,
   IDockviewPanelProps,
 } from "dockview-react";
+import { createId } from "@paralleldrive/cuid2";
 import type { PanelImperativeHandle } from "react-resizable-panels";
 import { DockviewReact } from "dockview-react";
 import "dockview-react/dist/styles/dockview.css";
@@ -18,6 +19,7 @@ import {
   PanelLeftOpenIcon,
   SearchIcon,
   SparklesIcon,
+  XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -52,6 +54,8 @@ const theme: DockviewTheme = {
   tabAnimation: "smooth",
 };
 
+const mobileMediaQuery = "(max-width: 767px)";
+
 type NavigationState = {
   canGoBack: boolean;
   canGoForward: boolean;
@@ -75,18 +79,32 @@ export default function App() {
   const noteHistories = useRef(new Map<string, NoteHistory>());
   const sidebarPanel = useRef<PanelImperativeHandle | null>(null);
   const agentPanel = useRef<PanelImperativeHandle | null>(null);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia(mobileMediaQuery).matches);
   const [entries, setEntries] = useState<WorkspaceEntry[]>([]);
   const [active, setActive] = useState<string>();
   const [navigation, setNavigation] = useState<NavigationState>({
     canGoBack: false,
     canGoForward: false,
   });
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [agentOpen, setAgentOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => !window.matchMedia(mobileMediaQuery).matches,
+  );
+  const [agentOpen, setAgentOpen] = useState(() => !window.matchMedia(mobileMediaQuery).matches);
   const [dialog, setDialog] = useState<WorkspaceDialogState>();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchRevision, setSearchRevision] = useState(0);
   const [srcDir, setSrcDir] = useState<string>("");
+
+  useEffect(() => {
+    const media = window.matchMedia(mobileMediaQuery);
+    const onChange = () => {
+      setIsMobile(media.matches);
+      setSidebarOpen(!media.matches);
+      setAgentOpen(!media.matches);
+    };
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     if (sidebarOpen) sidebarPanel.current?.expand();
@@ -124,16 +142,18 @@ export default function App() {
         panel.api.updateParameters({ path });
         panel.api.setActive();
         setActive(path);
+        if (isMobile) setSidebarOpen(false);
         updateNavigation(panel);
         return;
       }
       const panel = dock.addPanel({
-        id: `${path}:${crypto.randomUUID()}`,
+        id: `${path}:${createId()}`,
         component: "note",
         title: displayName(path),
         params: { path },
       });
       noteHistories.current.set(panel.id, createNoteHistory());
+      if (isMobile) setSidebarOpen(false);
       updateNavigation(panel);
     },
     [updateNavigation],
@@ -287,6 +307,70 @@ export default function App() {
     await refresh();
   };
 
+  const toggleSidebar = () => {
+    setSidebarOpen((open) => {
+      const next = !open;
+      if (isMobile && next) setAgentOpen(false);
+      return next;
+    });
+  };
+
+  const toggleAgent = () => {
+    setAgentOpen((open) => {
+      const next = !open;
+      if (isMobile && next) setSidebarOpen(false);
+      return next;
+    });
+  };
+
+  const sidebar = (
+    <aside className="nawc-sidebar">
+      <header>
+        <Button className="nawc-search-trigger" variant="ghost" onClick={() => setSearchOpen(true)}>
+          <SearchIcon />
+          <span>Search</span>
+          <kbd>⌘K</kbd>
+        </Button>
+        <span className="flex gap-1">
+          <Button size="icon-sm" variant="ghost" onClick={() => actions.createNote()}>
+            <FilePlus2Icon />
+            <span className="sr-only">New note</span>
+          </Button>
+          <Button size="icon-sm" variant="ghost" onClick={() => actions.createFolder()}>
+            <FolderPlusIcon />
+            <span className="sr-only">New folder</span>
+          </Button>
+        </span>
+      </header>
+      <Separator />
+      <ScrollArea className="min-h-0 flex-1">
+        <FileTree entries={entries} active={active} actions={actions} />
+      </ScrollArea>
+      <Separator />
+      <footer>
+        <span>src</span>
+        <span>{entries.filter((entry) => entry.type === "file").length} notes</span>
+      </footer>
+    </aside>
+  );
+
+  const workspace = (
+    <section className="nawc-workspace">
+      <DockviewReact
+        className="h-full w-full"
+        theme={theme}
+        components={panels}
+        onReady={({ api: dock }: DockviewReadyEvent) => {
+          dockview.current = dock;
+          dock.onDidActivePanelChange((panel) => {
+            setActive(panelPath(panel));
+            updateNavigation(panel);
+          });
+        }}
+      />
+    </section>
+  );
+
   return (
     <TooltipProvider>
       <Toaster />
@@ -294,11 +378,7 @@ export default function App() {
         <header className="nawc-topbar">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                onClick={() => setSidebarOpen((open) => !open)}
-              >
+              <Button size="icon-sm" variant="ghost" onClick={toggleSidebar}>
                 {sidebarOpen ? <PanelLeftCloseIcon /> : <PanelLeftOpenIcon />}
                 <span className="sr-only">Toggle files</span>
               </Button>
@@ -344,7 +424,7 @@ export default function App() {
               <Button
                 size="icon-sm"
                 variant={agentOpen ? "secondary" : "ghost"}
-                onClick={() => setAgentOpen((open) => !open)}
+                onClick={toggleAgent}
               >
                 <SparklesIcon />
                 <span className="sr-only">Toggle agent</span>
@@ -353,81 +433,75 @@ export default function App() {
             <TooltipContent>Toggle agent</TooltipContent>
           </Tooltip>
         </header>
-        <ResizablePanelGroup className="nawc-panel-group" id="nawc-panels" orientation="horizontal">
-          <ResizablePanel
-            id="files"
-            className="nawc-resizable-panel"
-            style={{ overflow: "hidden" }}
-            defaultSize="20rem"
-            collapsible
-            panelRef={sidebarPanel}
-          >
-            <aside className="nawc-sidebar">
-              <header>
+        {isMobile ? (
+          <div className="nawc-mobile-content">
+            {workspace}
+            {sidebarOpen && (
+              <div className="nawc-mobile-drawer nawc-mobile-files">
                 <Button
-                  className="nawc-search-trigger"
-                  variant="ghost"
-                  onClick={() => setSearchOpen(true)}
+                  aria-label="Close files"
+                  className="nawc-mobile-drawer-close"
+                  size="icon-sm"
+                  variant="secondary"
+                  onClick={toggleSidebar}
                 >
-                  <SearchIcon />
-                  <span>Search</span>
-                  <kbd>⌘K</kbd>
+                  <XIcon />
                 </Button>
-                <span className="flex gap-1">
-                  <Button size="icon-sm" variant="ghost" onClick={() => actions.createNote()}>
-                    <FilePlus2Icon />
-                    <span className="sr-only">New note</span>
-                  </Button>
-                  <Button size="icon-sm" variant="ghost" onClick={() => actions.createFolder()}>
-                    <FolderPlusIcon />
-                    <span className="sr-only">New folder</span>
-                  </Button>
-                </span>
-              </header>
-              <Separator />
-              <ScrollArea className="min-h-0 flex-1">
-                <FileTree entries={entries} active={active} actions={actions} />
-              </ScrollArea>
-              <Separator />
-              <footer>
-                <span>src</span>
-                <span>{entries.filter((entry) => entry.type === "file").length} notes</span>
-              </footer>
-            </aside>
-          </ResizablePanel>
-          <ResizableHandle />
-          <ResizablePanel
-            id="workspace"
-            className="nawc-resizable-panel"
-            style={{ overflow: "hidden" }}
+                {sidebar}
+              </div>
+            )}
+            {agentOpen && (
+              <div className="nawc-mobile-drawer nawc-mobile-agent">
+                <Button
+                  aria-label="Close agent"
+                  className="nawc-mobile-drawer-close"
+                  size="icon-sm"
+                  variant="secondary"
+                  onClick={toggleAgent}
+                >
+                  <XIcon />
+                </Button>
+                <AgentPanel note={active} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <ResizablePanelGroup
+            className="nawc-panel-group"
+            id="nawc-panels"
+            orientation="horizontal"
           >
-            <section className="nawc-workspace">
-              <DockviewReact
-                className="h-full w-full"
-                theme={theme}
-                components={panels}
-                onReady={({ api: dock }: DockviewReadyEvent) => {
-                  dockview.current = dock;
-                  dock.onDidActivePanelChange((panel) => {
-                    setActive(panelPath(panel));
-                    updateNavigation(panel);
-                  });
-                }}
-              />
-            </section>
-          </ResizablePanel>
-          <ResizableHandle />
-          <ResizablePanel
-            id="agent"
-            className="nawc-resizable-panel"
-            style={{ overflow: "hidden" }}
-            defaultSize="36rem"
-            collapsible
-            panelRef={agentPanel}
-          >
-            <AgentPanel note={active} />
-          </ResizablePanel>
-        </ResizablePanelGroup>
+            <ResizablePanel
+              id="files"
+              className="nawc-resizable-panel"
+              style={{ overflow: "hidden" }}
+              defaultSize="20rem"
+              collapsible
+              panelRef={sidebarPanel}
+            >
+              {sidebar}
+            </ResizablePanel>
+            <ResizableHandle />
+            <ResizablePanel
+              id="workspace"
+              className="nawc-resizable-panel"
+              style={{ overflow: "hidden" }}
+            >
+              {workspace}
+            </ResizablePanel>
+            <ResizableHandle />
+            <ResizablePanel
+              id="agent"
+              className="nawc-resizable-panel"
+              style={{ overflow: "hidden" }}
+              defaultSize="36rem"
+              collapsible
+              panelRef={agentPanel}
+            >
+              <AgentPanel note={active} />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        )}
         <WorkspaceDialog
           state={dialog}
           onOpenChange={(open) => {

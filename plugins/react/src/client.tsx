@@ -32,7 +32,6 @@ function ReactInteractiveView({ node, deleteNode }: NodeViewProps) {
   }, []);
   const preview = useMemo(() => {
     const url = new URL("/@nawc/react-interactive", window.location.href);
-    url.hostname = "127.0.0.1";
     url.searchParams.set("file", file);
     url.searchParams.set("revision", String(revision));
     return url.toString();
@@ -42,7 +41,7 @@ function ReactInteractiveView({ node, deleteNode }: NodeViewProps) {
       <iframe
         ref={frame}
         className="nawc-interactive-frame"
-        sandbox="allow-same-origin allow-scripts"
+        sandbox="allow-scripts"
         src={preview}
         style={{ height }}
         title={`React interactive: ${file}`}

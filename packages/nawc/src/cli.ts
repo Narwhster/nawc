@@ -6,12 +6,14 @@ const program = new Command()
   .name("nawc")
   .description("Start a NAWC notebook")
   .option("-p, --port <port>", "port to listen on", Number)
+  .option("-H, --host <host>", "host/interface to bind to")
   .option("-c, --config <file>", "configuration file", "nawc.config.ts")
-  .action(async (options: { port?: number; config: string }) => {
+  .action(async (options: { port?: number; host?: string; config: string }) => {
     const running = await createNawcServer({
       projectDir: process.cwd(),
       configFile: options.config,
       port: options.port,
+      host: options.host,
     });
     console.log(`NAWC is ready at ${running.url}`);
     const close = async () => {

@@ -46,6 +46,7 @@ export type NawcConfig = {
   readonly editor?: NawcEditor;
   readonly theme?: NawcTheme;
   readonly port?: number;
+  readonly host?: string;
 };
 
 export const configShape = z.strictObject({
@@ -55,6 +56,7 @@ export const configShape = z.strictObject({
   editor: z.custom<NawcEditor>().optional(),
   theme: z.custom<NawcTheme>().optional(),
   port: z.number().int().min(1).max(65_535).optional(),
+  host: z.string().min(1).optional(),
 });
 
 export function syntaxFor(config: NawcConfig, name?: string): NawcSyntax | undefined {

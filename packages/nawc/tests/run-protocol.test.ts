@@ -1,14 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { isSameOrigin, parseRunClientEvent } from "../src/run-protocol.ts";
+import { isPreviewRequest, isSameOrigin, parseRunClientEvent } from "../src/run-protocol.ts";
 
 describe("runnable WebSocket boundary", () => {
   it("only accepts the HTTP origin that matches the requested host", () => {
     expect(isSameOrigin("http://localhost:6292", "localhost:6292")).toBe(true);
     expect(isSameOrigin("http://127.0.0.1:6292", "127.0.0.1:6292")).toBe(true);
+    expect(isSameOrigin("http://100.64.0.10:6292", "100.64.0.10:6292", true)).toBe(true);
     expect(isSameOrigin("https://evil.example", "localhost:6292")).toBe(false);
+    expect(isSameOrigin("http://100.64.0.11:6292", "100.64.0.10:6292")).toBe(false);
     expect(isSameOrigin("http://localhost.evil.example:6292", "localhost:6292")).toBe(false);
     expect(isSameOrigin("http://evil.example:6292", "evil.example:6292")).toBe(false);
     expect(isSameOrigin(undefined, "localhost:6292")).toBe(false);
+  });
+
+  it("keeps sandboxed previews away from the notebook APIs", () => {
+    expect(isPreviewRequest("null", "100.81.9.68:6292")).toBe(true);
+    expect(isSameOrigin("null", "100.81.9.68:6292", true)).toBe(false);
+    expect(isPreviewRequest("http://100.81.9.68:6292", "100.81.9.68:6292")).toBe(false);
+    expect(isPreviewRequest(undefined, "127.0.0.1:6292")).toBe(true);
   });
 
   it("validates start, input, and resize messages", () => {

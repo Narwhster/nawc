@@ -77,7 +77,15 @@ export function FileTree({
   const [expanded, setExpanded] = useState(() => new Set<string>());
   const [dragging, setDragging] = useState<WorkspaceEntry>();
   const [dropTarget, setDropTarget] = useState<string>();
+  const [touchInput, setTouchInput] = useState(false);
   const tree = useMemo(() => buildTree(entries), [entries]);
+  useEffect(() => {
+    const media = window.matchMedia("(pointer: coarse)");
+    const update = () => setTouchInput(media.matches || "ontouchstart" in window);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
   useEffect(() => {
     if (!active) return;
     setExpanded((current) => {
@@ -119,6 +127,7 @@ export function FileTree({
           setDragging={setDragging}
           dropTarget={dropTarget}
           setDropTarget={setDropTarget}
+          touchInput={touchInput}
           actions={actions}
         />
       ))}
@@ -135,6 +144,7 @@ function FileTreeItem({
   setDragging,
   dropTarget,
   setDropTarget,
+  touchInput,
   actions,
 }: {
   node: TreeNode;
@@ -145,6 +155,7 @@ function FileTreeItem({
   setDragging: React.Dispatch<React.SetStateAction<WorkspaceEntry | undefined>>;
   dropTarget?: string;
   setDropTarget: React.Dispatch<React.SetStateAction<string | undefined>>;
+  touchInput: boolean;
   actions: FileTreeActions;
 }) {
   const folder = node.type === "folder";
@@ -178,7 +189,7 @@ function FileTreeItem({
                 else actions.open(node.path, event.metaKey || event.ctrlKey);
               }
             }}
-            draggable
+            draggable={!touchInput}
             onDragStart={(event) => {
               event.stopPropagation();
               event.dataTransfer.effectAllowed = "move";
@@ -308,6 +319,7 @@ function FileTreeItem({
               setDragging={setDragging}
               dropTarget={dropTarget}
               setDropTarget={setDropTarget}
+              touchInput={touchInput}
               actions={actions}
             />
           ))}

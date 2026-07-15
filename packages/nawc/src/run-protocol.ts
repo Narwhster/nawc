@@ -56,13 +56,31 @@ export function parseRunClientEvent(value: string): RunClientEvent | undefined {
     return { type: "resize", cols: parsed.cols, rows: parsed.rows };
 }
 
-export function isSameOrigin(origin: string | undefined, host: string | undefined): boolean {
+export function isSameOrigin(
+  origin: string | undefined,
+  host: string | undefined,
+  allowRemote = false,
+): boolean {
   if (!origin || !host) return false;
   try {
-    const requested = new URL(`http://${host}`);
-    if (requested.hostname !== "localhost" && requested.hostname !== "127.0.0.1") return false;
-    return origin === requested.origin;
+    const configured = new URL(`http://${host}`);
+    if (
+      !allowRemote &&
+      configured.hostname !== "localhost" &&
+      configured.hostname !== "127.0.0.1" &&
+      configured.hostname !== "::1"
+    )
+      return false;
+    const requested = new URL(origin);
+    return (
+      (requested.protocol === "http:" || requested.protocol === "https:") &&
+      requested.host === configured.host
+    );
   } catch {
     return false;
   }
+}
+
+export function isPreviewRequest(origin: string | undefined, host: string | undefined): boolean {
+  return origin === "null" || host?.startsWith("127.0.0.1:") === true;
 }

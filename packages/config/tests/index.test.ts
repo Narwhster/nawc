@@ -11,6 +11,7 @@ describe("configuration", () => {
       provider,
       baseDir: "..",
       port: 6292,
+      host: "0.0.0.0",
     };
     expect(() => configShape.parse(config)).not.toThrow();
   });
@@ -32,5 +33,9 @@ describe("configuration", () => {
     expect(() =>
       configShape.parse({ plugins: [], provider, baseDir: ".", port: 70_000 }),
     ).toThrow();
+  });
+
+  it("rejects an empty host", () => {
+    expect(() => configShape.parse({ plugins: [], provider, baseDir: ".", host: "" })).toThrow();
   });
 });

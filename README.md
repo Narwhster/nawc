@@ -12,6 +12,20 @@ pnpm dev
 
 Then open [http://localhost:6292](http://localhost:6292). The notebook in `examples/notebook` documents this repository using live source references, runnable Vitest blocks, and a sandboxed interactive prototype.
 
+### Server access
+
+The server port is optional and defaults to `6292`. Set `port` and `host` in `nawc.config.ts`, or override them with `nawc --port` and `nawc --host`:
+
+```ts
+export default defineConfig({
+  // ...the rest of your config
+  port: 6292,
+  host: "0.0.0.0",
+});
+```
+
+The default host binds all interfaces, so the notebook can be reached through a Tailscale IP at `http://<tailscale-ip>:<port>`. Use `host: "127.0.0.1"` or `nawc --host 127.0.0.1` for local-only access.
+
 ## Create a notebook
 
 Once the packages are published, run:

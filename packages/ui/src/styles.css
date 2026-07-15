@@ -129,6 +129,32 @@ body {
   .nawc-panel-group {
     @apply min-h-0 min-w-0;
   }
+  .nawc-mobile-content {
+    @apply relative min-h-0 min-w-0 overflow-hidden;
+  }
+  .nawc-mobile-content > .nawc-workspace {
+    @apply absolute inset-0;
+  }
+  .nawc-mobile-drawer {
+    @apply absolute inset-y-0 z-20 min-w-0 max-w-[calc(100%_-_1rem)] bg-background shadow-2xl;
+    width: min(22rem, calc(100% - 1rem));
+  }
+  .nawc-mobile-files {
+    @apply left-0 border-r;
+  }
+  .nawc-mobile-agent {
+    @apply right-0 border-l;
+  }
+  .nawc-mobile-drawer-close {
+    @apply absolute top-2 right-2 z-10;
+  }
+  .nawc-mobile-drawer > .nawc-sidebar,
+  .nawc-mobile-drawer > .nawc-agent-panel {
+    @apply h-full w-full;
+  }
+  .nawc-mobile-agent > .nawc-agent-panel {
+    border-left: 0;
+  }
   .nawc-resizable-panel {
     @apply min-h-0 min-w-0 overflow-hidden;
   }
@@ -197,7 +223,7 @@ body {
     @apply bg-accent/50;
   }
   .nawc-file-tree-item {
-    @apply flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
+    @apply flex w-full touch-manipulation items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm text-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground;
   }
   .nawc-file-tree-item.active {
     @apply bg-sidebar-accent text-sidebar-accent-foreground;
@@ -555,6 +581,87 @@ body {
 
 .dockview-theme-nawc .dv-tab.dv-active-tab {
   box-shadow: inset 0 -1px 0 var(--primary);
+}
+
+@media (max-width: 767px) {
+  .nawc-app {
+    grid-template-rows: 3rem minmax(0, 1fr);
+  }
+
+  .nawc-topbar {
+    gap: 0.125rem;
+    padding-inline: 0.5rem;
+  }
+
+  .nawc-topbar [data-slot="button"] {
+    flex-shrink: 0;
+  }
+
+  .nawc-titlebar {
+    @apply h-11 px-3;
+  }
+
+  .nawc-editor-content {
+    @apply px-4 py-6 text-sm leading-7;
+  }
+
+  .nawc-editor-content h1 {
+    @apply text-2xl;
+  }
+
+  .nawc-editor-content h2 {
+    @apply mt-6 text-xl;
+  }
+
+  .nawc-editor-content h3 {
+    @apply mt-5 text-lg;
+  }
+
+  .nawc-editor-content ul,
+  .nawc-editor-content ol {
+    @apply pl-5;
+  }
+
+  .nawc-node-shell {
+    @apply my-4;
+  }
+
+  .nawc-node-ribbon,
+  .nawc-node-shell:has(> .nawc-source-block:not([open])) .nawc-node-ribbon {
+    @apply top-2 right-2 flex-row translate-y-0;
+  }
+
+  .nawc-interactive-frame {
+    @apply h-56 min-h-56;
+  }
+
+  .nawc-source-block pre {
+    @apply p-3 text-[11px];
+  }
+
+  .nawc-search-dialog {
+    @apply top-4 w-[calc(100vw-1rem)] max-h-[calc(100vh-2rem)];
+  }
+
+  .nawc-search-footer {
+    @apply flex-wrap gap-2;
+  }
+
+  .nawc-agent-header {
+    @apply px-3;
+  }
+
+  .nawc-agent-composer {
+    @apply p-3;
+  }
+
+  .nawc-agent-input-addon {
+    gap: 0.25rem;
+  }
+
+  .nawc-mobile-files .nawc-sidebar > header {
+    padding-right: 3.5rem;
+  }
 }
 
 .dark {

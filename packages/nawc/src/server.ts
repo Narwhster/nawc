@@ -38,7 +38,7 @@ import {
   writeNote,
 } from "./workspace.ts";
 import { syncSkills } from "./skills.ts";
-import { isSameOrigin, parseRunClientEvent } from "./run-protocol.ts";
+import { isPreviewRequest, isSameOrigin, parseRunClientEvent } from "./run-protocol.ts";
 import { launchEditor } from "./editor.ts";
 import { vscode } from "@nawc/editor-vscode";
 import { nawcLight } from "@nawc/theme-nawc";
@@ -50,6 +50,7 @@ type ServerOptions = {
   readonly projectDir: string;
   readonly configFile?: string;
   readonly port?: number;
+  readonly host?: string;
 };
 type RunningServer = {
   readonly server: Server;
@@ -570,16 +571,19 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   });
   const api = getRequestListener(app.fetch);
   const server = createServer((request, response) => {
-    const previewRequest = request.headers.host?.startsWith("127.0.0.1:") ?? false;
+    const previewRequest = isPreviewRequest(request.headers.origin, request.headers.host);
+    const sandboxedPreview = request.headers.origin === "null";
     if (previewRequest && request.url?.startsWith("/api/")) {
       response.statusCode = 403;
       response.end("NAWC APIs are unavailable to interactive previews");
     } else if (request.url?.startsWith("/api/")) void api(request, response);
-    else
+    else {
+      if (sandboxedPreview) response.setHeader("Access-Control-Allow-Origin", "*");
       vite.middlewares(request, response, (error: unknown) => {
         response.statusCode = 500;
         response.end(message(error));
       });
+    }
   });
   const runSockets = new WebSocketServer({ noServer: true });
   const startRun = async (
@@ -626,7 +630,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
       socket.destroy();
       return;
     }
-    if (!isSameOrigin(request.headers.origin, request.headers.host)) {
+    if (!isSameOrigin(request.headers.origin, request.headers.host, host !== "127.0.0.1")) {
       socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
       return;
     }
@@ -682,13 +686,15 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     });
   });
   const port = options.port ?? config.port ?? 6292;
+  const host = options.host ?? config.host ?? "0.0.0.0";
   await new Promise<void>((resolve, reject) =>
-    server.listen(port, "127.0.0.1", resolve).once("error", reject),
+    server.listen(port, host, resolve).once("error", reject),
   );
+  const displayHost = host === "0.0.0.0" || host === "::" ? "localhost" : host;
   return {
     server,
     vite,
-    url: `http://localhost:${port}`,
+    url: `http://${displayHost}:${port}`,
     async close() {
       for (const webSocket of runSockets.clients) webSocket.close(1001, "Server shutting down");
       await agentManager.close();

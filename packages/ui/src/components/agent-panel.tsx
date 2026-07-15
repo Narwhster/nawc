@@ -17,6 +17,7 @@ import {
   WrenchIcon,
   XIcon,
 } from "lucide-react";
+import { createId } from "@paralleldrive/cuid2";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -227,7 +228,7 @@ function readImage(file: File): Promise<ImageAttachment> {
       }
       resolve({
         type: "image",
-        id: crypto.randomUUID(),
+        id: createId(),
         name: file.name || "pasted-image.png",
         mimeType: file.type,
         sizeBytes: file.size,
