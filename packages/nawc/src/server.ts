@@ -133,7 +133,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   const getProviderSkills = () => {
     if (!providerSkillsPromise) {
       const promise = config.provider.listSkills
-        ? config.provider.listSkills({ cwd: baseDir })
+        ? config.provider.listSkills({ cwd: baseDir, skillsDir })
         : Promise.resolve<readonly NawcProviderSkill[]>([]);
       providerSkillsPromise = promise.catch((error: unknown) => {
         providerSkillsPromise = undefined;

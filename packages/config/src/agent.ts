@@ -164,7 +164,10 @@ export type NawcProvider = {
   readonly capabilities?: readonly NawcProviderCapability[];
   readonly modes?: readonly NawcProviderMode[];
   readonly getSettings?: (input: { readonly cwd: string }) => Promise<NawcProviderSettings>;
-  readonly listSkills?: (input: { readonly cwd: string }) => Promise<readonly NawcProviderSkill[]>;
+  readonly listSkills?: (input: {
+    readonly cwd: string;
+    readonly skillsDir?: string;
+  }) => Promise<readonly NawcProviderSkill[]>;
   readonly listModels?: (input: { readonly cwd: string }) => Promise<readonly NawcProviderModel[]>;
   readonly listCommands?: (input: {
     readonly cwd: string;

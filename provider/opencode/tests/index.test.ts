@@ -1,7 +1,10 @@
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  buildOpencodeConfigContent,
   parseOpencodeEvent,
   parseOpencodeModels,
+  parseOpencodeSkillFile,
   parseOpencodeVerboseModels,
 } from "../src/index.ts";
 
@@ -98,6 +101,58 @@ describe("OpenCode JSONL", () => {
       { id: "opencode/claude-sonnet-4", name: "opencode/claude-sonnet-4" },
       { id: "opencode/gpt-5", name: "opencode/gpt-5" },
     ]);
+  });
+});
+
+describe("OpenCode skill configuration", () => {
+  it("parses native skill frontmatter", () => {
+    expect(
+      parseOpencodeSkillFile(
+        "---\nname: native\ndescription: Use for native work.\n---\n# Native",
+        "/home/user/.agents/skills/native/SKILL.md",
+      ),
+    ).toEqual({
+      name: "native",
+      path: "/home/user/.agents/skills/native/SKILL.md",
+      shortDescription: "OpenCode skill",
+      description: "Use for native work.",
+    });
+  });
+
+  it("rejects skills without valid frontmatter or a matching folder", () => {
+    expect(
+      parseOpencodeSkillFile("# No frontmatter", "/home/user/.agents/skills/native/SKILL.md"),
+    ).toBeUndefined();
+    expect(
+      parseOpencodeSkillFile(
+        "---\nname: other\ndescription: Mismatch\n---\n# Other",
+        "/home/user/.agents/skills/native/SKILL.md",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("adds NAWC's generated skill directory to OpenCode's configured paths", () => {
+    expect(buildOpencodeConfigContent(".skills")).toBe(
+      JSON.stringify({ skills: { paths: [path.resolve(".skills")] } }),
+    );
+  });
+
+  it("preserves existing inline config and skill paths", () => {
+    expect(
+      buildOpencodeConfigContent(
+        ".skills",
+        JSON.stringify({ model: "openai/gpt-5", skills: { paths: ["shared-skills"] } }),
+      ),
+    ).toBe(
+      JSON.stringify({
+        model: "openai/gpt-5",
+        skills: { paths: ["shared-skills", path.resolve(".skills")] },
+      }),
+    );
+  });
+
+  it("leaves invalid existing inline config untouched", () => {
+    expect(buildOpencodeConfigContent(".skills", "{ not json")).toBeUndefined();
   });
 });
 

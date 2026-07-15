@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { execa } from "execa";
@@ -7,6 +7,7 @@ import type {
   NawcProvider,
   NawcProviderModel,
   NawcProviderReasoningEffort,
+  NawcProviderSkill,
   ProviderEvent,
 } from "@nawc/config";
 
@@ -168,12 +169,138 @@ export type OpencodeOptions = {
   readonly reasoningEffort?: string;
 };
 
+function isJsonObject(value: unknown): value is JsonObject {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+export function buildOpencodeConfigContent(
+  skillsDir: string,
+  existingContent?: string,
+): string | undefined {
+  const resolvedSkillsDir = path.resolve(skillsDir);
+  let config: JsonObject = {};
+  if (existingContent) {
+    try {
+      const parsed = JSON.parse(existingContent) as unknown;
+      if (!isJsonObject(parsed)) return undefined;
+      config = parsed;
+    } catch {
+      return undefined;
+    }
+  }
+  const skills = isJsonObject(config.skills) ? config.skills : {};
+  const paths = Array.isArray(skills.paths)
+    ? skills.paths.filter((item): item is string => typeof item === "string")
+    : [];
+  return JSON.stringify({
+    ...config,
+    skills: {
+      ...skills,
+      paths: paths.includes(resolvedSkillsDir) ? paths : [...paths, resolvedSkillsDir],
+    },
+  });
+}
+
+function parseFrontmatterValue(value: string): string {
+  const trimmed = value.trim();
+  if (
+    trimmed.length >= 2 &&
+    ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'")))
+  )
+    return trimmed.slice(1, -1);
+  return trimmed;
+}
+
+export function parseOpencodeSkillFile(
+  content: string,
+  file: string,
+): NawcProviderSkill | undefined {
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(content);
+  if (!frontmatter) return undefined;
+  let name: string | undefined;
+  let description: string | undefined;
+  for (const line of frontmatter[1].split(/\r?\n/)) {
+    const match = /^(name|description):\s*(.+)$/.exec(line);
+    if (!match) continue;
+    const value = parseFrontmatterValue(match[2]);
+    if (match[1] === "name") name = value;
+    else description = value;
+  }
+  if (!name || !description || path.basename(path.dirname(file)) !== name) return undefined;
+  return { name, path: file, shortDescription: "OpenCode skill", description };
+}
+
+async function findOpencodeSkillFiles(directory: string): Promise<readonly string[]> {
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const files: string[] = [];
+  for (const entry of entries) {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...(await findOpencodeSkillFiles(file)));
+    else if (entry.name === "SKILL.md" && (entry.isFile() || entry.isSymbolicLink()))
+      files.push(file);
+  }
+  return files;
+}
+
+function opencodeSkillRoots(cwd: string): readonly string[] {
+  const roots = [
+    path.join(os.homedir(), ".config", "opencode", "skill"),
+    path.join(os.homedir(), ".config", "opencode", "skills"),
+    path.join(os.homedir(), ".claude", "skills"),
+    path.join(os.homedir(), ".agents", "skills"),
+  ];
+  let directory = path.resolve(cwd);
+  while (true) {
+    roots.push(
+      path.join(directory, ".opencode", "skill"),
+      path.join(directory, ".opencode", "skills"),
+      path.join(directory, ".claude", "skills"),
+      path.join(directory, ".agents", "skills"),
+    );
+    const parent = path.dirname(directory);
+    if (parent === directory) break;
+    directory = parent;
+  }
+  return [...new Set(roots)];
+}
+
 async function listOpencodeModels(
   executable: string,
   cwd: string,
 ): Promise<readonly NawcProviderModel[]> {
   const result = await execa(executable, ["models", "--verbose"], { cwd, reject: false });
   return parseOpencodeVerboseModels(result.stdout ?? "");
+}
+
+async function listOpencodeSkills(
+  cwd: string,
+  skillsDir?: string,
+): Promise<readonly NawcProviderSkill[]> {
+  const excluded = skillsDir ? path.resolve(skillsDir) : undefined;
+  const files = [
+    ...new Set(
+      (
+        await Promise.all(
+          opencodeSkillRoots(cwd).map((directory) => findOpencodeSkillFiles(directory)),
+        )
+      ).flat(),
+    ),
+  ].filter((file) => {
+    const resolved = path.resolve(file);
+    return !excluded || (resolved !== excluded && !resolved.startsWith(`${excluded}${path.sep}`));
+  });
+  const skills = await Promise.all(
+    files.map(async (file) => parseOpencodeSkillFile(await readFile(file, "utf8"), file)),
+  );
+  const byName = new Map<string, NawcProviderSkill>();
+  for (const skill of skills) if (skill) byName.set(skill.name, skill);
+  return [...byName.values()];
 }
 
 export function opencode(options: OpencodeOptions = {}): NawcProvider {
@@ -236,8 +363,14 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
         args.push("-f", file);
       }
     }
+    const opencodeConfigContent = buildOpencodeConfigContent(
+      skillsDir,
+      process.env.OPENCODE_CONFIG_CONTENT,
+    );
     const child = execa(options.executable ?? "opencode", args, {
       cwd,
+      extendEnv: true,
+      ...(opencodeConfigContent ? { env: { OPENCODE_CONFIG_CONTENT: opencodeConfigContent } } : {}),
       input: prompt + referenceInstruction + skillInstruction + modeInstruction,
       reject: false,
     });
@@ -325,6 +458,7 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
         description: "Review the current work without editing files",
       },
     ],
+    listSkills: ({ cwd, skillsDir }) => listOpencodeSkills(cwd, skillsDir),
     listModels: ({ cwd }) => listOpencodeModels(options.executable ?? "opencode", cwd),
     getSettings: async ({ cwd }) => {
       const models = await listOpencodeModels(options.executable ?? "opencode", cwd);
