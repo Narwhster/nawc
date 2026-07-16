@@ -80,4 +80,9 @@ describe("agent thread projection", () => {
     ]);
     expect(JSON.stringify(thread)).not.toContain("dGVzdA==");
   });
+
+  it("starts with no attached reference keys", () => {
+    const thread = createAgentThread("fake", "thread-1");
+    expect(thread.attachedReferenceKeys).toEqual([]);
+  });
 });

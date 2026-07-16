@@ -64,6 +64,8 @@ export type AgentThread = {
   readonly requests: AgentRequest[];
   readonly warnings: string[];
   readonly unknownEvents: ProviderEvent[];
+  /** Keys of refs already injected with full content into this thread's provider context. */
+  readonly attachedReferenceKeys: string[];
 };
 
 const timestamp = () => new Date().toISOString();
@@ -82,6 +84,7 @@ export function createAgentThread(provider: string, id: string = randomUUID()): 
     requests: [],
     warnings: [],
     unknownEvents: [],
+    attachedReferenceKeys: [],
   };
 }
 

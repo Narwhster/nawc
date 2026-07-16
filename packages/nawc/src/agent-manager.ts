@@ -4,6 +4,7 @@ import type {
   NawcProviderTurnInput,
   ProviderEvent,
 } from "@nawc/config";
+import { displayReference, prepareTurnReferences } from "./agent-references.ts";
 import {
   createAgentThread,
   projectProviderEvent,
@@ -85,9 +86,10 @@ export class AgentManager {
     thread.reasoningEffort = input.reasoningEffort ?? thread.reasoningEffort;
     thread.options = input.options ?? thread.options;
     thread.mode = input.mode ?? thread.mode;
+    const references = prepareTurnReferences(input.references, thread.attachedReferenceKeys);
     const turn = startAgentTurn(thread, {
       text: input.prompt,
-      references: input.references,
+      references: input.references.map(displayReference),
       attachments: input.attachments,
     });
     const controller = new AbortController();
@@ -111,7 +113,7 @@ export class AgentManager {
         prompt: input.prompt,
         cwd: this.#cwd,
         skillsDir: this.#skillsDir,
-        references: input.references,
+        references,
         attachments: input.attachments,
         model: thread.model,
         reasoningEffort: thread.reasoningEffort,

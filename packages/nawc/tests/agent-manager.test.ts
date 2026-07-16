@@ -97,4 +97,57 @@ describe("AgentManager", () => {
     expect(result.done).toBe(false);
     expect(result.value).toMatchObject({ type: "turn.interrupted" });
   });
+
+  it("attaches note content only on the first turn in a thread", async () => {
+    const seen: { prompt: string; references: unknown }[] = [];
+    const trackingProvider: NawcProvider = {
+      name: "tracking",
+      async *sendTurn(_session, input) {
+        seen.push({ prompt: input.prompt, references: input.references });
+        yield { type: "turn.completed" };
+      },
+    };
+    const manager = new AgentManager({
+      provider: trackingProvider,
+      cwd: process.cwd(),
+      skillsDir: process.cwd(),
+    });
+    const thread = await manager.createThread({});
+    const note = {
+      type: "note" as const,
+      path: "Note.html",
+      content: "<p>full body</p>",
+    };
+    const file = { type: "file" as const, path: "src/a.ts" };
+
+    for await (const _event of manager.sendTurn({
+      threadId: thread.id,
+      prompt: "first",
+      references: [note, file],
+    }))
+      void _event;
+    for await (const _event of manager.sendTurn({
+      threadId: thread.id,
+      prompt: "second",
+      references: [note, file],
+    }))
+      void _event;
+
+    expect(seen).toEqual([
+      {
+        prompt: "first",
+        references: [note, file],
+      },
+      {
+        prompt: "second",
+        references: [{ type: "note", path: "Note.html" }],
+      },
+    ]);
+    expect(thread.attachedReferenceKeys).toEqual(["note:Note.html", "file:src/a.ts"]);
+    expect(thread.messages[0]?.references).toEqual([
+      { type: "note", path: "Note.html" },
+      { type: "file", path: "src/a.ts" },
+    ]);
+    expect(JSON.stringify(thread.messages)).not.toContain("full body");
+  });
 });

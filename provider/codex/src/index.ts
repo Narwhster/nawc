@@ -412,7 +412,9 @@ export function codex(options: CodexOptions = {}): NawcProvider {
               case "skill":
                 return `- Skill $${reference.name}: ${JSON.stringify(reference.path)} (read it before acting)`;
               case "note":
-                return `- Current note ${JSON.stringify(reference.path)}:\n\n${reference.content ?? ""}`;
+                return reference.content
+                  ? `- Current note ${JSON.stringify(reference.path)}:\n\n${reference.content}`
+                  : `- Current note ${JSON.stringify(reference.path)} (content already in this thread)`;
               case "diagnostic":
                 return `- Diagnostic${reference.file ? ` in ${reference.file}${reference.line ? `:${reference.line}` : ""}` : ""}: ${reference.message}`;
             }
