@@ -23,6 +23,7 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { ChatMarkdown } from "@/components/chat-markdown";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { parseNoteLink } from "@/lib/note-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -822,7 +823,22 @@ export function AgentPanel({ note }: { readonly note?: string }) {
           </EmptyHeader>
         </Empty>
       ) : (
-        <MessageScroller className="flex-1 p-3">
+        <MessageScroller
+          className="flex-1 p-3"
+          onClickCapture={(event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            const anchor = target.closest("a");
+            if (!(anchor instanceof HTMLAnchorElement)) return;
+            const path = parseNoteLink(anchor.href);
+            if (!path) return;
+            event.preventDefault();
+            event.stopPropagation();
+            window.dispatchEvent(
+              new CustomEvent("nawc:open-note", { detail: { path, newPanel: true } }),
+            );
+          }}
+        >
           <div className="flex flex-col gap-4">
             {thread.messages.map((message) => {
               const turn = turnById.get(message.turnId);

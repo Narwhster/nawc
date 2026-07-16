@@ -1,22 +1,30 @@
 import type { IDockviewPanelProps } from "dockview-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Editor } from "@/components/editor";
 import { api, json } from "@/lib/api";
+import { displayName } from "@/lib/workspace";
 
 type LoadedNote = {
   path: string;
   content: string;
 };
 
-export function DocumentPane({ params }: IDockviewPanelProps<{ path: string }>) {
+export function DocumentPane({ params, api: panelApi }: IDockviewPanelProps<{ path: string }>) {
   const [loadedNote, setLoadedNote] = useState<LoadedNote>();
   const loadId = useRef(0);
   const load = useCallback(async () => {
     const id = ++loadId.current;
     const path = params.path;
-    const content = await api<string>(`/api/note?path=${encodeURIComponent(path)}`);
-    if (id === loadId.current) setLoadedNote({ path, content });
-  }, [params.path]);
+    try {
+      const content = await api<string>(`/api/note?path=${encodeURIComponent(path)}`);
+      if (id === loadId.current) setLoadedNote({ path, content });
+    } catch {
+      if (id !== loadId.current) return;
+      toast.error(`Note not found: ${displayName(path)}`);
+      panelApi.close();
+    }
+  }, [panelApi, params.path]);
 
   useEffect(() => {
     void load();

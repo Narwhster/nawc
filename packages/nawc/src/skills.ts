@@ -9,12 +9,38 @@ function isGeneratedSkill(content: string): boolean {
   return content.startsWith(legacyHeader) || content.startsWith(generatedHeader);
 }
 
+/** Canonicalize skill markdown so generation matches oxfmt (lists, spacing). */
+function normalizeSkillMarkdown(content: string): string {
+  const lines = content.split("\n").map((line) => line.replace(/^(\s*)\*(\s+)/, "$1-$2"));
+  const out: string[] = [];
+  for (const line of lines) {
+    const prev = out.at(-1);
+    const isList = /^(\s*)([-*+]|\d+\.)\s/.test(line);
+    const prevIsList = prev !== undefined && /^(\s*)([-*+]|\d+\.)\s/.test(prev);
+    const prevBlank = prev === undefined || prev === "";
+    const prevIsFence = prev !== undefined && /^`{3}/.test(prev);
+    const prevIsAtxHeading = prev !== undefined && /^#{1,6}(\s|$)/.test(prev);
+    if (
+      isList &&
+      prev !== undefined &&
+      !prevBlank &&
+      !prevIsList &&
+      !prevIsFence &&
+      !prevIsAtxHeading
+    ) {
+      out.push("");
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
 function renderGeneratedSkill(content: string): string {
   const trimmed = content.trim();
-  if (trimmed.startsWith("---")) {
-    return `${generatedHeader}${trimmed.slice(3).replace(/^\n/, "")}\n`;
-  }
-  return `${legacyHeader}${trimmed}\n`;
+  const body = trimmed.startsWith("---")
+    ? `${generatedHeader}${trimmed.slice(3).replace(/^\n/, "")}\n`
+    : `${legacyHeader}${trimmed}\n`;
+  return normalizeSkillMarkdown(body);
 }
 
 export async function syncSkills(

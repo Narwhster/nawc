@@ -3,6 +3,7 @@ import { isValidElement, useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
+import { parseNoteLink } from "@/lib/note-link";
 
 function CopyButton({ text }: { readonly text: string }) {
   const [copied, setCopied] = useState(false);
@@ -28,11 +29,37 @@ export function MarkdownRenderer({ children }: { readonly children: string }) {
     <Markdown
       remarkPlugins={[remarkGfm]}
       components={{
-        a: ({ children: label, ...props }) => (
-          <a className="underline underline-offset-4" rel="noreferrer" target="_blank" {...props}>
-            {label}
-          </a>
-        ),
+        a: ({ children: label, href, ...props }) => {
+          const path = parseNoteLink(href);
+          if (path) {
+            return (
+              <a
+                className="underline underline-offset-4"
+                href={href}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  window.dispatchEvent(
+                    new CustomEvent("nawc:open-note", { detail: { path, newPanel: true } }),
+                  );
+                }}
+              >
+                {label}
+              </a>
+            );
+          }
+          return (
+            <a
+              className="underline underline-offset-4"
+              href={href}
+              rel="noreferrer"
+              target="_blank"
+              {...props}
+            >
+              {label}
+            </a>
+          );
+        },
         blockquote: ({ children: quote }) => (
           <blockquote className="border-l-2 pl-3 text-muted-foreground">{quote}</blockquote>
         ),

@@ -153,6 +153,40 @@ describe("workspace boundaries", () => {
     expect(content).toContain("# Demo");
   });
 
+  it("writes skills in oxfmt-stable markdown", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "nawc-"));
+    const skills = await syncSkills(root, [
+      {
+        name: "demo",
+        client: "demo/client",
+        skills: [
+          {
+            name: "demo",
+            content: [
+              "---",
+              "name: demo",
+              "description: Demo",
+              "---",
+              "",
+              "# demo",
+              "",
+              "Label:",
+              "* item",
+              "",
+              "## Rules",
+              "",
+              "* rule one",
+            ].join("\n"),
+          },
+        ],
+      },
+    ]);
+    const content = await readFile(path.join(skills, "demo/SKILL.md"), "utf8");
+    expect(content).toContain("Label:\n\n- item");
+    expect(content).toContain("## Rules\n\n- rule one");
+    expect(content).not.toMatch(/^\s*\*/m);
+  });
+
   it("refuses to replace a user-owned skill", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "nawc-"));
     const directory = path.join(root, ".skills/demo");

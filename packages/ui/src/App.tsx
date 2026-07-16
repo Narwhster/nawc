@@ -42,6 +42,7 @@ import {
   recordNavigation,
   type NoteHistory,
 } from "@/lib/note-history";
+import { parseNoteLink } from "@/lib/note-link";
 import { dirname, displayName, type WorkspaceEntry } from "@/lib/workspace";
 
 const panels = { note: DocumentPane as React.FunctionComponent<IDockviewPanelProps> };
@@ -131,33 +132,48 @@ export default function App() {
 
   const openNote = useCallback(
     (path: string, newPanel = false) => {
-      const dock = dockview.current;
-      if (!dock) return;
-      if (!newPanel && dock.activePanel) {
-        const panel = dock.activePanel;
-        const currentPath = panelPath(panel);
-        if (currentPath)
-          recordNavigation(getNoteHistory(noteHistories.current, panel), currentPath, path);
-        panel.api.setTitle(displayName(path));
-        panel.api.updateParameters({ path });
-        panel.api.setActive();
-        setActive(path);
+      void (async () => {
+        const dock = dockview.current;
+        if (!dock) return;
+        try {
+          const notes = await api<string[]>("/api/notes");
+          if (!notes.includes(path)) {
+            toast.error(`Note not found: ${displayName(path)}`);
+            return;
+          }
+        } catch {
+          toast.error(`Note not found: ${displayName(path)}`);
+          return;
+        }
+        if (!newPanel && dock.activePanel) {
+          const panel = dock.activePanel;
+          const currentPath = panelPath(panel);
+          if (currentPath)
+            recordNavigation(getNoteHistory(noteHistories.current, panel), currentPath, path);
+          panel.api.setTitle(displayName(path));
+          panel.api.updateParameters({ path });
+          panel.api.setActive();
+          setActive(path);
+          if (isMobile) setSidebarOpen(false);
+          updateNavigation(panel);
+          return;
+        }
+        const panel = dock.addPanel({
+          id: `${path}:${createId()}`,
+          component: "note",
+          title: displayName(path),
+          params: { path },
+        });
+        noteHistories.current.set(panel.id, createNoteHistory());
         if (isMobile) setSidebarOpen(false);
         updateNavigation(panel);
-        return;
-      }
-      const panel = dock.addPanel({
-        id: `${path}:${createId()}`,
-        component: "note",
-        title: displayName(path),
-        params: { path },
-      });
-      noteHistories.current.set(panel.id, createNoteHistory());
-      if (isMobile) setSidebarOpen(false);
-      updateNavigation(panel);
+      })();
     },
-    [updateNavigation],
+    [isMobile, updateNavigation],
   );
+
+  const openNoteRef = useRef(openNote);
+  openNoteRef.current = openNote;
 
   const navigateActivePanel = useCallback(
     (direction: "back" | "forward", newPanel = false) => {
@@ -366,6 +382,8 @@ export default function App() {
             setActive(panelPath(panel));
             updateNavigation(panel);
           });
+          const path = parseNoteLink(window.location.href);
+          if (path) openNoteRef.current(path, true);
         }}
       />
     </section>
