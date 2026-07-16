@@ -1,5 +1,15 @@
 import type { Editor } from "@tiptap/core";
 
+export function normalizeSelfClosingNodes(html: string, tags: readonly string[]): string {
+  if (!tags.length) return html;
+  const names = tags.map((tag) => tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const pattern = new RegExp(`<(${names})(?=[\\s/>])([^<>]*?)/>`, "gi");
+  return html.replace(
+    pattern,
+    (_match, tag: string, attributes: string) => `<${tag}${attributes}></${tag}>`,
+  );
+}
+
 export function serializeNote(editor: Editor): string {
   return serializeHtml(editor.getHTML());
 }

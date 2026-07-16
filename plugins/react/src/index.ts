@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { definePlugin } from "@nawc/plugin";
@@ -26,7 +27,7 @@ export default defineConfig({
 Use a file-backed React interactive in note HTML:
 
 \`\`\`html
-<react-interactive file="path/to/component.tsx" />
+<react-interactive file="path/to/component.tsx"></react-interactive>
 \`\`\`
 
 The \`file\` path is required and is relative to the configured NAWC \`baseDir\`. Files must use a \`.jsx\` or \`.tsx\` extension and default-export a React component.
@@ -92,6 +93,16 @@ export function reactPreviewHtml(component: string): string {
 </html>`;
 }
 
+export function reactPreviewPath(component: string, revision: string): string {
+  const identity = createHash("sha256")
+    .update(component)
+    .update("\0")
+    .update(revision)
+    .digest("hex")
+    .slice(0, 24);
+  return `${PREVIEW_PATH}/${identity}`;
+}
+
 function reactVitePlugin(baseDir: string): Plugin {
   return {
     name: "nawc-react-interactive",
@@ -104,7 +115,8 @@ function reactVitePlugin(baseDir: string): Plugin {
             baseDir,
             url.searchParams.get("file") ?? "",
           );
-          const html = await server.transformIndexHtml(url.pathname, reactPreviewHtml(component));
+          const previewPath = reactPreviewPath(component, url.searchParams.get("revision") ?? "0");
+          const html = await server.transformIndexHtml(previewPath, reactPreviewHtml(component));
           response.statusCode = 200;
           response.setHeader("content-type", "text/html; charset=utf-8");
           response.end(html);

@@ -5,6 +5,7 @@ import { EditorAction } from "@nawc/ui/components/editor-action";
 import { SparklesIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { NawcClientPlugin } from "@nawc/plugin";
+import { clampReactInteractiveHeight } from "./height.ts";
 
 function ReactInteractiveView({ node, deleteNode }: NodeViewProps) {
   const file = String(node.attrs.file ?? "");
@@ -25,7 +26,7 @@ function ReactInteractiveView({ node, deleteNode }: NodeViewProps) {
         typeof message.height === "number" &&
         Number.isFinite(message.height)
       )
-        setHeight(Math.max(256, Math.min(768, message.height)));
+        setHeight(clampReactInteractiveHeight(message.height));
     };
     window.addEventListener("message", resize);
     return () => window.removeEventListener("message", resize);
@@ -40,7 +41,7 @@ function ReactInteractiveView({ node, deleteNode }: NodeViewProps) {
     <NodeViewWrapper className="nawc-node-shell">
       <iframe
         ref={frame}
-        className="nawc-interactive-frame"
+        className="nawc-interactive-frame nawc-react-interactive-frame"
         sandbox="allow-scripts"
         src={preview}
         style={{ height }}

@@ -331,6 +331,9 @@ body {
   .nawc-interactive-frame {
     @apply block h-64 min-h-64 max-h-192 w-full border-0 bg-white;
   }
+  .nawc-interactive-frame.nawc-react-interactive-frame {
+    @apply min-h-0;
+  }
   .nawc-source-block > summary {
     @apply flex cursor-pointer list-none items-center gap-2 border-b bg-muted/40 px-3 py-2 text-xs;
   }

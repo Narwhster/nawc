@@ -1,7 +1,26 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from "vitest";
-import { serializeHtml } from "./serialize";
+import { normalizeSelfClosingNodes, serializeHtml } from "./serialize";
+
+describe("note HTML normalization", () => {
+  it("expands self-closing registered nodes without changing void elements", () => {
+    expect(
+      normalizeSelfClosingNodes(
+        '<react-interactive file="src/Demo.tsx"/><p>After</p><interactive /><br />',
+        ["react-interactive", "interactive"],
+      ),
+    ).toBe(
+      '<react-interactive file="src/Demo.tsx"></react-interactive><p>After</p><interactive ></interactive><br />',
+    );
+  });
+
+  it("does not match names that only start with a registered node tag", () => {
+    expect(normalizeSelfClosingNodes("<react-interactive-extra />", ["react-interactive"])).toBe(
+      "<react-interactive-extra />",
+    );
+  });
+});
 
 describe("note serialization", () => {
   it("restores canonical interactive HTML from Tiptap attributes", () => {

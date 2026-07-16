@@ -3,7 +3,7 @@ import StarterKit from "@tiptap/starter-kit";
 import configuredPlugins from "virtual:nawc-plugins";
 import { useEffect, useRef } from "react";
 import { shouldApplyExternalContent } from "@/lib/editor-sync";
-import { serializeNote } from "@/lib/serialize";
+import { normalizeSelfClosingNodes, serializeNote } from "@/lib/serialize";
 import { notePath, WikiLink } from "@/lib/wiki-link";
 
 type EditorProps = {
@@ -12,6 +12,10 @@ type EditorProps = {
   onSave: (content: string) => Promise<void>;
   onNavigate: (note: string, newPanel: boolean) => void;
 };
+
+const configuredNodeTags = configuredPlugins.flatMap((plugin) =>
+  plugin.extensions.map((extension) => extension.name),
+);
 
 export function Editor({ note, content, onSave, onNavigate }: EditorProps) {
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -24,9 +28,10 @@ export function Editor({ note, content, onSave, onNavigate }: EditorProps) {
         StarterKit,
         ...configuredPlugins.flatMap((plugin) => plugin.extensions),
       ],
-      content,
+      content: normalizeSelfClosingNodes(content, configuredNodeTags),
       editorProps: {
         attributes: { class: "nawc-editor-content" },
+        transformPastedHTML: (html) => normalizeSelfClosingNodes(html, configuredNodeTags),
         handleClickOn: (_view, _position, node, _nodePosition, event) => {
           if (node.type.name !== "wikiLink") return false;
           const target = String(node.attrs.target);
@@ -61,7 +66,13 @@ export function Editor({ note, content, onSave, onNavigate }: EditorProps) {
       editor &&
       shouldApplyExternalContent(serializeNote(editor), content, hasLocalChanges.current)
     ) {
-      const timer = setTimeout(() => editor.commands.setContent(content, { emitUpdate: false }), 0);
+      const timer = setTimeout(
+        () =>
+          editor.commands.setContent(normalizeSelfClosingNodes(content, configuredNodeTags), {
+            emitUpdate: false,
+          }),
+        0,
+      );
       return () => clearTimeout(timer);
     }
   }, [content, editor]);
