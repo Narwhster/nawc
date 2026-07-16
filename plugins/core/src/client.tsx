@@ -25,7 +25,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { NawcClientPlugin } from "@nawc/plugin";
 import { highlightSource } from "./source-highlighting.js";
 
-type SourceAttrs = { file: string; syntax?: string; name?: string; type?: string };
+type SourceAttrs = {
+  file: string;
+  syntax?: string;
+  name?: string;
+  type?: string;
+  params?: string;
+};
 type SourceResult = SourceAttrs & { code: string; startLine: number; endLine: number };
 
 const resizeReporter = `<script>
@@ -179,7 +185,7 @@ function useSource(attrs: SourceAttrs | undefined) {
       setSource(body as SourceResult);
       setError(undefined);
     }
-  }, [attrs?.file, attrs?.name, attrs?.syntax, attrs?.type]);
+  }, [attrs?.file, attrs?.name, attrs?.params, attrs?.syntax, attrs?.type]);
   useEffect(() => {
     if (!attrs) return;
     void load();
@@ -388,7 +394,7 @@ function RunnableTerminal({ selection }: { selection: SourceAttrs }) {
       socket.close(1000, "Terminal closed");
       terminal.dispose();
     };
-  }, [selection.file, selection.name, selection.syntax, selection.type]);
+  }, [selection.file, selection.name, selection.params, selection.syntax, selection.type]);
 
   return <div aria-label="Runnable terminal" className="nawc-run-terminal" ref={container} />;
 }
@@ -398,6 +404,7 @@ const sourceAttributes = {
   syntax: { default: undefined },
   name: { default: undefined },
   type: { default: undefined },
+  params: { default: undefined },
 };
 
 export const Interactive = Node.create({

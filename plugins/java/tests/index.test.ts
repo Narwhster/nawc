@@ -10,9 +10,23 @@ const source = `public class Calculator {
         return a - b;
     }
 
+    public int scale(int value) {
+        return value;
+    }
+
+    public int scale(int value, int factor) {
+        return value * factor;
+    }
+
     public static void main(String[] args) {
         System.out.println(add(1, 2));
     }
+}
+`;
+
+const constructorSource = `public class Calculator {
+    public Calculator(int seed) {}
+    public Calculator(String seed) {}
 }
 `;
 
@@ -38,6 +52,37 @@ describe("Java syntax", () => {
     const result = resolveJava(source, { file: "Calculator.java", type: "method", name: "add" });
     expect(result?.code).toContain("int add(int a, int b)");
     expect(result?.code).toContain("return a + b");
+  });
+
+  it("selects a method overload by parameter types", () => {
+    const result = resolveJava(source, {
+      file: "Calculator.java",
+      type: "method",
+      name: "scale",
+      params: "int, int",
+    });
+    expect(result?.code).toContain("int scale(int value, int factor)");
+    expect(result?.code).toContain("return value * factor");
+  });
+
+  it("returns undefined when an overload signature does not match", () => {
+    const result = resolveJava(source, {
+      file: "Calculator.java",
+      type: "method",
+      name: "scale",
+      params: "long, long",
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("selects a constructor overload by parameter types", () => {
+    const result = resolveJava(constructorSource, {
+      file: "Calculator.java",
+      type: "constructor",
+      name: "Calculator",
+      params: "String",
+    });
+    expect(result?.code).toContain("Calculator(String seed)");
   });
 
   it("returns undefined for unknown declarations", () => {

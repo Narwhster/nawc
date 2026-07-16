@@ -11,6 +11,7 @@ export type SourceSelection = {
   readonly syntax?: string;
   readonly name?: string;
   readonly type?: string;
+  readonly params?: string;
 };
 
 export type ResolvedSource = SourceSelection & {

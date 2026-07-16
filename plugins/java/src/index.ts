@@ -21,6 +21,21 @@ Use \`syntax="java"\` for Java source.
 
 Use \`name\` and \`type\` to select a declaration. Supported types are \`class\`, \`interface\`, \`enum\`, \`method\`, and \`constructor\`. Without both selectors, the whole file is referenced.
 
+For overloaded methods and constructors, add \`params\` with the parameter types in declaration order:
+
+\`\`\`html
+<ref file="src/VillageManager.java" syntax="java" name="processBuilding" type="method" params="BlockPos, boolean, boolean"></ref>
+\`\`\`
+
+For example, the two \`findNearestVillage\` overloads can be selected as:
+
+\`\`\`html
+<ref file="src/VillageManager.java" syntax="java" name="findNearestVillage" type="method" params="Entity"></ref>
+<ref file="src/VillageManager.java" syntax="java" name="findNearestVillage" type="method" params="BlockPos, int"></ref>
+\`\`\`
+
+Parameter types are matched independent of whitespace. An empty \`params\` value selects a no-argument declaration.
+
 ## Runnable blocks
 
 Without a selector, the Java file runs with \`java\`. A class selector runs the named class. A method selector opens the file in JShell and invokes the named method with no arguments.
@@ -34,13 +49,69 @@ type DeclarationInfo = {
   readonly startOffset: number;
   readonly endOffset: number;
   readonly isStatic: boolean;
+  readonly parameters: readonly string[];
 };
+
+function normalizeParameterType(type: string): string {
+  return type.replace(/\s+/g, "");
+}
+
+function splitParameterTypes(params: string): readonly string[] {
+  if (params.trim() === "") return [];
+
+  const result: string[] = [];
+  let start = 0;
+  let depth = 0;
+  for (let index = 0; index < params.length; index++) {
+    const character = params[index];
+    if (character === "<" || character === "(" || character === "[" || character === "{") {
+      depth++;
+    } else if (character === ">" || character === ")" || character === "]" || character === "}") {
+      depth--;
+    } else if (character === "," && depth === 0) {
+      result.push(normalizeParameterType(params.slice(start, index)));
+      start = index + 1;
+    }
+  }
+  result.push(normalizeParameterType(params.slice(start)));
+  return result;
+}
+
+function parameterTypes(ctx: any, source: string): readonly string[] {
+  const declarator =
+    ctx.methodHeader?.[0]?.children?.methodDeclarator?.[0] ?? ctx.constructorDeclarator?.[0];
+  const list = declarator?.children?.formalParameterList?.[0];
+  if (!list) return [];
+
+  const parameters = [
+    ...(list.children?.formalParameter ?? []),
+    ...(list.children?.lastFormalParameter ?? []),
+  ];
+  return parameters.map((parameter: any) => {
+    const regular = parameter.children?.variableParaRegularParameter?.[0];
+    const variableArity = parameter.children?.variableArityParameter?.[0];
+    const node = regular ?? variableArity;
+    const type = node?.children?.unannType?.[0];
+    if (!type) return "";
+    const sourceType = source.slice(type.location.startOffset, type.location.endOffset + 1);
+    if (variableArity) return normalizeParameterType(`${sourceType}...`);
+    const declarator = regular?.children?.variableDeclaratorId?.[0];
+    const identifier = declarator?.children?.Identifier?.[0];
+    const suffix =
+      identifier && declarator?.location
+        ? source.slice(identifier.endOffset + 1, declarator.location.endOffset + 1)
+        : "";
+    return normalizeParameterType(`${sourceType}${suffix}`);
+  });
+}
 
 class JavaDeclarationCollector extends BaseJavaCstVisitorWithDefaults {
   readonly declarations: DeclarationInfo[] = [];
+  private readonly source: string;
 
-  constructor() {
+  constructor(source: string) {
     super();
+    this.source = source;
     this.validateVisitor();
   }
 
@@ -57,6 +128,7 @@ class JavaDeclarationCollector extends BaseJavaCstVisitorWithDefaults {
           startOffset: normalClass.location.startOffset,
           endOffset: normalClass.location.endOffset,
           isStatic: false,
+          parameters: [],
         });
       }
     }
@@ -75,6 +147,7 @@ class JavaDeclarationCollector extends BaseJavaCstVisitorWithDefaults {
         startOffset: node.location.startOffset,
         endOffset: node.location.endOffset,
         isStatic: false,
+        parameters: [],
       });
     }
     super.interfaceDeclaration(ctx);
@@ -93,6 +166,7 @@ class JavaDeclarationCollector extends BaseJavaCstVisitorWithDefaults {
         startOffset: startNode.location.startOffset,
         endOffset: endNode?.location.endOffset ?? startNode.location.endOffset,
         isStatic: false,
+        parameters: [],
       });
     }
     super.enumDeclaration(ctx);
@@ -115,23 +189,29 @@ class JavaDeclarationCollector extends BaseJavaCstVisitorWithDefaults {
         startOffset: header.location.startOffset,
         endOffset: body?.location.endOffset ?? header.location.endOffset,
         isStatic,
+        parameters: parameterTypes(ctx, this.source),
       });
     }
     super.methodDeclaration(ctx);
   }
 
   constructorDeclaration(ctx: any) {
-    const name = ctx.Identifier?.[0]?.image;
+    const name =
+      ctx.Identifier?.[0]?.image ??
+      ctx.constructorDeclarator?.[0]?.children?.simpleTypeName?.[0]?.children?.typeIdentifier?.[0]
+        ?.children?.Identifier?.[0]?.image;
     if (name) {
+      const declarator = ctx.constructorDeclarator?.[0];
       const body = ctx.constructorBody?.[0];
       this.declarations.push({
         name,
         type: "constructor",
-        startLine: ctx.location.startLine,
-        endLine: body?.location.endLine ?? ctx.location.endLine,
-        startOffset: ctx.location.startOffset,
-        endOffset: body?.location.endOffset ?? ctx.location.endOffset,
+        startLine: declarator.location.startLine,
+        endLine: body?.location.endLine ?? declarator.location.endLine,
+        startOffset: declarator.location.startOffset,
+        endOffset: body?.location.endOffset ?? declarator.location.endOffset,
         isStatic: false,
+        parameters: parameterTypes(ctx, this.source),
       });
     }
     super.constructorDeclaration(ctx);
@@ -140,7 +220,7 @@ class JavaDeclarationCollector extends BaseJavaCstVisitorWithDefaults {
 
 function collectDeclarations(source: string): DeclarationInfo[] {
   const cst = parse(source);
-  const visitor = new JavaDeclarationCollector();
+  const visitor = new JavaDeclarationCollector(source);
   visitor.visit(cst);
   return visitor.declarations;
 }
@@ -153,7 +233,16 @@ export function resolveJava(
     return { ...selection, code: source, startLine: 1, endLine: source.split("\n").length };
 
   const declarations = collectDeclarations(source);
-  const found = declarations.find((d) => d.name === selection.name && d.type === selection.type);
+  const wantedParameters =
+    selection.params === undefined ? undefined : splitParameterTypes(selection.params);
+  const found = declarations.find(
+    (d) =>
+      d.name === selection.name &&
+      d.type === selection.type &&
+      (wantedParameters === undefined ||
+        (d.parameters.length === wantedParameters.length &&
+          d.parameters.every((parameter, index) => parameter === wantedParameters[index]))),
+  );
   if (!found) return undefined;
 
   const code = source.slice(found.startOffset, found.endOffset + 1);

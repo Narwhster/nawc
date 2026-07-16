@@ -277,7 +277,7 @@ export async function resolveSource(
   const resolved = syntax.resolve(source, selection);
   if (!resolved)
     throw new Error(
-      `Could not find ${selection.type ?? "symbol"} ${selection.name ?? ""} in ${selection.file}`,
+      `Could not find ${selection.type ?? "symbol"} ${selection.name ?? ""}${selection.params === undefined ? "" : `(${selection.params})`} in ${selection.file}`,
     );
   return resolved;
 }

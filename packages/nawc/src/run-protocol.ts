@@ -20,7 +20,8 @@ function isSelection(value: unknown): value is SourceSelection {
     value.file.length > 0 &&
     isOptionalString(value.syntax) &&
     isOptionalString(value.name) &&
-    isOptionalString(value.type)
+    isOptionalString(value.type) &&
+    isOptionalString(value.params)
   );
 }
 
