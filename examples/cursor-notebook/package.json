@@ -1,0 +1,29 @@
+{
+  "name": "@nawc/cursor-notebook",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nawc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nawc/core": "workspace:*",
+    "@nawc/nawc-skills": "workspace:*",
+    "@nawc/provider-cursor": "workspace:*",
+    "@nawc/react": "workspace:*",
+    "@nawc/syntax-typescript": "workspace:*",
+    "@nawc/syntax-vitest": "workspace:*",
+    "@nawc/tailwind": "workspace:*",
+    "nawc": "workspace:*",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
