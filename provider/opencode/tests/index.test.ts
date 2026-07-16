@@ -57,7 +57,7 @@ describe("OpenCode JSONL", () => {
       parseOpencodeEvent(
         '{"type":"step_finish","timestamp":1,"sessionID":"ses_1","part":{"id":"prt_4","type":"step-finish","reason":"stop","cost":0.01,"tokens":{"input":10,"output":20,"reasoning":5,"cache":{"read":1,"write":2}}}}',
       ),
-    ).toEqual({ type: "turn.completed", usage: { input: 10, output: 20 } });
+    ).toEqual({ type: "turn.completed", usage: { input: 10, output: 20, total: 33 } });
     expect(
       parseOpencodeEvent(
         '{"type":"step_finish","timestamp":1,"sessionID":"ses_1","part":{"id":"prt_5","type":"step-finish","reason":"tool-calls"}}',
@@ -281,6 +281,7 @@ describe("OpenCode provider inventory", () => {
       {
         id: "openai/gpt-5",
         name: "GPT-5",
+        contextWindow: 1000,
         reasoningEfforts: [{ id: "low" }, { id: "medium" }, { id: "high" }],
         defaultReasoningEffort: "medium",
       },

@@ -25,7 +25,7 @@ type RunningOpencodeServer = {
   readonly close: () => Promise<void>;
 };
 
-function mapOpencodeEvent(event: JsonObject): ProviderEvent | undefined {
+function mapOpencodeEvent(event: JsonObject, contextWindow?: number): ProviderEvent | undefined {
   const type = typeof event.type === "string" ? event.type : undefined;
   const part =
     event.part && typeof event.part === "object" ? (event.part as JsonObject) : undefined;
@@ -82,13 +82,23 @@ function mapOpencodeEvent(event: JsonObject): ProviderEvent | undefined {
       part.tokens && typeof part.tokens === "object" ? (part.tokens as JsonObject) : undefined;
     const input = tokens && typeof tokens.input === "number" ? tokens.input : undefined;
     const output = tokens && typeof tokens.output === "number" ? tokens.output : undefined;
+    const cache =
+      tokens?.cache && typeof tokens.cache === "object" ? (tokens.cache as JsonObject) : undefined;
+    const cacheRead = cache && typeof cache.read === "number" ? cache.read : 0;
+    const cacheWrite = cache && typeof cache.write === "number" ? cache.write : 0;
+    const total =
+      input !== undefined || output !== undefined || cacheRead > 0 || cacheWrite > 0
+        ? (input ?? 0) + (output ?? 0) + cacheRead + cacheWrite
+        : undefined;
     return {
       type: "turn.completed",
-      ...(input !== undefined || output !== undefined
+      ...(total !== undefined
         ? {
             usage: {
               ...(input !== undefined ? { input } : {}),
               ...(output !== undefined ? { output } : {}),
+              total,
+              ...(contextWindow !== undefined ? { contextWindow } : {}),
             },
           }
         : {}),
@@ -422,6 +432,7 @@ export function flattenOpencodeModels(
       models.push({
         id: `${provider.id}/${model.id}`,
         name,
+        ...(typeof model.limit?.context === "number" ? { contextWindow: model.limit.context } : {}),
         ...(reasoningEfforts?.length ? { reasoningEfforts } : {}),
         ...(defaultReasoningEffort ? { defaultReasoningEffort } : {}),
       });
@@ -482,6 +493,19 @@ async function listOpencodeSkills(
 
 export function opencode(options: OpencodeOptions = {}): NawcProvider {
   const active = new Map<string, ReturnType<typeof execa>>();
+  const contextWindows = new Map<string, number>();
+
+  const discoverModels = async (cwd: string) => {
+    const models = await listOpencodeModels(
+      options.executable ?? "opencode",
+      cwd,
+      options.serverTimeoutMs,
+    );
+    for (const model of models) {
+      if (model.contextWindow !== undefined) contextWindows.set(model.id, model.contextWindow);
+    }
+    return models;
+  };
 
   const runTurn = async function* (
     session: { readonly id: string; readonly providerThreadId?: string },
@@ -581,7 +605,7 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
             threadStarted = true;
           }
         }
-        const mapped = mapOpencodeEvent(raw);
+        const mapped = mapOpencodeEvent(raw, contextWindows.get(model ?? options.model ?? ""));
         if (!mapped) return out;
         if (mapped.type === "error") sawError = true;
         if (mapped.type === "turn.started") {
@@ -638,14 +662,9 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
       },
     ],
     listSkills: ({ cwd, skillsDir }) => listOpencodeSkills(cwd, skillsDir),
-    listModels: ({ cwd }) =>
-      listOpencodeModels(options.executable ?? "opencode", cwd, options.serverTimeoutMs),
+    listModels: ({ cwd }) => discoverModels(cwd),
     getSettings: async ({ cwd }) => {
-      const models = await listOpencodeModels(
-        options.executable ?? "opencode",
-        cwd,
-        options.serverTimeoutMs,
-      );
+      const models = await discoverModels(cwd);
       const configuredModel = options.model;
       const model = configuredModel
         ? models.find((item) => item.id === configuredModel)

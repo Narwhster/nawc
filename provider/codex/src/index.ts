@@ -33,6 +33,37 @@ export function parseCodexEvent(line: string): ProviderEvent | undefined {
     };
   }
   if (event.type === "turn.started") return { type: "turn.started" };
+  if (event.type === "event_msg") {
+    const payload =
+      event.payload && typeof event.payload === "object"
+        ? (event.payload as Record<string, unknown>)
+        : undefined;
+    if (payload?.type !== "token_count") return undefined;
+    const info =
+      payload.info && typeof payload.info === "object"
+        ? (payload.info as Record<string, unknown>)
+        : undefined;
+    const last =
+      info?.last_token_usage && typeof info.last_token_usage === "object"
+        ? (info.last_token_usage as Record<string, unknown>)
+        : undefined;
+    if (!last) return undefined;
+    const input = typeof last.input_tokens === "number" ? last.input_tokens : undefined;
+    const output = typeof last.output_tokens === "number" ? last.output_tokens : undefined;
+    const total = typeof last.total_tokens === "number" ? last.total_tokens : undefined;
+    const contextWindow =
+      typeof info?.model_context_window === "number" ? info.model_context_window : undefined;
+    if (input === undefined && output === undefined && total === undefined) return undefined;
+    return {
+      type: "context.updated",
+      usage: {
+        ...(input !== undefined ? { input } : {}),
+        ...(output !== undefined ? { output } : {}),
+        ...(total !== undefined ? { total } : {}),
+        ...(contextWindow !== undefined ? { contextWindow } : {}),
+      },
+    };
+  }
   if (event.type === "turn.completed") {
     const usage =
       event.usage && typeof event.usage === "object"
@@ -45,6 +76,10 @@ export function parseCodexEvent(line: string): ProviderEvent | undefined {
             usage: {
               ...(typeof usage.input_tokens === "number" ? { input: usage.input_tokens } : {}),
               ...(typeof usage.output_tokens === "number" ? { output: usage.output_tokens } : {}),
+              ...(typeof usage.total_tokens === "number" ? { total: usage.total_tokens } : {}),
+              ...(typeof usage.model_context_window === "number"
+                ? { contextWindow: usage.model_context_window }
+                : {}),
             },
           }
         : {}),

@@ -17,11 +17,19 @@ import {
   WrenchIcon,
   XIcon,
 } from "lucide-react";
+import type { NawcProviderUsage } from "@nawc/config";
 import { createId } from "@paralleldrive/cuid2";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { ChatMarkdown } from "@/components/chat-markdown";
+import {
+  Context,
+  ContextContent,
+  ContextContentBody,
+  ContextContentHeader,
+  ContextTrigger,
+} from "@/components/ai-elements/context";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { parseNoteLink } from "@/lib/note-link";
 import { Badge } from "@/components/ui/badge";
@@ -114,6 +122,7 @@ type Turn = {
   readonly id: string;
   readonly status: "running" | "completed" | "interrupted" | "failed";
   readonly plan?: string;
+  readonly usage?: NawcProviderUsage;
 };
 type AgentThread = {
   readonly id: string;
@@ -134,6 +143,7 @@ type ModelOption = {
   readonly id: string;
   readonly name: string;
   readonly description?: string;
+  readonly contextWindow?: number;
   readonly defaultReasoningEffort?: string;
   readonly reasoningEfforts?: readonly { readonly id: string; readonly description?: string }[];
   readonly options?: readonly (
@@ -466,6 +476,11 @@ export function AgentPanel({ note }: { readonly note?: string }) {
   const draftKey = threadId || `note:${note ?? "none"}`;
   const prompt = drafts[draftKey] ?? "";
   const selectedModel = models.find((item) => item.id === preferences.model);
+  const threadModel = models.find((item) => item.id === thread?.model);
+  const latestUsage = thread?.turns.findLast((turn) => turn.usage)?.usage;
+  const contextWindow = latestUsage?.contextWindow ?? threadModel?.contextWindow;
+  const usedTokens =
+    latestUsage?.total ?? (latestUsage ? (latestUsage.input ?? 0) + (latestUsage.output ?? 0) : 0);
   const reasoningOptions = useMemo(() => selectedModel?.reasoningEfforts ?? [], [selectedModel]);
 
   const refreshThreads = useCallback(async () => {
@@ -772,11 +787,6 @@ export function AgentPanel({ note }: { readonly note?: string }) {
           </Select>
         ) : (
           <strong className="min-w-0 flex-1 truncate text-xs">{provider?.label ?? "Agent"}</strong>
-        )}
-        {thread?.providerThreadId && (
-          <Badge className="min-w-0 max-w-24 shrink truncate" variant="outline">
-            resumable
-          </Badge>
         )}
         <Tooltip>
           <TooltipTrigger asChild>
@@ -1193,6 +1203,19 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                 </Select>
               )}
             </div>
+            {thread &&
+              (thread.provider === "codex" || thread.provider === "opencode") &&
+              latestUsage &&
+              contextWindow &&
+              usedTokens > 0 && (
+                <Context maxTokens={contextWindow} usedTokens={usedTokens} usage={latestUsage}>
+                  <ContextTrigger size="sm" />
+                  <ContextContent side="top" align="end">
+                    <ContextContentHeader />
+                    <ContextContentBody />
+                  </ContextContent>
+                </Context>
+              )}
             {running || thread?.status === "running" ? (
               <Button
                 aria-label="Stop agent"

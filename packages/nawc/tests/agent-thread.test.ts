@@ -85,4 +85,24 @@ describe("agent thread projection", () => {
     const thread = createAgentThread("fake", "thread-1");
     expect(thread.attachedReferenceKeys).toEqual([]);
   });
+
+  it("keeps provider context metadata when a turn completes", () => {
+    const thread = createAgentThread("codex", "thread-1");
+    const turn = startAgentTurn(thread, { text: "Continue", references: [] }, "turn-1");
+    projectProviderEvent(thread, turn.id, {
+      type: "context.updated",
+      usage: { total: 1_280, contextWindow: 258_400 },
+    });
+    projectProviderEvent(thread, turn.id, {
+      type: "turn.completed",
+      usage: { input: 1_200, output: 80 },
+    });
+
+    expect(thread.turns[0]?.usage).toEqual({
+      total: 1_280,
+      contextWindow: 258_400,
+      input: 1_200,
+      output: 80,
+    });
+  });
 });

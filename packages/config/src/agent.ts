@@ -48,6 +48,7 @@ export type NawcProviderModel = {
   readonly id: string;
   readonly name: string;
   readonly description?: string;
+  readonly contextWindow?: number;
   readonly reasoningEfforts?: readonly NawcProviderReasoningEffort[];
   readonly defaultReasoningEffort?: string;
   readonly isDefault?: boolean;
@@ -110,12 +111,20 @@ export type ProviderEventBase = {
   readonly payload?: unknown;
 };
 
+export type NawcProviderUsage = {
+  readonly input?: number;
+  readonly output?: number;
+  readonly total?: number;
+  readonly contextWindow?: number;
+};
+
 export type ProviderEvent = ProviderEventBase &
   (
     | { readonly type: "session.started"; readonly sessionId?: string }
     | { readonly type: "thread.started"; readonly threadId: string }
     | { readonly type: "turn.started" }
-    | { readonly type: "turn.completed"; readonly usage?: { input?: number; output?: number } }
+    | { readonly type: "turn.completed"; readonly usage?: NawcProviderUsage }
+    | { readonly type: "context.updated"; readonly usage: NawcProviderUsage }
     | { readonly type: "turn.interrupted" }
     | { readonly type: "message.started"; readonly role?: "assistant" | "system" }
     | { readonly type: "message.delta"; readonly text: string }

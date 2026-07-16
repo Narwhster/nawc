@@ -43,6 +43,17 @@ describe("Codex JSONL", () => {
     });
   });
 
+  it("maps Codex token count updates without completing the turn", () => {
+    expect(
+      parseCodexEvent(
+        '{"type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":1200,"output_tokens":80,"total_tokens":1280},"model_context_window":258400}}}',
+      ),
+    ).toEqual({
+      type: "context.updated",
+      usage: { input: 1200, output: 80, total: 1280, contextWindow: 258400 },
+    });
+  });
+
   it("maps the Codex skills/list response", () => {
     expect(
       parseCodexSkillsResponse({

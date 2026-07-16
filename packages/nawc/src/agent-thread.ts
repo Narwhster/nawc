@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type {
   NawcAgentAttachment,
   NawcProviderOptionSelection,
+  NawcProviderUsage,
   ProviderEvent,
   PromptReference,
 } from "@nawc/config";
@@ -43,7 +44,7 @@ export type AgentTurn = {
   readonly createdAt: string;
   updatedAt: string;
   plan?: string;
-  usage?: { readonly input?: number; readonly output?: number };
+  usage?: NawcProviderUsage;
 };
 
 export type AgentThread = {
@@ -254,10 +255,18 @@ export function projectProviderEvent(
       const turn = findTurn(thread, turnId);
       turn.status = "completed";
       turn.updatedAt = now;
-      if (event.type === "turn.completed") turn.usage = event.usage;
+      if (event.type === "turn.completed" && event.usage)
+        turn.usage = { ...turn.usage, ...event.usage };
       for (const message of thread.messages)
         if (message.turnId === turnId) message.streaming = false;
       thread.status = "idle";
+      return;
+    }
+    case "context.updated": {
+      const turn = findTurn(thread, turnId);
+      turn.usage = event.usage;
+      turn.updatedAt = now;
+      thread.updatedAt = now;
       return;
     }
     case "unknown":
