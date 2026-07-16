@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
-import { cursor, parseCursorEvent, parseCursorModelsResponse } from "../src/index.ts";
+import {
+  cursor,
+  cursorPermissionOptionId,
+  parseCursorEvent,
+  parseCursorModelsResponse,
+} from "../src/index.ts";
 
 describe("Cursor ACP model discovery", () => {
   it("maps available models and parameterized config options", () => {
@@ -101,5 +106,23 @@ describe("Cursor provider metadata", () => {
     expect(provider.capabilities).toContain("resume");
     expect(provider.capabilities).toContain("requests");
     expect(provider.modes?.map((mode) => mode.id)).toEqual(["default", "plan", "review"]);
+  });
+});
+
+describe("Cursor ACP permissions", () => {
+  const params = {
+    options: [
+      { optionId: "allow-this-command", name: "Allow", kind: "allow_once" },
+      { optionId: "allow-this-session", name: "Allow for session", kind: "allow_always" },
+      { optionId: "reject-command", name: "Reject", kind: "reject_once" },
+    ],
+  };
+
+  it.each([
+    ["accept", "allow-this-command"],
+    ["acceptForSession", "allow-this-session"],
+    ["decline", "reject-command"],
+  ])("maps the generic %s decision to the agent-provided option ID", (decision, optionId) => {
+    expect(cursorPermissionOptionId(params, decision)).toBe(optionId);
   });
 });

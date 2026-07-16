@@ -169,10 +169,18 @@ export class AgentManager {
   }
 
   async respondToRequest(threadId: string, requestId: string, decision: string): Promise<void> {
+    const thread = this.#requireThread(threadId);
     const session = this.#sessions.get(threadId);
     if (!session || !this.#provider.respondToRequest)
       throw new Error("This provider cannot respond to interactive requests");
     await this.#provider.respondToRequest(session, requestId, decision);
+    const request = thread.requests.find((item) => item.id === requestId);
+    if (request)
+      projectProviderEvent(thread, request.turnId, {
+        type: "request.resolved",
+        requestId,
+        decision,
+      });
   }
 
   async close(): Promise<void> {

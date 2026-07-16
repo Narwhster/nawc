@@ -594,6 +594,23 @@ function requestDetails(request: PendingRequest): {
   return { title: request.method };
 }
 
+export function cursorPermissionOptionId(params: unknown, decision: string): string | undefined {
+  if (!isRecord(params) || !Array.isArray(params.options)) return;
+  const kind =
+    decision === "accept"
+      ? "allow_once"
+      : decision === "acceptForSession"
+        ? "allow_always"
+        : decision === "decline"
+          ? "reject_once"
+          : undefined;
+  if (!kind) return;
+  for (const option of params.options) {
+    if (!isRecord(option) || option.kind !== kind) continue;
+    if (typeof option.optionId === "string") return option.optionId;
+  }
+}
+
 export function cursor(options: CursorOptions = {}): NawcProvider {
   const sessions = new Map<string, CursorSession>();
   const executables = options.executable ? [options.executable] : DEFAULT_CURSOR_EXECUTABLES;
@@ -892,10 +909,10 @@ export function cursor(options: CursorOptions = {}): NawcProvider {
         session.acp.getServerRequest(`number:${requestId}`);
       if (!request) throw new Error(`Unknown Cursor request: ${requestId}`);
       if (request.method === "session/request_permission") {
+        const optionId = cursorPermissionOptionId(request.params, decision) ?? decision;
         if (decision === "cancel" || decision === "reject")
           session.acp.respond(request.id, { outcome: { outcome: "cancelled" } });
-        else
-          session.acp.respond(request.id, { outcome: { outcome: "selected", optionId: decision } });
+        else session.acp.respond(request.id, { outcome: { outcome: "selected", optionId } });
       } else if (request.method === "cursor/ask_question") {
         const params = isRecord(request.params) ? request.params : {};
         const questions = Array.isArray(params.questions) ? params.questions : [];

@@ -175,6 +175,71 @@ describe("CompletionMenu", () => {
     expect(container.textContent).toContain("Thinking…");
   });
 
+  it("renders a turn-level permission request only once", async () => {
+    const requestedThread = {
+      ...emptyThread,
+      status: "running" as const,
+      messages: [
+        {
+          id: "user-message",
+          role: "user" as const,
+          text: "Edit the file",
+          turnId: "turn-1",
+          createdAt: "2026-07-12T00:00:00.000Z",
+          updatedAt: "2026-07-12T00:00:00.000Z",
+          streaming: false,
+        },
+        {
+          id: "assistant-message",
+          role: "assistant" as const,
+          text: "I need permission.",
+          turnId: "turn-1",
+          createdAt: "2026-07-12T00:00:01.000Z",
+          updatedAt: "2026-07-12T00:00:01.000Z",
+          streaming: true,
+        },
+      ],
+      turns: [{ id: "turn-1", status: "running" as const }],
+      requests: [
+        {
+          id: "permission-1",
+          turnId: "turn-1",
+          title: "Write file",
+          status: "pending" as const,
+        },
+      ],
+    };
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/api/agent/provider")) {
+        return Promise.resolve(jsonResponse({ label: "Test agent", capabilities: [], modes: [] }));
+      }
+      if (url.endsWith("/api/prompt/models")) return Promise.resolve(jsonResponse([]));
+      if (url.endsWith("/api/prompt/settings")) return Promise.resolve(jsonResponse({}));
+      if (url.endsWith("/api/agent/threads"))
+        return Promise.resolve(jsonResponse([requestedThread]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    localStorage.setItem("nawc:agent-active-thread:v1", requestedThread.id);
+
+    await act(async () =>
+      root.render(
+        <TooltipProvider>
+          <AgentPanel />
+        </TooltipProvider>,
+      ),
+    );
+    await act(async () => Promise.resolve());
+
+    expect(container.querySelectorAll("[role=alert]")).toHaveLength(1);
+    expect(
+      [...container.querySelectorAll("button")].filter(
+        (button) => button.textContent === "Allow once",
+      ),
+    ).toHaveLength(1);
+  });
+
   it("clears the local running state after interrupting an in-flight turn", async () => {
     let interrupted = false;
     let interruptCalled = false;

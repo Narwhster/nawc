@@ -150,4 +150,45 @@ describe("AgentManager", () => {
     ]);
     expect(JSON.stringify(thread.messages)).not.toContain("full body");
   });
+
+  it("resolves an interactive request after the provider accepts the response", async () => {
+    const responses: { requestId: string; decision: string }[] = [];
+    const requestingProvider: NawcProvider = {
+      name: "requesting",
+      capabilities: ["requests"],
+      async startSession() {
+        return { id: "session-1" };
+      },
+      async *sendTurn() {
+        yield {
+          type: "request.opened",
+          requestId: "permission-1",
+          requestKind: "permission",
+          title: "Allow?",
+        };
+        await new Promise<void>(() => undefined);
+      },
+      async respondToRequest(_session, requestId, decision) {
+        responses.push({ requestId, decision });
+      },
+    };
+    const manager = new AgentManager({
+      provider: requestingProvider,
+      cwd: process.cwd(),
+      skillsDir: process.cwd(),
+    });
+    const thread = await manager.createThread({});
+    const iterator = manager
+      .sendTurn({ threadId: thread.id, prompt: "ask", references: [] })
+      [Symbol.asyncIterator]();
+
+    await iterator.next();
+    await manager.respondToRequest(thread.id, "permission-1", "accept");
+
+    expect(responses).toEqual([{ requestId: "permission-1", decision: "accept" }]);
+    expect(thread.requests).toMatchObject([
+      { id: "permission-1", status: "resolved", decision: "accept" },
+    ]);
+    await manager.interrupt(thread.id);
+  });
 });

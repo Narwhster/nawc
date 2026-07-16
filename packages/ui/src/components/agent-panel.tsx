@@ -482,6 +482,11 @@ export function AgentPanel({ note }: { readonly note?: string }) {
   const usedTokens =
     latestUsage?.total ?? (latestUsage ? (latestUsage.input ?? 0) + (latestUsage.output ?? 0) : 0);
   const reasoningOptions = useMemo(() => selectedModel?.reasoningEfforts ?? [], [selectedModel]);
+  const latestMessageIdByTurn = useMemo(() => {
+    const ids = new Map<string, string>();
+    for (const message of thread?.messages ?? []) ids.set(message.turnId, message.id);
+    return ids;
+  }, [thread?.messages]);
 
   const refreshThreads = useCallback(async () => {
     const next = await api<AgentThread[]>("/api/agent/threads");
@@ -853,9 +858,12 @@ export function AgentPanel({ note }: { readonly note?: string }) {
             {thread.messages.map((message) => {
               const turn = turnById.get(message.turnId);
               const activities = thread.activities.filter((item) => item.turnId === message.turnId);
-              const pendingRequests = thread.requests.filter(
-                (item) => item.turnId === message.turnId && item.status === "pending",
-              );
+              const pendingRequests =
+                latestMessageIdByTurn.get(message.turnId) === message.id
+                  ? thread.requests.filter(
+                      (item) => item.turnId === message.turnId && item.status === "pending",
+                    )
+                  : [];
               const showTurnActivity = turn !== undefined && message.role === "assistant";
               return (
                 <Message key={message.id} role={message.role}>
