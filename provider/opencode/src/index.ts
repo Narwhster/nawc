@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import {
+  createOpencodeClient,
+  type OpencodeClient,
+  type ProviderListResponse,
+} from "@opencode-ai/sdk/v2";
 import { execa } from "execa";
 import type {
   NawcProvider,
@@ -12,6 +17,13 @@ import type {
 } from "@nawc/config";
 
 type JsonObject = Record<string, unknown>;
+
+const DEFAULT_OPENCODE_SERVER_TIMEOUT_MS = 5_000;
+
+type RunningOpencodeServer = {
+  readonly url: string;
+  readonly close: () => Promise<void>;
+};
 
 function mapOpencodeEvent(event: JsonObject): ProviderEvent | undefined {
   const type = typeof event.type === "string" ? event.type : undefined;
@@ -104,8 +116,12 @@ export function parseOpencodeModels(output: string): readonly NawcProviderModel[
   return output
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => /^[a-z0-9._-]+\/[a-z0-9._-]+$/i.test(line))
+    .filter((line) => isOpencodeModelSlug(line))
     .map((line) => ({ id: line, name: line }));
+}
+
+function isOpencodeModelSlug(value: string): boolean {
+  return /^[a-z0-9._-]+(?:\/[a-z0-9._-]+)+$/i.test(value);
 }
 
 function inferDefaultVariant(providerID: string, variants: readonly string[]): string | undefined {
@@ -123,7 +139,7 @@ export function parseOpencodeVerboseModels(output: string): readonly NawcProvide
   let i = 0;
   while (i < lines.length) {
     const slugLine = lines[i].trim();
-    if (/^[a-z0-9._-]+\/[a-z0-9._-]+$/i.test(slugLine)) {
+    if (isOpencodeModelSlug(slugLine)) {
       i++;
       const jsonLines: string[] = [];
       let braceCount = 0;
@@ -167,6 +183,7 @@ export type OpencodeOptions = {
   readonly executable?: string;
   readonly model?: string;
   readonly reasoningEffort?: string;
+  readonly serverTimeoutMs?: number;
 };
 
 function isJsonObject(value: unknown): value is JsonObject {
@@ -270,12 +287,172 @@ function opencodeSkillRoots(cwd: string): readonly string[] {
   return [...new Set(roots)];
 }
 
+function formatOpencodeError(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim();
+  if (error && typeof error === "object") {
+    const value = error as Record<string, unknown>;
+    const data = value.data;
+    if (data && typeof data === "object") {
+      const message = (data as Record<string, unknown>).message;
+      if (typeof message === "string" && message.trim()) return message.trim();
+    }
+    try {
+      return JSON.stringify(error) ?? "OpenCode returned an unknown error";
+    } catch {
+      return "OpenCode returned an unserializable error";
+    }
+  }
+  return typeof error === "string" ? error : "OpenCode returned an unknown error";
+}
+
+function parseOpencodeServerUrl(output: string): string | undefined {
+  const match = output.match(/opencode server listening on (https?:\/\/[^\s]+)/);
+  return match?.[1];
+}
+
+async function startOpencodeServer(
+  executable: string,
+  cwd: string,
+  timeoutMs: number,
+): Promise<RunningOpencodeServer> {
+  const child = execa(executable, ["serve", "--hostname=127.0.0.1", "--port=0"], {
+    cwd,
+    detached: process.platform !== "win32",
+    env: {
+      ...process.env,
+      OPENCODE_CONFIG_CONTENT: JSON.stringify({}),
+    },
+    reject: false,
+  });
+
+  let output = "";
+  let closed = false;
+  const terminate = (signal: NodeJS.Signals) => {
+    if (process.platform !== "win32" && child.pid) {
+      try {
+        process.kill(-child.pid, signal);
+        return;
+      } catch {
+        // Fall back to terminating the direct child below.
+      }
+    }
+    child.kill(signal);
+  };
+
+  const url = await new Promise<string>((resolve, reject) => {
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      terminate("SIGTERM");
+      reject(new Error(`Timed out waiting ${timeoutMs}ms for OpenCode server startup`));
+    }, timeoutMs);
+    const settle = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      callback();
+    };
+    const onChunk = (chunk: Buffer | string) => {
+      output += chunk.toString();
+      const serverUrl = parseOpencodeServerUrl(output);
+      if (serverUrl) settle(() => resolve(serverUrl));
+    };
+    child.stdout?.on("data", onChunk);
+    child.stderr?.on("data", onChunk);
+    child.once("error", (error) => settle(() => reject(error)));
+    child.once("exit", (code, signal) => {
+      settle(() =>
+        reject(
+          new Error(
+            [
+              `OpenCode server exited before startup completed (code: ${String(code)}, signal: ${String(signal)}).`,
+              output.trim() ? `OpenCode output:\n${output.trim()}` : undefined,
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
+          ),
+        ),
+      );
+    });
+  }).catch((error: unknown) => {
+    throw new Error(`Failed to start OpenCode server: ${formatOpencodeError(error)}`, {
+      cause: error,
+    });
+  });
+
+  return {
+    url,
+    close: async () => {
+      if (closed) return;
+      closed = true;
+      terminate("SIGTERM");
+      const exited = await Promise.race([
+        child.then(
+          () => true,
+          () => true,
+        ),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1_000)),
+      ]);
+      if (!exited) {
+        terminate("SIGKILL");
+        await child;
+      }
+    },
+  };
+}
+
+export function flattenOpencodeModels(
+  providerList: ProviderListResponse,
+): readonly NawcProviderModel[] {
+  const connected = new Set(providerList.connected);
+  const models: NawcProviderModel[] = [];
+
+  for (const provider of providerList.all) {
+    if (!connected.has(provider.id)) continue;
+
+    for (const model of Object.values(provider.models)) {
+      const name = model.name.trim();
+      if (!name) continue;
+      const variants = Object.keys(model.variants ?? {});
+      const reasoningEfforts: NawcProviderReasoningEffort[] | undefined =
+        variants.length > 0 ? variants.map((variant) => ({ id: variant })) : undefined;
+      const defaultReasoningEffort =
+        variants.length > 0 ? inferDefaultVariant(provider.id, variants) : undefined;
+      models.push({
+        id: `${provider.id}/${model.id}`,
+        name,
+        ...(reasoningEfforts?.length ? { reasoningEfforts } : {}),
+        ...(defaultReasoningEffort ? { defaultReasoningEffort } : {}),
+      });
+    }
+  }
+
+  return models.sort((left, right) => left.name.localeCompare(right.name));
+}
+
 async function listOpencodeModels(
   executable: string,
   cwd: string,
+  timeoutMs = DEFAULT_OPENCODE_SERVER_TIMEOUT_MS,
 ): Promise<readonly NawcProviderModel[]> {
-  const result = await execa(executable, ["models", "--verbose"], { cwd, reject: false });
-  return parseOpencodeVerboseModels(result.stdout ?? "");
+  const server = await startOpencodeServer(executable, cwd, timeoutMs);
+  try {
+    const client: OpencodeClient = createOpencodeClient({
+      baseUrl: server.url,
+      directory: cwd,
+      throwOnError: true,
+    });
+    const response = await client.provider.list();
+    if (!response.data) throw new Error("OpenCode returned an empty provider inventory");
+    return flattenOpencodeModels(response.data);
+  } catch (error) {
+    throw new Error(`OpenCode model discovery failed: ${formatOpencodeError(error)}`, {
+      cause: error,
+    });
+  } finally {
+    await server.close();
+  }
 }
 
 async function listOpencodeSkills(
@@ -459,9 +636,14 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
       },
     ],
     listSkills: ({ cwd, skillsDir }) => listOpencodeSkills(cwd, skillsDir),
-    listModels: ({ cwd }) => listOpencodeModels(options.executable ?? "opencode", cwd),
+    listModels: ({ cwd }) =>
+      listOpencodeModels(options.executable ?? "opencode", cwd, options.serverTimeoutMs),
     getSettings: async ({ cwd }) => {
-      const models = await listOpencodeModels(options.executable ?? "opencode", cwd);
+      const models = await listOpencodeModels(
+        options.executable ?? "opencode",
+        cwd,
+        options.serverTimeoutMs,
+      );
       const configuredModel = options.model;
       const model = configuredModel
         ? models.find((item) => item.id === configuredModel)

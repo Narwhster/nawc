@@ -2,6 +2,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildOpencodeConfigContent,
+  flattenOpencodeModels,
   parseOpencodeEvent,
   parseOpencodeModels,
   parseOpencodeSkillFile,
@@ -94,11 +95,12 @@ describe("OpenCode JSONL", () => {
   it("parses the opencode models listing into model slugs", () => {
     expect(
       parseOpencodeModels(
-        "opencode/big-pickle\nopencode/claude-sonnet-4\n\n  opencode/gpt-5  \nnot-a-model\n",
+        "opencode/big-pickle\nopencode/claude-sonnet-4\nopenrouter/x-ai/grok-4.5\n\n  opencode/gpt-5  \nnot-a-model\n",
       ),
     ).toEqual([
       { id: "opencode/big-pickle", name: "opencode/big-pickle" },
       { id: "opencode/claude-sonnet-4", name: "opencode/claude-sonnet-4" },
+      { id: "openrouter/x-ai/grok-4.5", name: "openrouter/x-ai/grok-4.5" },
       { id: "opencode/gpt-5", name: "opencode/gpt-5" },
     ]);
   });
@@ -223,6 +225,65 @@ opencode/gpt-5
 not valid json`;
     expect(parseOpencodeVerboseModels(output)).toEqual([
       { id: "opencode/broken", name: "opencode/broken" },
+    ]);
+  });
+});
+
+describe("OpenCode provider inventory", () => {
+  it("flattens connected providers and preserves model variants", () => {
+    expect(
+      flattenOpencodeModels({
+        connected: ["openai"],
+        default: {},
+        all: [
+          {
+            id: "openai",
+            name: "OpenAI",
+            source: "env",
+            env: [],
+            options: {},
+            models: {
+              "gpt-5": {
+                id: "gpt-5",
+                providerID: "openai",
+                name: "GPT-5",
+                api: { id: "gpt-5", url: "https://example.com", npm: "example" },
+                capabilities: {
+                  temperature: true,
+                  reasoning: true,
+                  attachment: false,
+                  toolcall: true,
+                  input: { text: true, audio: false, image: false, video: false, pdf: false },
+                  output: { text: true, audio: false, image: false, video: false, pdf: false },
+                  interleaved: false,
+                },
+                cost: { input: 1, output: 2, cache: { read: 0, write: 0 } },
+                limit: { context: 1000, output: 100 },
+                status: "active",
+                options: {},
+                headers: {},
+                release_date: "2026-01-01",
+                variants: { low: {}, medium: {}, high: {} },
+              },
+            },
+          },
+          {
+            id: "anthropic",
+            name: "Anthropic",
+            source: "env",
+            env: [],
+            options: {},
+            models: {},
+          },
+        ],
+      }),
+    ).toEqual([
+      {
+        id: "openai/gpt-5",
+        name: "GPT-5",
+        reasoningEfforts: [{ id: "low" }, { id: "medium" }, { id: "high" }],
+        defaultReasoningEffort: "medium",
+      },
     ]);
   });
 });
