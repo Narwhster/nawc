@@ -475,7 +475,7 @@ export function AgentPanel({ note }: { readonly note?: string }) {
   const pendingAgentChanges = useRef(new Map<string, AgentThread | null>());
   const threadRefreshId = useRef(0);
   const thread = threads.find((item) => item.id === threadId);
-  const draftKey = threadId || `note:${note ?? "none"}`;
+  const draftKey = threadId || "new";
   const prompt = drafts[draftKey] ?? "";
   const selectedModel = models.find((item) => item.id === preferences.model);
   const threadModel = models.find((item) => item.id === thread?.model);

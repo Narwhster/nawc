@@ -438,4 +438,46 @@ describe("CompletionMenu", () => {
     expect(container.querySelector('[aria-label="Conversation"]')).not.toBeNull();
     expect(threadReads).toBe(1);
   });
+
+  it("preserves an unsent draft when the active note changes", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/api/agent/provider")) {
+        return Promise.resolve(jsonResponse({ label: "Test agent", capabilities: [], modes: [] }));
+      }
+      if (url.endsWith("/api/prompt/models")) return Promise.resolve(jsonResponse([]));
+      if (url.endsWith("/api/prompt/settings")) return Promise.resolve(jsonResponse({}));
+      if (url.endsWith("/api/agent/threads")) return Promise.resolve(jsonResponse([]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await act(async () =>
+      root.render(
+        <TooltipProvider>
+          <AgentPanel note="first.html" />
+        </TooltipProvider>,
+      ),
+    );
+    await act(async () => Promise.resolve());
+
+    const input = container.querySelector<HTMLTextAreaElement>('[aria-label="Message the agent"]');
+    if (!input) throw new Error("Message input did not render");
+    await act(async () => {
+      Reflect.set(HTMLTextAreaElement.prototype, "value", "keep this draft", input);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    await act(async () =>
+      root.render(
+        <TooltipProvider>
+          <AgentPanel note="second.html" />
+        </TooltipProvider>,
+      ),
+    );
+
+    expect(
+      container.querySelector<HTMLTextAreaElement>('[aria-label="Message the agent"]')?.value,
+    ).toBe("keep this draft");
+  });
 });
