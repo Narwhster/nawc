@@ -2,7 +2,9 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 import { isValidElement, useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { copyText } from "@/lib/clipboard";
 import { parseNoteLink } from "@/lib/note-link";
 
 function CopyButton({ text }: { readonly text: string }) {
@@ -13,10 +15,14 @@ function CopyButton({ text }: { readonly text: string }) {
       size="icon-xs"
       variant="ghost"
       onClick={() => {
-        void navigator.clipboard.writeText(text).then(() => {
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1_500);
-        });
+        void copyText(text)
+          .then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1_500);
+          })
+          .catch((error: unknown) =>
+            toast.error(error instanceof Error ? error.message : String(error)),
+          );
       }}
     >
       {copied ? <CheckIcon /> : <CopyIcon />}

@@ -43,6 +43,7 @@ import {
   type NoteHistory,
 } from "@/lib/note-history";
 import { parseNoteLink } from "@/lib/note-link";
+import { copyText } from "@/lib/clipboard";
 import { dirname, displayName, type WorkspaceEntry } from "@/lib/workspace";
 
 const panels = { note: DocumentPane as React.FunctionComponent<IDockviewPanelProps> };
@@ -258,15 +259,29 @@ export default function App() {
     return () => window.removeEventListener("keydown", openSearch);
   }, []);
 
+  const copyToClipboard = async (text: string, successMessage: string) => {
+    try {
+      await copyText(text);
+      toast.success(successMessage);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
+
   const actions: FileTreeActions = {
     open: openNote,
+    openInEditor: async (path) => {
+      try {
+        await api("/api/editor/open", json({ file: path, scope: "note" }));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : String(error));
+      }
+    },
     copyPath: async (path) => {
-      await navigator.clipboard.writeText(`src/${path}`);
-      toast.success("Path copied");
+      await copyToClipboard(`src/${path}`, "Path copied");
     },
     copyAbsolutePath: async (path) => {
-      await navigator.clipboard.writeText(`${srcDir}/${path}`);
-      toast.success("Absolute path copied");
+      await copyToClipboard(`${srcDir}/${path}`, "Absolute path copied");
     },
     createNote: (parent = "") => setDialog({ kind: "create-note", parent }),
     createFolder: (parent = "") => setDialog({ kind: "create-folder", parent }),

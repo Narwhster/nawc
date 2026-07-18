@@ -67,7 +67,7 @@ function ContextMenuContent({
     <ContextMenuPortal>
       <ContextMenuPrimitive.Content
         className={cn(
-          "relative min-w-36 overflow-hidden rounded-md bg-popover/70 p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 backdrop-blur-2xl backdrop-saturate-150",
+          "relative z-50 min-w-36 overflow-hidden rounded-md bg-popover/70 p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 backdrop-blur-2xl backdrop-saturate-150",
           className,
         )}
         {...props}

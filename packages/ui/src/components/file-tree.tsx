@@ -6,7 +6,7 @@ import {
   FolderOpenIcon,
   FolderPlusIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ContextMenu,
@@ -24,6 +24,7 @@ type MutableNode = WorkspaceEntry & { name: string; children: Map<string, Mutabl
 
 export type FileTreeActions = {
   open(path: string, newPanel?: boolean): void;
+  openInEditor(path: string): Promise<void>;
   copyPath(path: string): Promise<void>;
   copyAbsolutePath(path: string): Promise<void>;
   createNote(parent?: string): void;
@@ -160,6 +161,9 @@ function FileTreeItem({
 }) {
   const folder = node.type === "folder";
   const open = expanded.has(node.path);
+  const touchLongPress = useRef<number | undefined>(undefined);
+  const touchStart = useRef<{ x: number; y: number } | undefined>(undefined);
+  const suppressClick = useRef(false);
   const toggle = () =>
     setExpanded((current) => {
       const next = new Set(current);
@@ -167,9 +171,52 @@ function FileTreeItem({
       else next.add(node.path);
       return next;
     });
+  useEffect(
+    () => () => {
+      if (touchLongPress.current !== undefined) window.clearTimeout(touchLongPress.current);
+    },
+    [],
+  );
+  const clearTouchLongPress = () => {
+    if (touchLongPress.current !== undefined) window.clearTimeout(touchLongPress.current);
+    touchLongPress.current = undefined;
+    touchStart.current = undefined;
+  };
+  const startTouchLongPress = (event: React.TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    clearTouchLongPress();
+    suppressClick.current = false;
+    touchStart.current = { x: touch.clientX, y: touch.clientY };
+    const target = event.currentTarget;
+    touchLongPress.current = window.setTimeout(() => {
+      touchLongPress.current = undefined;
+      suppressClick.current = true;
+      if (target.dataset.state === "open") return;
+      target.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+        }),
+      );
+    }, 700);
+  };
+  const moveTouchLongPress = (event: React.TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    const start = touchStart.current;
+    if (!touch || !start) return;
+    if (Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 10) clearTouchLongPress();
+  };
+  const endTouchLongPress = (event: React.TouchEvent<HTMLDivElement>) => {
+    const wasLongPress = suppressClick.current;
+    clearTouchLongPress();
+    if (wasLongPress) event.preventDefault();
+  };
   return (
     <div role="treeitem" aria-expanded={folder ? open : undefined}>
-      <ContextMenu>
+      <ContextMenu modal={false}>
         <ContextMenuTrigger asChild>
           <div
             className={cn(
@@ -179,9 +226,22 @@ function FileTreeItem({
               dragging?.path === node.path && "dragging",
             )}
             style={{ paddingLeft: `${(node.path.split("/").length - 1) * 20}px` }}
-            onClick={(event) =>
-              folder ? toggle() : actions.open(node.path, event.metaKey || event.ctrlKey)
-            }
+            onClick={(event) => {
+              if (suppressClick.current) {
+                suppressClick.current = false;
+                event.preventDefault();
+                return;
+              }
+              if (folder) toggle();
+              else actions.open(node.path, event.metaKey || event.ctrlKey);
+            }}
+            onTouchStart={startTouchLongPress}
+            onTouchMove={moveTouchLongPress}
+            onTouchEnd={endTouchLongPress}
+            onTouchCancel={() => {
+              clearTouchLongPress();
+              suppressClick.current = false;
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
@@ -273,6 +333,9 @@ function FileTreeItem({
                 <ContextMenuItem onClick={() => actions.open(node.path, true)}>
                   Open in New Tab
                 </ContextMenuItem>
+                <ContextMenuItem onClick={() => void actions.openInEditor(node.path)}>
+                  Open in Editor
+                </ContextMenuItem>
                 <ContextMenuItem onClick={() => void actions.copyPath(node.path)}>
                   Copy Path
                 </ContextMenuItem>
@@ -284,6 +347,9 @@ function FileTreeItem({
             )}
             {folder && (
               <>
+                <ContextMenuItem onClick={() => void actions.openInEditor(node.path)}>
+                  Open in Editor
+                </ContextMenuItem>
                 <ContextMenuItem onClick={() => actions.createNote(node.path)}>
                   New Note
                 </ContextMenuItem>

@@ -23,6 +23,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { ChatMarkdown } from "@/components/chat-markdown";
+import { copyText } from "@/lib/clipboard";
 import {
   Context,
   ContextContent,
@@ -212,7 +213,9 @@ function threadLabel(thread: AgentThread): string {
 }
 
 function copy(text: string) {
-  void navigator.clipboard.writeText(text).then(() => toast.success("Copied"));
+  void copyText(text)
+    .then(() => toast.success("Copied"))
+    .catch((error: unknown) => toast.error(error instanceof Error ? error.message : String(error)));
 }
 
 function requestPreferences(preferences: AgentPreferences) {

@@ -13,6 +13,7 @@ import {
 } from "@nawc/ui/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@nawc/ui/components/ui/tooltip";
 import { EditorAction } from "@nawc/ui/components/editor-action";
+import { copyText } from "@nawc/ui/lib/clipboard";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -290,11 +291,7 @@ function SourceView({ node, deleteNode, runnable }: NodeViewProps & { runnable: 
           <div className="nawc-node-error" role="alert">
             <p>{error}</p>
             <div className="flex gap-1" contentEditable={false}>
-              <Button
-                size="xs"
-                variant="outline"
-                onClick={() => void navigator.clipboard.writeText(error)}
-              >
+              <Button size="xs" variant="outline" onClick={() => void copyText(error)}>
                 <CopyIcon data-icon="inline-start" /> Copy
               </Button>
               <Button size="xs" variant="outline" onClick={() => fixSourceError(error, attrs)}>
