@@ -1,0 +1,50 @@
+<h1>04. Plugins</h1>
+<p>
+  Plugins add capabilities to a notebook. Enable the plugins you need in the
+  <code>plugins</code> array in <code>nawc.config.ts</code>.
+</p>
+<h2>Common plugins</h2>
+<ul>
+  <li>
+    <code>core()</code> adds <code>&lt;ref&gt;</code>, <code>&lt;runnable&gt;</code>, and
+    <code>&lt;interactive&gt;</code> note elements. Most notebooks should enable it.
+  </li>
+  <li>
+    <code>nawcSkills()</code> gives your configured agent the NAWC workflow and note-writing skills.
+    Enable it when you want the agent to work with NAWC notes.
+  </li>
+  <li>
+    <code>typescript()</code> adds TypeScript and TSX source selection and execution.
+  </li>
+  <li><code>vitest()</code> adds references to and runnable examples for Vitest tests.</li>
+  <li>
+    Other packages can add support for Java, JUnit, React, Tailwind, or a custom note element. Use
+    the plugin's documentation for its package name and configuration.
+  </li>
+</ul>
+<h2>Enable a plugin</h2>
+<pre><code>import { core } from "@nawc/core";
+import { nawcSkills } from "@nawc/nawc-skills";
+import { typescript } from "@nawc/syntax-typescript";
+import { vitest } from "@nawc/syntax-vitest";
+
+export default defineConfig({
+  plugins: [core(), nawcSkills(), typescript(), vitest()],
+  // ...the rest of your configuration
+});</code></pre>
+<p>
+  Add the package to the notebook first, then add its factory to the array. Restart NAWC after
+  changing the configuration so the new note elements and skills are loaded.
+</p>
+<h2>When to build a plugin</h2>
+<p>
+  Build a plugin only when you need a capability that the available plugins do not provide, such as
+  a custom HTML note element, a new source language, or an integration with another build tool.
+  Keep the plugin's note syntax and usage instructions with that plugin so people can discover the
+  options they can use.
+</p>
+<p>
+  Continue with
+  <a data-wiki-link="docs/05-syntax" href="#docs%2F05-syntax">[[docs/05-syntax]]</a>
+  to use source references and runnable examples.
+</p>

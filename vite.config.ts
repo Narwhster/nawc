@@ -6,7 +6,11 @@ export default defineConfig({
   staged: {
     "*": "vp check --fix",
   },
-  lint: { options: { typeAware: true, typeCheck: true } },
+  fmt: { ignorePatterns: ["**/.notebook/**"] },
+  lint: {
+    ignorePatterns: ["**/.notebook/**"],
+    options: { typeAware: true, typeCheck: true },
+  },
   test: {
     exclude: ["**/node_modules/**", "**/.git/**", "**/.notebook/**"],
   },

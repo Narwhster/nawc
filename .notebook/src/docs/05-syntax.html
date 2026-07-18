@@ -1,0 +1,48 @@
+<h1>05. Source references and runnable examples</h1>
+<p>
+  The <code>&lt;ref&gt;</code> element shows source from your project. The <code>&lt;runnable&gt;</code>
+  element shows source and adds a control for running it when the selected syntax supports execution.
+  Both use paths relative to <code>baseDir</code>.
+</p>
+<h2>TypeScript</h2>
+<p>
+  Enable <code>typescript()</code>, then use <code>typescript</code>, <code>ts</code>, or
+  <code>tsx</code> as the syntax name:
+</p>
+<pre><code>&lt;ref
+  file="src/format.ts"
+  syntax="typescript"
+  name="formatDate"
+  type="function"
+/&gt;
+
+&lt;runnable file="examples/format-date.ts" syntax="ts" /&gt;</code></pre>
+<p>
+  A reference without <code>name</code> and <code>type</code> shows the whole file. To select one
+  declaration, provide both. TypeScript supports <code>function</code>, <code>class</code>,
+  <code>type</code>, <code>interface</code>, <code>variable</code>, and <code>enum</code>.
+</p>
+<p>
+  A runnable TypeScript file runs with <code>tsx</code>. Declaration selectors do not change what is
+  executed, so put the example you want to run at the file's top level.
+</p>
+<h2>Vitest</h2>
+<p>
+  Enable <code>vitest()</code>, then use <code>vitest</code> or <code>test</code>:
+</p>
+<pre><code>&lt;ref file="src/math.test.ts" syntax="vitest" name="adds numbers" /&gt;
+&lt;runnable file="src/math.test.ts" syntax="test" name="adds numbers" /&gt;</code></pre>
+<p>
+  The test name must match exactly. Without a name, a reference shows the whole test file and a
+  runnable block runs all tests in that file. With a name, the runnable block runs only that title.
+</p>
+<h2>Other languages</h2>
+<p>
+  Java, JUnit, and other syntax plugins use their own syntax names and selectors. Read the generated
+  skill for the plugin before adding attributes; the names and selectors are not interchangeable.
+</p>
+<p>
+  Continue with
+  <a data-wiki-link="docs/06-providers" href="#docs%2F06-providers">[[docs/06-providers]]</a>
+  to connect the agent that will work with your notes.
+</p>

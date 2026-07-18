@@ -30,79 +30,44 @@
   This notebook applies that idea to NAWC itself. It is both a guided tour and an example of the
   artifact the repository produces.
 </p>
-<h2>Choose a reading depth</h2>
-<ul>
+<h2>Start Here</h2>
+  <p>Follow these notes in order if NAWC is new to you:</p>
+<ol>
   <li>
-    <p>
-      <a data-wiki-link="docs/Using the agent panel" href="#docs%2FUsing%20the%20agent%20panel"
-        >[[docs/Using the agent panel]]</a
-      >
-      — durable, note-aware conversations with your provider.
-    </p>
+    <a data-wiki-link="docs/01-introduction" href="#docs%2F01-introduction">[[docs/01-introduction]]</a>
+    - learn how the NAWC workflow turns an idea into durable notes, evidence, and implementation
+    tickets.
   </li>
   <li>
-    <p>
-      <a data-wiki-link="concepts/Architecture" href="#concepts%2FArchitecture"
-        >[[concepts/Architecture]]</a
-      >
-      — a visual, high-level system tour.
-    </p>
+    <a data-wiki-link="docs/02-quick-start" href="#docs%2F02-quick-start">[[docs/02-quick-start]]</a>
+    - install NAWC, create a notebook, and open it in your browser.
   </li>
   <li>
-    <p>
-      <a data-wiki-link="codebase/Map" href="#codebase%2FMap">[[codebase/Map]]</a> — package and
-      source-file entry points for maintainers.
-    </p>
+    <a data-wiki-link="docs/03-configuration" href="#docs%2F03-configuration"
+      >[[docs/03-configuration]]</a
+    >
+    - choose the project directory, plugins, provider, editor, theme, host, and port.
   </li>
   <li>
-    <p>
-      <a data-wiki-link="docs/Creating a notebook" href="#docs%2FCreating%20a%20notebook"
-        >[[docs/Creating a notebook]]</a
-      >
-      — create a project and write live notes.
-    </p>
+    <a data-wiki-link="docs/04-plugins" href="#docs%2F04-plugins">[[docs/04-plugins]]</a> - add the
+    note and agent capabilities your project needs.
   </li>
   <li>
-    <p>
-      <a data-wiki-link="docs/Creating a plugin" href="#docs%2FCreating%20a%20plugin"
-        >[[docs/Creating a plugin]]</a
-      >
-      — extend the editor and teach the agent new note vocabulary.
-    </p>
+    <a data-wiki-link="docs/05-syntax" href="#docs%2F05-syntax">[[docs/05-syntax]]</a> - use
+    <code>&lt;ref&gt;</code> and <code>&lt;runnable&gt;</code> with TypeScript and Vitest.
   </li>
   <li>
-    <p>
-      <a
-        data-wiki-link="concepts/extensions/Extension architecture"
-        href="#concepts%2Fextensions%2FExtension%20architecture"
-        >[[concepts/extensions/Extension architecture]]</a
-      >
-      — plugins, providers, syntax plugins, and configuration.
-    </p>
+    <a data-wiki-link="docs/06-providers" href="#docs%2F06-providers">[[docs/06-providers]]</a> -
+    connect Codex, OpenCode, Cursor, or another agent runtime.
   </li>
   <li>
-    <p>
-      <a
-        data-wiki-link="docs/Testing with runnable specifications"
-        href="#docs%2FTesting%20with%20runnable%20specifications"
-        >[[docs/Testing with runnable specifications]]</a
-      >
-      — executable, implementation-shaping examples.
-    </p>
+    <a data-wiki-link="docs/07-editors-and-themes" href="#docs%2F07-editors-and-themes"
+      >[[docs/07-editors-and-themes]]</a
+    >
+    - control where source opens and how the notebook looks.
   </li>
-  <li>
-    <p>
-      <a data-wiki-link="docs/Safe notebook workflows" href="#docs%2FSafe%20notebook%20workflows"
-        >[[docs/Safe notebook workflows]]</a
-      >
-      — understand the local tool's trust boundaries.
-    </p>
-  </li>
-</ul>
-<h2>A live proof</h2>
+</ol>
 <p>
-  The declaration below is not copied into this page. NAWC resolves it from the repository, so the
-  explanation stays attached to the current contract.
+  The examples show the options most notebooks need. If a plugin or provider adds its own options,
+  follow that package's documentation.
 </p>
-<ref file="packages/config/src/index.ts" syntax="ts" name="NawcConfig" type="type"></ref>
-<p></p>

@@ -1,0 +1,62 @@
+<h1>06. Agent providers</h1>
+<p>
+  A provider connects NAWC to the agent runtime that handles your conversations and edits. Choose one
+  that is installed and authenticated on your machine, then set it in <code>nawc.config.ts</code>.
+</p>
+<h2>Built-in providers</h2>
+<ul>
+  <li>
+    <code>codex()</code> uses the Codex command-line app. Install and authenticate Codex, then add
+    <code>@nawc/provider-codex</code> to the notebook.
+  </li>
+  <li>
+    <code>opencode()</code> uses OpenCode. Install and configure OpenCode, then add
+    <code>@nawc/provider-opencode</code>.
+  </li>
+  <li>
+    <code>cursor()</code> uses Cursor's agent interface. Install and authenticate Cursor, then add
+    <code>@nawc/provider-cursor</code>.
+  </li>
+</ul>
+<h2>Choose a provider</h2>
+<pre><code>import { opencode } from "@nawc/provider-opencode";
+
+export default defineConfig({
+  provider: opencode(),
+  // ...the rest of your configuration
+});</code></pre>
+<p>
+  The provider package must be installed in the notebook before it can be imported. Restart NAWC
+  after changing providers.
+</p>
+<h2>Provider options</h2>
+<p>
+  Provider factories accept optional settings for the executable path, model, and reasoning effort.
+  Codex also accepts a sandbox setting; OpenCode accepts a model-discovery timeout; Cursor accepts an
+  API endpoint. For example:
+</p>
+<pre><code>import { codex } from "@nawc/provider-codex";
+
+provider: codex({
+  model: "your-model-id",
+  reasoningEffort: "medium",
+  sandbox: "workspace-write",
+})</code></pre>
+<p>
+  If you omit model settings, the provider exposes the models and controls available from the runtime
+  in the agent panel. If the panel cannot connect, check that the provider's command is on your PATH
+  and that its own login or setup is complete.
+</p>
+<h2>Custom providers</h2>
+<p>
+  A custom provider is an advanced extension for another agent service or local runtime. Use the
+  provider package's documentation for its setup and supported settings rather than changing the
+  notebook's other configuration.
+</p>
+<p>
+  Continue with
+  <a data-wiki-link="docs/07-editors-and-themes" href="#docs%2F07-editors-and-themes"
+    >[[docs/07-editors-and-themes]]</a
+  >
+  to customize where source opens and how the notebook looks.
+</p>

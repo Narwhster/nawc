@@ -1,0 +1,45 @@
+<h1>07. Editors and themes</h1>
+<h2>Choose an editor</h2>
+<p>
+  The editor setting controls where a source reference opens when you use its open action. The
+  default is VS Code:
+</p>
+<pre><code>import { vscode } from "nawc";
+
+export default defineConfig({
+  editor: vscode(),
+  // ...the rest of your configuration
+});</code></pre>
+<p>
+  To use another editor, install an editor integration that provides one and set that editor in the
+  configuration. A custom editor can open a file at the referenced line and column.
+</p>
+<h2>Choose a theme</h2>
+<p>
+  Use the built-in light or dark theme, or start from one and change its name and CSS variables:
+</p>
+<pre><code>import { nawcDark } from "nawc";
+
+const theme = {
+  ...nawcDark(),
+  name: "midnight-copper",
+  variables: {
+    ...nawcDark().variables,
+    "--primary": "oklch(0.72 0.16 45)",
+    "--ring": "oklch(0.72 0.16 45)",
+  },
+};
+
+export default defineConfig({
+  theme,
+  // ...the rest of your configuration
+});</code></pre>
+<p>
+  Use <code>nawcLight()</code> for a light appearance and <code>nawcDark()</code> for a dark
+  appearance. Keep the existing variables when overriding a theme so the editor, terminals, and
+  notebook controls remain styled consistently.
+</p>
+<p>
+  You have reached the end of the guide. Return to
+  <a data-wiki-link="index" href="#index">[[index]]</a> to revisit the setup and workflow notes.
+</p>

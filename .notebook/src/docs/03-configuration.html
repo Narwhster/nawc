@@ -1,0 +1,61 @@
+<h1>03. Configuration</h1>
+<p>
+  Edit <code>nawc.config.ts</code> when you want to choose the notebook's plugins, agent provider,
+  project directory, editor, theme, or server address.
+</p>
+<h2>Start with the generated configuration</h2>
+<pre><code>import { defineConfig, nawcLight, vscode } from "nawc";
+import { core } from "@nawc/core";
+import { nawcSkills } from "@nawc/nawc-skills";
+import { codex } from "@nawc/provider-codex";
+import { typescript } from "@nawc/syntax-typescript";
+import { vitest } from "@nawc/syntax-vitest";
+
+export default defineConfig({
+  plugins: [core(), nawcSkills(), typescript(), vitest()],
+  provider: codex(),
+  editor: vscode(),
+  theme: nawcLight(),
+  baseDir: "..",
+});</code></pre>
+<h2>Options</h2>
+<ul>
+  <li>
+    <code>plugins</code> enables note elements, agent skills, syntax support, and other extensions.
+    Installing a package is not enough; add its plugin here.
+  </li>
+  <li>
+    <code>provider</code> selects the agent runtime. See
+    <a data-wiki-link="docs/06-providers" href="#docs%2F06-providers">[[docs/06-providers]]</a>
+    for the available providers and their options.
+  </li>
+  <li>
+    <code>baseDir</code> is the project directory used for source references, runnable examples, and
+    editor links. It is resolved relative to the directory containing <code>nawc.config.ts</code>.
+  </li>
+  <li>
+    <code>editor</code> controls which editor opens a referenced source location. The default is
+    <code>vscode()</code>.
+  </li>
+  <li>
+    <code>theme</code> controls the notebook appearance. The default is <code>nawcLight()</code>;
+    <code>nawcDark()</code> is also included.
+  </li>
+  <li>
+    <code>port</code> changes the server port. <code>host</code> changes the network interface it
+    listens on. The command-line flags <code>--port</code>, <code>--host</code>, and
+    <code>--config</code> override these values for one run.
+  </li>
+</ul>
+<h2>Change the project location</h2>
+<p>
+  Keep the notebook outside the source tree when possible. For a notebook in
+  <code>tools/notebook</code> describing the repository root, use <code>baseDir: "../.."</code>.
+  Every <code>file</code> path in a <code>&lt;ref&gt;</code> or <code>&lt;runnable&gt;</code> element is then
+  written relative to that root.
+</p>
+<p>
+  Continue with
+  <a data-wiki-link="docs/04-plugins" href="#docs%2F04-plugins">[[docs/04-plugins]]</a>
+  to choose the features your notes need.
+</p>
