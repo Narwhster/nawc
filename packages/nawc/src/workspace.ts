@@ -17,6 +17,7 @@ import { syntaxFor, type NawcConfig, type SourceSelection } from "@nawc/config";
 const execFileAsync = promisify(execFile);
 const GENERATED_DIRECTORY_NAMES = new Set([
   ".git",
+  ".nawc",
   ".skills",
   "build",
   "coverage",

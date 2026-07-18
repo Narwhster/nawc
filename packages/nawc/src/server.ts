@@ -128,6 +128,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     provider: config.provider,
     cwd: baseDir,
     skillsDir,
+    statePath: path.join(projectDir, ".nawc", "state.sqlite"),
   });
   let providerSkillsPromise: Promise<readonly NawcProviderSkill[]> | undefined;
   let providerModelsPromise: Promise<readonly NawcProviderModel[]> | undefined;

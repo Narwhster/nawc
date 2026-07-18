@@ -11,6 +11,7 @@ import {
   startAgentTurn,
   type AgentThread,
 } from "./agent-thread.ts";
+import { AgentState } from "./agent-state.ts";
 
 type SendTurnInput = Omit<NawcProviderTurnInput, "cwd" | "skillsDir" | "signal"> & {
   readonly threadId: string;
@@ -22,18 +23,27 @@ export class AgentManager {
   readonly #cwd: string;
   readonly #skillsDir: string;
   readonly #threads = new Map<string, AgentThread>();
+  readonly #state: AgentState | undefined;
   readonly #sessions = new Map<string, NawcProviderSession>();
   readonly #controllers = new Map<string, AbortController>();
   readonly #listeners = new Set<AgentChangeListener>();
+  #closed = false;
 
   constructor(input: {
     readonly provider: NawcProvider;
     readonly cwd: string;
     readonly skillsDir: string;
+    readonly statePath?: string;
   }) {
     this.#provider = input.provider;
     this.#cwd = input.cwd;
     this.#skillsDir = input.skillsDir;
+    this.#state = input.statePath ? new AgentState(input.statePath) : undefined;
+    for (const thread of this.#state?.load() ?? []) {
+      const recovered = recoverThread(thread);
+      this.#threads.set(thread.id, thread);
+      if (recovered) this.#state?.save(thread);
+    }
   }
 
   metadata() {
@@ -199,8 +209,11 @@ export class AgentManager {
   }
 
   async close(): Promise<void> {
+    if (this.#closed) return;
     for (const threadId of this.#controllers.keys()) await this.interrupt(threadId);
     for (const session of this.#sessions.values()) await this.#provider.closeSession?.(session);
+    this.#closed = true;
+    this.#state?.close();
   }
 
   #requireThread(id: string): AgentThread {
@@ -211,6 +224,29 @@ export class AgentManager {
 
   #notify(threadId: string): void {
     const thread = this.#threads.get(threadId);
+    if (!this.#closed) {
+      if (thread) this.#state?.save(thread);
+      else this.#state?.delete(threadId);
+    }
     for (const listener of this.#listeners) listener(threadId, thread);
   }
+}
+
+function recoverThread(thread: AgentThread): boolean {
+  let recovered = thread.status === "running";
+  const now = new Date().toISOString();
+  for (const turn of thread.turns) {
+    if (turn.status !== "running") continue;
+    turn.status = "interrupted";
+    turn.updatedAt = now;
+    recovered = true;
+    for (const message of thread.messages) {
+      if (message.turnId === turn.id) message.streaming = false;
+    }
+  }
+  if (recovered) {
+    thread.status = "idle";
+    thread.updatedAt = now;
+  }
+  return recovered;
 }
