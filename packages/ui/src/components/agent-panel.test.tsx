@@ -133,7 +133,7 @@ describe("CompletionMenu", () => {
     expect(listbox?.textContent).toContain("opencode/claude-sonnet-4");
   });
 
-  it("shows thinking feedback while a turn has no activities yet", async () => {
+  it("applies live thread snapshots while a turn is running", async () => {
     const runningThread = {
       ...emptyThread,
       status: "running" as const,
@@ -173,6 +173,81 @@ describe("CompletionMenu", () => {
     await act(async () => Promise.resolve());
 
     expect(container.textContent).toContain("Thinking…");
+    const completedThread = {
+      ...runningThread,
+      status: "idle" as const,
+      turns: [{ id: "turn-1", status: "completed" as const }],
+      messages: [
+        ...runningThread.messages,
+        {
+          id: "assistant-1",
+          role: "assistant" as const,
+          text: "Finished without a refresh",
+          turnId: "turn-1",
+          createdAt: "2026-07-12T00:00:01.000Z",
+          updatedAt: "2026-07-12T00:00:01.000Z",
+          streaming: false,
+        },
+      ],
+    };
+    window.dispatchEvent(
+      new CustomEvent("nawc:agent-changed", {
+        detail: { threadId: runningThread.id, thread: completedThread },
+      }),
+    );
+    await act(async () => Promise.resolve());
+    expect(container.textContent).toContain("Finished without a refresh");
+  });
+
+  it("resynchronizes threads after the agent event stream reconnects", async () => {
+    const reconnectedThread = {
+      ...emptyThread,
+      messages: [
+        {
+          id: "assistant-1",
+          role: "assistant" as const,
+          text: "Recovered after reconnect",
+          turnId: "turn-1",
+          createdAt: "2026-07-12T00:00:01.000Z",
+          updatedAt: "2026-07-12T00:00:01.000Z",
+          streaming: false,
+        },
+      ],
+    };
+    let threadReads = 0;
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/api/agent/provider")) {
+        return Promise.resolve(jsonResponse({ label: "Test agent", capabilities: [], modes: [] }));
+      }
+      if (url.endsWith("/api/prompt/models")) return Promise.resolve(jsonResponse([]));
+      if (url.endsWith("/api/prompt/settings")) return Promise.resolve(jsonResponse({}));
+      if (url.endsWith("/api/agent/threads")) {
+        threadReads += 1;
+        return Promise.resolve(
+          jsonResponse(threadReads === 1 ? [emptyThread] : [reconnectedThread]),
+        );
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    localStorage.setItem("nawc:agent-active-thread:v1", reconnectedThread.id);
+
+    await act(async () =>
+      root.render(
+        <TooltipProvider>
+          <AgentPanel />
+        </TooltipProvider>,
+      ),
+    );
+    await act(async () => Promise.resolve());
+    expect(threadReads).toBe(1);
+
+    window.dispatchEvent(new CustomEvent("nawc:agent-events-reconnected"));
+    await act(async () => Promise.resolve());
+
+    expect(threadReads).toBe(2);
+    expect(container.textContent).toContain("Recovered after reconnect");
   });
 
   it("renders a turn-level permission request only once", async () => {
@@ -302,6 +377,11 @@ describe("CompletionMenu", () => {
     const stop = container.querySelector<HTMLButtonElement>('[aria-label="Stop agent"]');
     expect(stop).not.toBeNull();
     await act(async () => stop?.click());
+    window.dispatchEvent(
+      new CustomEvent("nawc:agent-changed", {
+        detail: { threadId: "thread-1", thread: { ...runningThread, status: "idle" as const } },
+      }),
+    );
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
     expect(container.querySelector('[aria-label="Send message"]')).not.toBeNull();
@@ -356,5 +436,6 @@ describe("CompletionMenu", () => {
 
     expect(localStorage.getItem("nawc:agent-active-thread:v1")).toBe("thread-1");
     expect(container.querySelector('[aria-label="Conversation"]')).not.toBeNull();
+    expect(threadReads).toBe(1);
   });
 });

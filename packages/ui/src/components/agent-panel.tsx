@@ -472,6 +472,8 @@ export function AgentPanel({ note }: { readonly note?: string }) {
   const [attachments, setAttachments] = useState<readonly ImageAttachment[]>([]);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
+  const pendingAgentChanges = useRef(new Map<string, AgentThread | null>());
+  const threadRefreshId = useRef(0);
   const thread = threads.find((item) => item.id === threadId);
   const draftKey = threadId || `note:${note ?? "none"}`;
   const prompt = drafts[draftKey] ?? "";
@@ -489,8 +491,22 @@ export function AgentPanel({ note }: { readonly note?: string }) {
   }, [thread?.messages]);
 
   const refreshThreads = useCallback(async () => {
+    const refreshId = ++threadRefreshId.current;
+    pendingAgentChanges.current = new Map();
     const next = await api<AgentThread[]>("/api/agent/threads");
-    setThreads(next);
+    if (refreshId !== threadRefreshId.current) return next;
+    setThreads(() => {
+      const merged = new Map(next.map((item) => [item.id, item]));
+      const changes = pendingAgentChanges.current;
+      pendingAgentChanges.current = new Map();
+      for (const [id, thread] of changes) {
+        if (thread) merged.set(id, thread);
+        else merged.delete(id);
+      }
+      return [...merged.values()].sort((left, right) =>
+        right.updatedAt.localeCompare(left.updatedAt),
+      );
+    });
     setThreadsLoaded(true);
     return next;
   }, []);
@@ -517,6 +533,39 @@ export function AgentPanel({ note }: { readonly note?: string }) {
   useEffect(() => {
     if (threadsLoaded && threadId && !threads.some((item) => item.id === threadId)) setThreadId("");
   }, [threadId, threads, threadsLoaded]);
+
+  useEffect(() => {
+    const onAgentEventsReconnected = () =>
+      void refreshThreads().catch((error: unknown) =>
+        toast.error(error instanceof Error ? error.message : String(error)),
+      );
+    window.addEventListener("nawc:agent-events-reconnected", onAgentEventsReconnected);
+    const onAgentChange = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          threadId: string;
+          thread?: AgentThread | null;
+        }>
+      ).detail;
+      const thread = detail.thread;
+      if (thread === undefined) return;
+      pendingAgentChanges.current.set(detail.threadId, thread);
+      if (thread === null) {
+        setThreads((current) => current.filter(({ id }) => id !== detail.threadId));
+        return;
+      }
+      setThreads((current) => {
+        const next = current.filter(({ id }) => id !== detail.threadId);
+        next.push(thread);
+        return next.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+      });
+    };
+    window.addEventListener("nawc:agent-changed", onAgentChange);
+    return () => {
+      window.removeEventListener("nawc:agent-events-reconnected", onAgentEventsReconnected);
+      window.removeEventListener("nawc:agent-changed", onAgentChange);
+    };
+  }, [refreshThreads]);
 
   useEffect(
     () => localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences)),
@@ -731,22 +780,13 @@ export function AgentPanel({ note }: { readonly note?: string }) {
       if (!response.ok || !response.body) throw new Error(await response.text());
       setPendingReferences([]);
       setAttachments([]);
-      await refreshThreads();
       const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
       while (true) {
         const result = await reader.read();
         if (result.done) break;
-        buffer += decoder.decode(result.value, { stream: true });
-        const blocks = buffer.split("\n\n");
-        buffer = blocks.pop() ?? "";
-        if (blocks.length > 0) await refreshThreads();
       }
-      await refreshThreads();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
-      await refreshThreads();
     } finally {
       setRunning(false);
       requestAnimationFrame(() => textarea.current?.focus());
@@ -758,7 +798,6 @@ export function AgentPanel({ note }: { readonly note?: string }) {
     try {
       await api(`/api/agent/threads/${encodeURIComponent(threadId)}/interrupt`, json({}));
       setRunning(false);
-      await refreshThreads();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
     }
@@ -816,7 +855,6 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                 method: "DELETE",
               }).then(() => {
                 setThreadId("");
-                void refreshThreads();
               });
             }}
           >
@@ -939,7 +977,7 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                               void api(
                                 `/api/agent/threads/${thread.id}/requests/${request.id}`,
                                 json({ decision }),
-                              ).then(refreshThreads);
+                              );
                             }}
                           >
                             {label}

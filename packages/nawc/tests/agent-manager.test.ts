@@ -16,6 +16,30 @@ const provider: NawcProvider = {
 };
 
 describe("AgentManager", () => {
+  it("notifies subscribers for thread mutations and supports unsubscribing", async () => {
+    const manager = new AgentManager({
+      provider,
+      cwd: process.cwd(),
+      skillsDir: process.cwd(),
+    });
+    const changes: string[] = [];
+    const unsubscribe = manager.subscribe((threadId) => changes.push(threadId));
+    const thread = await manager.createThread({});
+
+    changes.length = 0;
+    for await (const _event of manager.sendTurn({
+      threadId: thread.id,
+      prompt: "one",
+      references: [],
+    }))
+      void _event;
+
+    expect(changes).toEqual([thread.id, thread.id, thread.id, thread.id]);
+    unsubscribe();
+    await manager.createThread({});
+    expect(changes).toEqual([thread.id, thread.id, thread.id, thread.id]);
+  });
+
   it("resumes one provider thread across turns in memory", async () => {
     const manager = new AgentManager({
       provider,

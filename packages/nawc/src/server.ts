@@ -44,6 +44,7 @@ import { vscode } from "@nawc/editor-vscode";
 import { nawcLight } from "@nawc/theme-nawc";
 import { NoteSearchIndex } from "./note-search.ts";
 import { AgentManager } from "./agent-manager.ts";
+import type { AgentThread } from "./agent-thread.ts";
 import { validateAgentAttachments } from "./agent-input.ts";
 
 type ServerOptions = {
@@ -366,6 +367,12 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   });
   app.get("/api/events", (context) =>
     streamSSE(context, async (stream) => {
+      const agentListener = (threadId: string, thread: AgentThread | undefined) =>
+        void stream.writeSSE({
+          data: JSON.stringify({ event: "agent", threadId, thread: thread ?? null }),
+          event: "agent",
+        });
+      const unsubscribeAgent = agentManager.subscribe(agentListener);
       await stream.writeSSE({ data: JSON.stringify({ event: "ready" }) });
       await new Promise<void>((resolve) => {
         const listener = (event: string, file: string) =>
@@ -375,6 +382,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
         fileListeners.add(listener);
         stream.onAbort(() => {
           fileListeners.delete(listener);
+          unsubscribeAgent();
           resolve();
         });
       });

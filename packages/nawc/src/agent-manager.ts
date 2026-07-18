@@ -15,6 +15,7 @@ import {
 type SendTurnInput = Omit<NawcProviderTurnInput, "cwd" | "skillsDir" | "signal"> & {
   readonly threadId: string;
 };
+type AgentChangeListener = (threadId: string, thread: AgentThread | undefined) => void;
 
 export class AgentManager {
   readonly #provider: NawcProvider;
@@ -23,6 +24,7 @@ export class AgentManager {
   readonly #threads = new Map<string, AgentThread>();
   readonly #sessions = new Map<string, NawcProviderSession>();
   readonly #controllers = new Map<string, AbortController>();
+  readonly #listeners = new Set<AgentChangeListener>();
 
   constructor(input: {
     readonly provider: NawcProvider;
@@ -53,6 +55,11 @@ export class AgentManager {
     return this.#threads.get(id);
   }
 
+  subscribe(listener: AgentChangeListener): () => void {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  }
+
   async createThread(settings: {
     readonly model?: string;
     readonly reasoningEffort?: string;
@@ -65,6 +72,7 @@ export class AgentManager {
     thread.options = settings.options;
     thread.mode = settings.mode;
     this.#threads.set(thread.id, thread);
+    this.#notify(thread.id);
     return thread;
   }
 
@@ -76,6 +84,7 @@ export class AgentManager {
     this.#controllers.delete(id);
     this.#sessions.delete(id);
     this.#threads.delete(thread.id);
+    this.#notify(thread.id);
   }
 
   async *sendTurn(input: SendTurnInput): AsyncIterable<ProviderEvent> {
@@ -92,6 +101,7 @@ export class AgentManager {
       references: input.references.map(displayReference),
       attachments: input.attachments,
     });
+    this.#notify(thread.id);
     const controller = new AbortController();
     this.#controllers.set(thread.id, controller);
     try {
@@ -128,6 +138,7 @@ export class AgentManager {
       let completed = false;
       for await (const event of events) {
         projectProviderEvent(thread, turn.id, event);
+        this.#notify(thread.id);
         if (event.type === "thread.started") {
           session = { ...session, providerThreadId: event.threadId };
           this.#sessions.set(thread.id, session);
@@ -140,6 +151,7 @@ export class AgentManager {
           ? { type: "turn.interrupted", turnId: turn.id }
           : { type: "turn.completed", turnId: turn.id };
         projectProviderEvent(thread, turn.id, event);
+        this.#notify(thread.id);
         yield event;
       }
     } catch (error) {
@@ -151,6 +163,7 @@ export class AgentManager {
           : { message: error instanceof Error ? error.message : String(error) }),
       } as ProviderEvent;
       projectProviderEvent(thread, turn.id, event);
+      this.#notify(thread.id);
       yield event;
     } finally {
       this.#controllers.delete(thread.id);
@@ -162,6 +175,7 @@ export class AgentManager {
     const turn = thread?.turns.findLast((item) => item.status === "running");
     if (thread?.status === "running" && turn) {
       projectProviderEvent(thread, turn.id, { type: "turn.interrupted", turnId: turn.id });
+      this.#notify(thread.id);
     }
     const session = this.#sessions.get(threadId);
     this.#controllers.get(threadId)?.abort();
@@ -181,6 +195,7 @@ export class AgentManager {
         requestId,
         decision,
       });
+    this.#notify(thread.id);
   }
 
   async close(): Promise<void> {
@@ -192,5 +207,10 @@ export class AgentManager {
     const thread = this.#threads.get(id);
     if (!thread) throw new Error(`Unknown agent thread: ${id}`);
     return thread;
+  }
+
+  #notify(threadId: string): void {
+    const thread = this.#threads.get(threadId);
+    for (const listener of this.#listeners) listener(threadId, thread);
   }
 }

@@ -201,13 +201,35 @@ export default function App() {
     void refresh();
     void api<{ srcDir: string }>("/api/meta").then((meta) => setSrcDir(meta.srcDir));
     const events = new EventSource("/api/events");
+    let connected = false;
+    events.onopen = () => {
+      if (connected) window.dispatchEvent(new CustomEvent("nawc:agent-events-reconnected"));
+      connected = true;
+    };
+    const onAgentChange = (message: MessageEvent<string>) => {
+      const detail = JSON.parse(message.data) as {
+        event: "agent";
+        threadId: string;
+        thread?: unknown;
+      };
+      window.dispatchEvent(new CustomEvent("nawc:agent-changed", { detail }));
+    };
+    events.addEventListener("agent", onAgentChange);
     events.onmessage = (message) => {
-      const detail = JSON.parse(message.data) as { event: string; file?: string };
-      if (detail.event !== "ready") void refresh();
-      if (detail.event !== "ready") setSearchRevision((revision) => revision + 1);
+      const detail = JSON.parse(message.data) as {
+        event: string;
+        file?: string;
+      };
+      if (detail.event !== "ready") {
+        void refresh();
+        setSearchRevision((revision) => revision + 1);
+      }
       window.dispatchEvent(new CustomEvent("nawc:files-changed", { detail }));
     };
-    return () => events.close();
+    return () => {
+      events.removeEventListener("agent", onAgentChange);
+      events.close();
+    };
   }, [refresh]);
 
   useEffect(() => {
