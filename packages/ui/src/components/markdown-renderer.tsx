@@ -3,9 +3,9 @@ import { isValidElement, useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { copyText } from "@/lib/clipboard";
-import { parseNoteLink } from "@/lib/note-link";
+import { Button } from "@nawcui/components/ui/button";
+import { copyText } from "@nawcui/lib/clipboard";
+import { parseNoteLink } from "@nawcui/lib/note-link";
 
 function CopyButton({ text }: { readonly text: string }) {
   const [copied, setCopied] = useState(false);

@@ -3,7 +3,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@nawcui/components/ui/tooltip";
 import { AgentPanel, CompletionMenu } from "./agent-panel";
 
 const emptyThread = {

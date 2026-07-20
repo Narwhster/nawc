@@ -8,8 +8,8 @@ import {
   type ComponentProps,
   type ReactNode,
 } from "react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@nawcui/components/ui/button";
+import { cn } from "@nawcui/lib/utils";
 
 const MessageScrollerContext = createContext<{
   readonly atEnd: boolean;

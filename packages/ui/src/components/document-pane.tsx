@@ -1,9 +1,9 @@
 import type { IDockviewPanelProps } from "dockview-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Editor } from "@/components/editor";
-import { api, json } from "@/lib/api";
-import { displayName } from "@/lib/workspace";
+import { Editor } from "@nawcui/components/editor";
+import { api, json } from "@nawcui/lib/api";
+import { displayName } from "@nawcui/lib/workspace";
 
 type LoadedNote = {
   path: string;

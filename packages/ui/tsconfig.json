@@ -9,7 +9,7 @@
     "types": ["vite/client", "react"],
     "strict": true,
     "noEmit": true,
-    "paths": { "@/*": ["./src/*"] }
+    "paths": { "@nawcui/*": ["./src/*"] }
   },
   "include": ["src"]
 }

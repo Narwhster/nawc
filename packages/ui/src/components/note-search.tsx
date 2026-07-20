@@ -8,8 +8,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
-import { api } from "@/lib/api";
+} from "@nawcui/components/ui/command";
+import { api } from "@nawcui/lib/api";
 
 type NoteSearchResult = {
   readonly path: string;

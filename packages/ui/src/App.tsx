@@ -22,29 +22,38 @@ import {
   XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Toaster } from "@/components/ui/sonner";
-import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { DocumentPane } from "@/components/document-pane";
-import { FileTree, type FileTreeActions } from "@/components/file-tree";
-import { AgentPanel } from "@/components/agent-panel";
-import { WorkspaceDialog, type WorkspaceDialogState } from "@/components/workspace-dialog";
-import { EditorAction } from "@/components/editor-action";
-import { NoteSearchDialog } from "@/components/note-search";
-import { api, json } from "@/lib/api";
+import { Button } from "@nawcui/components/ui/button";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@nawcui/components/ui/resizable";
+import { ScrollArea } from "@nawcui/components/ui/scroll-area";
+import { Toaster } from "@nawcui/components/ui/sonner";
+import { Separator } from "@nawcui/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@nawcui/components/ui/tooltip";
+import { DocumentPane } from "@nawcui/components/document-pane";
+import { FileTree, type FileTreeActions } from "@nawcui/components/file-tree";
+import { AgentPanel } from "@nawcui/components/agent-panel";
+import { WorkspaceDialog, type WorkspaceDialogState } from "@nawcui/components/workspace-dialog";
+import { EditorAction } from "@nawcui/components/editor-action";
+import { NoteSearchDialog } from "@nawcui/components/note-search";
+import { api, json } from "@nawcui/lib/api";
 import {
   createNoteHistory,
   navigateHistory,
   peekHistory,
   recordNavigation,
   type NoteHistory,
-} from "@/lib/note-history";
-import { parseNoteLink } from "@/lib/note-link";
-import { copyText } from "@/lib/clipboard";
-import { dirname, displayName, type WorkspaceEntry } from "@/lib/workspace";
+} from "@nawcui/lib/note-history";
+import { parseNoteLink } from "@nawcui/lib/note-link";
+import { copyText } from "@nawcui/lib/clipboard";
+import { dirname, displayName, type WorkspaceEntry } from "@nawcui/lib/workspace";
 
 const panels = { note: DocumentPane as React.FunctionComponent<IDockviewPanelProps> };
 const theme: DockviewTheme = {

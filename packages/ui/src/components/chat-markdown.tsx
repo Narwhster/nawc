@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 
 const MarkdownRenderer = lazy(() =>
-  import("@/components/markdown-renderer").then((module) => ({
+  import("@nawcui/components/markdown-renderer").then((module) => ({
     default: module.MarkdownRenderer,
   })),
 );

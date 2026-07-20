@@ -553,7 +553,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     root: uiRoot,
     appType: "spa",
     resolve: {
-      alias: { "@": path.join(uiRoot, "src") },
+      alias: { "@nawcui": path.join(uiRoot, "src") },
       dedupe: ["react", "react-dom"],
     },
     server: {

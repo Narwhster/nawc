@@ -22,19 +22,19 @@ import { createId } from "@paralleldrive/cuid2";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { ChatMarkdown } from "@/components/chat-markdown";
-import { copyText } from "@/lib/clipboard";
+import { ChatMarkdown } from "@nawcui/components/chat-markdown";
+import { copyText } from "@nawcui/lib/clipboard";
 import {
   Context,
   ContextContent,
   ContextContentBody,
   ContextContentHeader,
   ContextTrigger,
-} from "@/components/ai-elements/context";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { parseNoteLink } from "@/lib/note-link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+} from "@nawcui/components/ai-elements/context";
+import { Alert, AlertDescription, AlertTitle } from "@nawcui/components/ui/alert";
+import { parseNoteLink } from "@nawcui/lib/note-link";
+import { Badge } from "@nawcui/components/ui/badge";
+import { Button } from "@nawcui/components/ui/button";
 import {
   Attachment,
   Bubble,
@@ -42,8 +42,12 @@ import {
   Message,
   MessageScroller,
   MessageScrollerButton,
-} from "@/components/ui/chat";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+} from "@nawcui/components/ui/chat";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@nawcui/components/ui/collapsible";
 import {
   Command,
   CommandDialog,
@@ -52,15 +56,15 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+} from "@nawcui/components/ui/command";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@/components/ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group";
+} from "@nawcui/components/ui/empty";
+import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@nawcui/components/ui/input-group";
 import {
   Select,
   SelectContent,
@@ -69,17 +73,17 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { api, json } from "@/lib/api";
+} from "@nawcui/components/ui/select";
+import { Spinner } from "@nawcui/components/ui/spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@nawcui/components/ui/tooltip";
+import { api, json } from "@nawcui/lib/api";
 import {
   collectPromptReferences,
   completeComposerTrigger,
   detectComposerTrigger,
   replaceComposerTrigger,
   type ComposerTrigger,
-} from "@/lib/composer";
+} from "@nawcui/lib/composer";
 
 type Reference =
   | { readonly type: "file"; readonly path: string }

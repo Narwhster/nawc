@@ -2,7 +2,7 @@ import { defineConfig } from "vite-plus";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 export default defineConfig({
-  resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
+  resolve: { alias: { "@nawcui": path.resolve(import.meta.dirname, "src") } },
   plugins: [
     tailwindcss(),
     {

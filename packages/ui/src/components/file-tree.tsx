@@ -7,7 +7,7 @@ import {
   FolderPlusIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@nawcui/components/ui/button";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -15,9 +15,9 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu";
-import { displayName, type WorkspaceEntry } from "@/lib/workspace";
-import { cn } from "@/lib/utils";
+} from "@nawcui/components/ui/context-menu";
+import { displayName, type WorkspaceEntry } from "@nawcui/lib/workspace";
+import { cn } from "@nawcui/lib/utils";
 
 type TreeNode = WorkspaceEntry & { name: string; children: TreeNode[] };
 type MutableNode = WorkspaceEntry & { name: string; children: Map<string, MutableNode> };

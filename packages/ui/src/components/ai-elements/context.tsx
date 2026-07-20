@@ -1,8 +1,8 @@
 import type { NawcProviderUsage } from "@nawc/config";
-import { Button } from "@/components/ui/button";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { Button } from "@nawcui/components/ui/button";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@nawcui/components/ui/hover-card";
+import { Progress } from "@nawcui/components/ui/progress";
+import { cn } from "@nawcui/lib/utils";
 import type { ComponentProps, ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
 

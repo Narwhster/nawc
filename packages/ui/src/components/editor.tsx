@@ -2,9 +2,9 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import configuredPlugins from "virtual:nawc-plugins";
 import { useEffect, useRef } from "react";
-import { shouldApplyExternalContent } from "@/lib/editor-sync";
-import { normalizeSelfClosingNodes, serializeNote } from "@/lib/serialize";
-import { notePath, WikiLink } from "@/lib/wiki-link";
+import { shouldApplyExternalContent } from "@nawcui/lib/editor-sync";
+import { normalizeSelfClosingNodes, serializeNote } from "@nawcui/lib/serialize";
+import { notePath, WikiLink } from "@nawcui/lib/wiki-link";
 
 type EditorProps = {
   note?: string;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@nawcui/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -7,9 +7,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { displayName, type WorkspaceEntry } from "@/lib/workspace";
+} from "@nawcui/components/ui/dialog";
+import { Input } from "@nawcui/components/ui/input";
+import { displayName, type WorkspaceEntry } from "@nawcui/lib/workspace";
 
 export type WorkspaceDialogState =
   | { kind: "create-note"; parent: string }
