@@ -1,0 +1,21 @@
+<h1>Testing with Cargo</h1>
+<p>
+  NAWC can reference and run individual Rust test functions using the
+  <code>cargo-test</code> syntax of <code>@nawc/syntax-rust</code>. It selects functions annotated
+  with an attribute ending in <code>test</code>, such as <code>#[test]</code> or
+  <code>#[tokio::test]</code>.
+</p>
+<h2>The test module</h2>
+<p>Without a name, the whole file is referenced:</p>
+<ref file="src/calculator.rs" syntax="cargo-test"></ref>
+<h2>Individual tests</h2>
+<p>Select a test function by name. The attribute is included in the reference:</p>
+<h3>adds_numbers</h3>
+<ref file="src/calculator.rs" syntax="cargo-test" name="adds_numbers"></ref>
+<h3>scales_by_seed</h3>
+<ref file="src/calculator.rs" syntax="cargo-test" name="scales_by_seed"></ref>
+<h2>Run the tests</h2>
+<p>Run a single test. The name is passed as the <code>cargo test</code> filter:</p>
+<runnable file="src/calculator.rs" syntax="cargo-test" name="adds_numbers"></runnable>
+<p>Or run every test in the project:</p>
+<runnable file="src/calculator.rs" syntax="cargo-test"></runnable>

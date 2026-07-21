@@ -34,6 +34,8 @@ catalog:
 minimumReleaseAgeExclude:
   - hono@4.12.29
 
+# tree-sitter-rust ships a prebuilt .wasm grammar; its native binding build is unnecessary.
 allowBuilds:
   esbuild: true
   node-pty: true
+  tree-sitter-rust: false

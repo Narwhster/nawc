@@ -1,0 +1,26 @@
+<h1>Running Rust</h1>
+<p>
+  NAWC can run a whole Rust file or invoke a single function, using the
+  <code>rust</code> syntax of <code>@nawc/syntax-rust</code>.
+</p>
+<h2>Requirements</h2>
+<p>
+  Runnable blocks for the <code>rust</code> syntax require the <code>cargo-eval</code> subcommand:
+</p>
+<pre><code>cargo install cargo-eval</code></pre>
+<h2>The script</h2>
+<p>
+  <code>src/fibonacci.rs</code> is a self-contained script: it is not part of the cargo library, so
+  it can run on its own.
+</p>
+<ref file="src/fibonacci.rs" syntax="rust"></ref>
+<h2>Run the whole file</h2>
+<p>Without a selector, the file runs with <code>cargo eval &lt;file&gt;</code>:</p>
+<runnable file="src/fibonacci.rs" syntax="rust"></runnable>
+<h2>Invoke a single function</h2>
+<p>
+  With <code>type="fn"</code> and a <code>name</code>, the file is compiled and run with
+  <code>cargo eval --expr</code>, invoking the named free function with no arguments. The function
+  must be a free function (not a method) and must take no arguments.
+</p>
+<runnable file="src/fibonacci.rs" syntax="rust" name="demo" type="fn"></runnable>

@@ -1,0 +1,59 @@
+<h1>Rust Notebook</h1>
+<p>
+  This notebook demonstrates Rust syntax support in NAWC. It showcases how to reference Rust source
+  files, extract specific items, and run code and tests using the
+  <code>@nawc/syntax-rust</code> plugin.
+</p>
+<h2>Tour the notebook</h2>
+<ul>
+  <li>
+    <p>
+      <a target="_blank" rel="noopener noreferrer nofollow" href="#Calculator">[[Calculator]]</a>
+      explores a basic utility struct with methods.
+    </p>
+  </li>
+  <li>
+    <p>
+      <a target="_blank" rel="noopener noreferrer nofollow" href="#Traits%20and%20Enums"
+        >[[Traits and Enums]]</a
+      >
+      explores a Shape hierarchy with traits and a Color enum.
+    </p>
+  </li>
+  <li>
+    <p>
+      <a target="_blank" rel="noopener noreferrer nofollow" href="#Testing%20with%20Cargo"
+        >[[Testing with Cargo]]</a
+      >
+      shows how to reference and run <code>#[test]</code> functions.
+    </p>
+  </li>
+  <li>
+    <p>
+      <a target="_blank" rel="noopener noreferrer nofollow" href="#Running%20Rust"
+        >[[Running Rust]]</a
+      >
+      runs a self-contained script with rust-script and a single function with the evcxr REPL.
+    </p>
+  </li>
+</ul>
+<h2>How it works</h2>
+<p>
+  NAWC uses one syntax plugin for Rust: <code>@nawc/syntax-rust</code>. It registers two syntaxes,
+  <code>rust</code> for general Rust source and <code>cargo-test</code> for test functions. Both use
+  the tree-sitter Rust grammar (compiled to WebAssembly) to parse source files and extract items.
+</p>
+<h3>Referencing code</h3>
+<p>
+  Use <code>&lt;ref file="..." syntax="rust" name="..." type="..."&gt;</code> to display specific
+  items. Supported types: <code>fn</code>, <code>struct</code>, <code>enum</code>,
+  <code>trait</code>, <code>impl</code>, <code>mod</code>, <code>const</code>, <code>static</code>,
+  <code>type</code>, <code>macro</code>.
+</p>
+<h3>Running code</h3>
+<p>
+  Use <code>&lt;runnable file="..." syntax="rust"&gt;</code> to run a whole file with
+  <code>rust-script</code>, or add <code>name</code> and <code>type="fn"</code> to invoke a single
+  function in the evcxr REPL. For tests, use <code>syntax="cargo-test"</code> to run
+  <code>cargo test</code> for the whole project or a single test name.
+</p>

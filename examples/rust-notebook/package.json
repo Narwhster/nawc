@@ -1,0 +1,21 @@
+{
+  "name": "@nawc/rust-notebook",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "notebook": "nawc",
+    "test": "cargo test"
+  },
+  "dependencies": {
+    "@nawc/core": "workspace:*",
+    "@nawc/nawc-skills": "workspace:*",
+    "@nawc/provider-codex": "workspace:*",
+    "@nawc/syntax-rust": "workspace:*",
+    "nawc": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

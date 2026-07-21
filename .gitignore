@@ -27,3 +27,6 @@ dist-ssr
 # AI agent worktrees
 .claude/worktrees/
 .playwright-cli/
+
+# Rust build artifacts
+target
