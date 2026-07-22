@@ -1,0 +1,17 @@
+{
+  "name": "@nawc/zed-notebook",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "nawc": "nawc"
+  },
+  "dependencies": {
+    "@nawc/core": "workspace:*",
+    "@nawc/editor-zed": "workspace:*",
+    "@nawc/nawc-skills": "workspace:*",
+    "@nawc/provider-codex": "workspace:*",
+    "@nawc/syntax-typescript": "workspace:*",
+    "@nawc/syntax-vitest": "workspace:*",
+    "nawc": "workspace:*"
+  }
+}

@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "notebook": "nawc",
+    "nawc": "nawc",
     "test": "cargo test"
   },
   "dependencies": {
     "@nawc/core": "workspace:*",
+    "@nawc/editor-vscode": "workspace:*",
     "@nawc/nawc-skills": "workspace:*",
     "@nawc/provider-codex": "workspace:*",
     "@nawc/syntax-rust": "workspace:*",

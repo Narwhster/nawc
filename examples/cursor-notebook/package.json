@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "nawc",
+    "nawc": "nawc",
     "test": "vitest run"
   },
   "dependencies": {
     "@nawc/core": "workspace:*",
+    "@nawc/editor-cursor": "workspace:*",
     "@nawc/nawc-skills": "workspace:*",
     "@nawc/provider-cursor": "workspace:*",
     "@nawc/react": "workspace:*",

@@ -1,6 +1,5 @@
 export { defineConfig } from "./define-config.ts";
 export { nawcDark, nawcLight } from "@nawc/theme-nawc";
-export { vscode } from "@nawc/editor-vscode";
 export type { NawcTheme } from "@nawc/config";
 export type {
   EditorLocation,

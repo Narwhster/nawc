@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "notebook": "nawc",
+    "nawc": "nawc",
     "notebook:test": "vp test",
     "check": "vp check"
   },
   "dependencies": {
     "@nawc/config": "workspace:*",
     "@nawc/core": "workspace:*",
+    "@nawc/editor-vscode": "workspace:*",
     "@nawc/nawc-skills": "workspace:*",
     "@nawc/plugin": "workspace:*",
     "@nawc/provider-codex": "workspace:*",

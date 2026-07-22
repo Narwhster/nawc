@@ -450,7 +450,14 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
       throw new Error("Invalid editor line");
     if (request.column !== undefined && (!Number.isInteger(request.column) || request.column < 1))
       throw new Error("Invalid editor column");
-    const file = await safeExistingPath(request.scope === "note" ? srcDir : baseDir, request.file);
+    let file: string;
+    try {
+      file = await safeExistingPath(request.scope === "note" ? srcDir : baseDir, request.file);
+    } catch (err) {
+      if (err && typeof err === "object" && "code" in err && err.code === "ENOENT")
+        throw new Error(`File not found: ${request.file}`);
+      throw err;
+    }
     await launchEditor(config.editor ?? vscode(), {
       file,
       line: request.line,

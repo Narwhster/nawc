@@ -1,0 +1,17 @@
+<h1>Welcome to NAWC</h1>
+<p>This notebook lives in HTML and stays beside the code it describes.</p>
+<h2>Interactive prototype</h2>
+<interactive>
+  <script>
+    let count = 0;
+    function inc(button) {
+      button.textContent = ++count;
+    }
+  </script>
+  <button
+    onclick="inc(this)"
+    style="background: #facc15; border: 0; padding: 12px 18px; font: inherit"
+  >
+    0
+  </button>
+</interactive>
