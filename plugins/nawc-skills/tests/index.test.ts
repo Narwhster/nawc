@@ -12,7 +12,21 @@ describe("NAWC skills plugin", () => {
       "ticket-ready",
       "implement",
       "review-implementation",
+      "splash-zone",
     ]);
+  });
+
+  it("recommends the splash-zone skill from related skills", () => {
+    const skills = nawcSkills().skills ?? [];
+    const splashZone = skills.find((skill) => skill.name === "splash-zone");
+    expect(splashZone).toBeDefined();
+    const names = new Set(skills.map((skill) => skill.name));
+    const recommenders = ["orient", "split", "ticket-ready", "implement", "review-implementation"];
+    for (const name of recommenders) {
+      const skill = skills.find((entry) => entry.name === name);
+      expect(skill?.content).toContain("splash-zone");
+    }
+    expect(names).toContain("nawc");
   });
 
   it("does not contribute a browser client", () => {

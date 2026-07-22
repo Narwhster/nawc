@@ -383,6 +383,12 @@ importers:
         specifier: ^8.18.3
         version: 8.21.0
     devDependencies:
+      '@nawc/core':
+        specifier: workspace:*
+        version: link:../../plugins/core
+      '@nawc/react':
+        specifier: workspace:*
+        version: link:../../plugins/react
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
@@ -538,6 +544,9 @@ importers:
       lucide-react:
         specifier: ^1.24.0
         version: 1.24.0(react@19.2.7)
+      parse5:
+        specifier: 'catalog:'
+        version: 8.0.1
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -617,6 +626,9 @@ importers:
       lucide-react:
         specifier: ^1.24.0
         version: 1.24.0(react@19.2.7)
+      parse5:
+        specifier: 'catalog:'
+        version: 8.0.1
       react:
         specifier: ^19.2.7
         version: 19.2.7

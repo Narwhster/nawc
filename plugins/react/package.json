@@ -21,6 +21,7 @@
     "@tiptap/core": "^3.27.3",
     "@tiptap/react": "^3.27.3",
     "lucide-react": "^1.24.0",
+    "parse5": "catalog:",
     "react": "^19.2.7",
     "vite": "catalog:"
   },

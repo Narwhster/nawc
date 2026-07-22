@@ -67,4 +67,18 @@ describe("React plugin", () => {
     expect(clampReactInteractiveHeight(-1)).toBe(0);
     expect(clampReactInteractiveHeight(1_000)).toBe(768);
   });
+
+  it("extracts file references from <react-interactive>", () => {
+    const plugin = react();
+    expect(plugin.references).toBeDefined();
+    const html = `
+      <react-interactive file="src/Counter.tsx"></react-interactive>
+      <react-interactive file="src/Wheel.tsx"></react-interactive>
+      <react-interactive file="src/Counter.tsx"></react-interactive>
+    `;
+    expect(plugin.references!({ html })).toEqual([
+      { path: "src/Counter.tsx" },
+      { path: "src/Wheel.tsx" },
+    ]);
+  });
 });

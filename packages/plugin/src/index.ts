@@ -6,6 +6,14 @@ export type NawcSkill = {
   readonly content: string;
 };
 
+/**
+ * A project file referenced from a note. Paths are relative to the configured
+ * `baseDir` and may include any file extension the notebook uses.
+ */
+export type NawcFileReference = {
+  readonly path: string;
+};
+
 export type SourceSelection = {
   readonly file: string;
   readonly syntax?: string;
@@ -48,6 +56,12 @@ export type NawcPlugin = {
   readonly nodes?: readonly NawcNode[];
   readonly syntax?: readonly NawcSyntax[];
   readonly skills?: readonly NawcSkill[];
+  /**
+   * Extract project files referenced from a note's HTML. Used by
+   * `nawc splash` to identify which notes touch files modified in the
+   * worktree. Paths are relative to the configured `baseDir`.
+   */
+  readonly references?: (input: { readonly html: string }) => readonly NawcFileReference[];
   /** Vite integration created after NAWC has resolved the configured project directory. */
   readonly vite?: (context: { readonly baseDir: string }) => PluginOption;
 };

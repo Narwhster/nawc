@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
-import { definePlugin } from "@nawc/plugin";
+import { definePlugin, type NawcFileReference } from "@nawc/plugin";
+import { parseFragment, type DefaultTreeAdapterMap } from "parse5";
 import type { Plugin } from "vite";
 
 const PREVIEW_PATH = "/@nawc/react-interactive";
@@ -103,6 +104,38 @@ export function reactPreviewPath(component: string, revision: string): string {
   return `${PREVIEW_PATH}/${identity}`;
 }
 
+type Attr = { name: string; value: string };
+type ReactElement = DefaultTreeAdapterMap["element"];
+type ReactChildNode = DefaultTreeAdapterMap["node"];
+
+function isReactElement(node: ReactChildNode): node is ReactElement {
+  return "tagName" in node && Array.isArray((node as ReactElement).attrs);
+}
+
+function reactFileAttributes(node: ReactElement): readonly string[] {
+  if (node.nodeName !== "react-interactive") return [];
+  const value = node.attrs.find((attr: Attr) => attr.name === "file")?.value?.trim();
+  return value ? [value] : [];
+}
+
+function collectReactReferences(root: ReactChildNode): readonly string[] {
+  const seen = new Set<string>();
+  const visit = (node: ReactChildNode): void => {
+    if (isReactElement(node)) {
+      for (const value of reactFileAttributes(node)) seen.add(value);
+    }
+    const children = "childNodes" in node ? node.childNodes : [];
+    for (const child of children) visit(child);
+  };
+  visit(root);
+  return [...seen].sort();
+}
+
+function reactReferences({ html }: { readonly html: string }): readonly NawcFileReference[] {
+  const root = parseFragment(html);
+  return collectReactReferences(root).map((path) => ({ path }));
+}
+
 function reactVitePlugin(baseDir: string): Plugin {
   return {
     name: "nawc-react-interactive",
@@ -142,6 +175,7 @@ export function react() {
       },
     ],
     skills: [{ name: "react", content: reactSkill }],
+    references: reactReferences,
     vite: ({ baseDir }) => reactVitePlugin(baseDir),
   });
 }

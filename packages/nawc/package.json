@@ -36,6 +36,8 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@nawc/core": "workspace:*",
+    "@nawc/react": "workspace:*",
     "@types/node": "catalog:",
     "@types/ws": "^8.18.1",
     "typescript": "catalog:",

@@ -24,6 +24,7 @@
     "@xterm/xterm": "^6.0.0",
     "highlight.js": "catalog:",
     "lucide-react": "^1.24.0",
+    "parse5": "catalog:",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
