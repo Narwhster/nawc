@@ -12,7 +12,9 @@ export default defineConfig({
         return id === "virtual:nawc-plugins" ? "\0virtual:nawc-plugins" : undefined;
       },
       load(id) {
-        return id === "\0virtual:nawc-plugins" ? "export default [];" : undefined;
+        return id === "\0virtual:nawc-plugins"
+          ? "export const syntaxes = []; export default [];"
+          : undefined;
       },
     },
   ],

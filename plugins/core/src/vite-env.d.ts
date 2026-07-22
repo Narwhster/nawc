@@ -1,11 +1,7 @@
-/// <reference types="vite/client" />
 declare module "virtual:nawc-plugins" {
-  import type { NawcClientPlugin } from "@nawc/plugin";
   export const syntaxes: readonly {
     readonly name: string;
     readonly aliases: readonly string[];
     readonly highlight?: string;
   }[];
-  const plugins: readonly NawcClientPlugin[];
-  export default plugins;
 }

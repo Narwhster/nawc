@@ -95,6 +95,8 @@ export function vitest(): NawcPlugin {
       {
         name: "vitest",
         aliases: ["test"],
+        highlight: "typescript",
+        extension: "test.ts",
         resolve: resolveVitest,
         run: ({ file, name, cwd }) => vitestRunCommand(file, cwd, name),
       },

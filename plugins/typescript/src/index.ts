@@ -94,6 +94,8 @@ export function typescript(): NawcPlugin {
       {
         name: "typescript",
         aliases: ["ts", "tsx"],
+        highlight: "typescript",
+        extension: "ts",
         resolve: resolveTypescript,
         run: ({ file, cwd }) => ({
           command: [process.execPath, "--import", import.meta.resolve("tsx"), file],

@@ -16,8 +16,10 @@ function isOptionalString(value: unknown): value is string | undefined {
 function isSelection(value: unknown): value is SourceSelection {
   return (
     isRecord(value) &&
-    typeof value.file === "string" &&
-    value.file.length > 0 &&
+    ((typeof value.file === "string" && value.file.length > 0) ||
+      (typeof value.source === "string" && value.source.length <= 1_000_000)) &&
+    isOptionalString(value.source) &&
+    (value.source === undefined || value.source.length <= 1_000_000) &&
     isOptionalString(value.syntax) &&
     isOptionalString(value.name) &&
     isOptionalString(value.type) &&

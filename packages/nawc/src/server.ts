@@ -2,6 +2,8 @@ import { createServer, type Server } from "node:http";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { getRequestListener } from "@hono/node-server";
 import {
   syntaxFor,
@@ -553,6 +555,9 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   const pluginArray = config.plugins
     .flatMap((plugin, index) => (plugin.client ? [`plugin${index}`] : []))
     .join(", ");
+  const clientSyntax = config.plugins.flatMap((plugin) =>
+    (plugin.syntax ?? []).map(({ name, aliases, highlight }) => ({ name, aliases, highlight })),
+  );
   const vitePlugins = config.plugins.flatMap((plugin) =>
     plugin.vite ? [plugin.vite({ baseDir })] : [],
   );
@@ -579,7 +584,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
         },
         load(id) {
           return id === "\0virtual:nawc-plugins"
-            ? `${pluginImports}\nexport default [${pluginArray}];`
+            ? `${pluginImports}\nexport const syntaxes = ${JSON.stringify(clientSyntax)};\nexport default [${pluginArray}];`
             : undefined;
         },
       },
@@ -607,11 +612,23 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     selection: SourceSelection,
     size: { cols: number; rows: number },
   ): Promise<IPty | undefined> => {
+    let inlineFile: string | undefined;
     try {
       const syntax = syntaxFor(config, selection.syntax);
       if (!syntax?.run) throw new Error(`Syntax ${selection.syntax ?? ""} is not runnable`);
-      await safePath(baseDir, selection.file);
-      const run = syntax.run({ ...selection, cwd: baseDir });
+      let runSelection = selection;
+      if (selection.source !== undefined) {
+        if (!syntax.extension)
+          throw new Error(`Syntax ${syntax.name} does not support inline runs`);
+        const runsDir = await safePath(baseDir, ".nawc/runs");
+        await mkdir(runsDir, { recursive: true });
+        inlineFile = path.join(runsDir, `${randomUUID()}.${syntax.extension}`);
+        await writeFile(inlineFile, selection.source, "utf8");
+        runSelection = { ...selection, file: path.relative(baseDir, inlineFile) };
+      } else {
+        await safePath(baseDir, selection.file);
+      }
+      const run = syntax.run({ ...runSelection, cwd: baseDir });
       const [command, ...args] = run.command;
       if (!command) throw new Error("Runnable syntax returned an empty command");
 
@@ -628,6 +645,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
           webSocket.send(JSON.stringify({ type: "output", data }));
       });
       child.onExit(({ exitCode }) => {
+        if (inlineFile) void rm(inlineFile, { force: true });
         if (webSocket.readyState === webSocket.OPEN) {
           webSocket.send(JSON.stringify({ type: "exit", exitCode }));
           webSocket.close(1000, String(exitCode));
@@ -635,6 +653,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
       });
       return child;
     } catch (error) {
+      if (inlineFile) await rm(inlineFile, { force: true });
       if (webSocket.readyState === webSocket.OPEN) {
         webSocket.send(JSON.stringify({ type: "error", message: message(error) }));
         webSocket.close(1011, "Runnable failed");

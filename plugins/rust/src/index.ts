@@ -195,6 +195,8 @@ export function rust(options?: RustOptions): NawcPlugin {
       {
         name: "rust",
         aliases: ["rs"],
+        highlight: "rust",
+        extension: "rs",
         resolve: resolveRust,
         run: ({ file, name, type, cwd }): RunResult => {
           const cargo = options?.cargo ?? "cargo";
@@ -211,6 +213,7 @@ export function rust(options?: RustOptions): NawcPlugin {
       {
         name: "cargo-test",
         aliases: ["test"],
+        highlight: "rust",
         resolve: resolveCargoTest,
         run: ({ name, cwd }): RunResult => ({
           command: [options?.cargo ?? "cargo", "test", ...(name ? [name] : [])],

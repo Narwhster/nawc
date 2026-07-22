@@ -34,20 +34,10 @@ function contextMenuEvent() {
   });
 }
 
-function touchPointerEvent(type: "pointerdown" | "pointerup") {
-  const event = new Event(type, { bubbles: true });
-  Object.defineProperties(event, {
-    clientX: { value: 12 },
-    clientY: { value: 12 },
-    pointerType: { value: "touch" },
-  });
-  return event;
-}
-
-function touchEvent(type: "touchstart" | "touchend") {
+function touchEvent(type: "touchstart" | "touchmove" | "touchend", x = 12, y = 12) {
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperty(event, "touches", {
-    value: type === "touchend" ? [] : [{ clientX: 12, clientY: 12 }],
+    value: type === "touchend" ? [] : [{ clientX: x, clientY: y }],
   });
   return event;
 }
@@ -55,9 +45,15 @@ function touchEvent(type: "touchstart" | "touchend") {
 describe("FileTree context menu", () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
+  let elementFromPoint: Mock<(x: number, y: number) => Element | null>;
 
   beforeEach(() => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    elementFromPoint = vi.fn();
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: elementFromPoint,
+    });
     vi.stubGlobal(
       "matchMedia",
       vi.fn(() => ({
@@ -75,6 +71,8 @@ describe("FileTree context menu", () => {
     await act(async () => root.unmount());
     container.remove();
     vi.useRealTimers();
+    vi.restoreAllMocks();
+    delete (document as { elementFromPoint?: unknown }).elementFromPoint;
     vi.unstubAllGlobals();
   });
 
@@ -116,42 +114,47 @@ describe("FileTree context menu", () => {
     expect(fileActions.openInEditor.mock.calls).toContainEqual(["docs"]);
   });
 
-  it("opens the context menu after a touch hold", async () => {
+  it("moves a file by long-pressing and dragging it on touch screens", async () => {
     vi.useFakeTimers();
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    );
     const fileActions = actions();
     await act(async () =>
       root.render(
-        <FileTree entries={[{ path: "readme.html", type: "file" }]} actions={fileActions} />,
+        <FileTree
+          entries={[
+            { path: "readme.html", type: "file" },
+            { path: "docs", type: "folder" },
+          ]}
+          actions={fileActions}
+        />,
       ),
     );
-    const item = container.querySelector<HTMLElement>(".nawc-file-tree-item");
-    expect(item).not.toBeNull();
 
-    await act(async () => item?.dispatchEvent(touchPointerEvent("pointerdown")));
-    expect(document.querySelector('[role="menu"]')).toBeNull();
-    await act(async () => vi.advanceTimersByTime(700));
+    const items = [...container.querySelectorAll<HTMLElement>(".nawc-file-tree-item")];
+    const source = items.find((item) => item.textContent?.includes("readme"));
+    const destination = items.find((item) => item.textContent?.includes("docs"));
+    expect(source).toBeDefined();
+    expect(destination).toBeDefined();
+    elementFromPoint.mockReturnValue(destination ?? null);
 
-    expect(document.querySelector('[role="menu"]')).not.toBeNull();
-    await act(async () => item?.dispatchEvent(touchPointerEvent("pointerup")));
-  });
+    await act(async () => source?.dispatchEvent(touchEvent("touchstart")));
+    await act(async () => vi.advanceTimersByTime(450));
+    expect(source?.classList.contains("dragging")).toBe(true);
+    await act(async () => source?.dispatchEvent(touchEvent("touchmove", 30, 60)));
+    expect(destination?.classList.contains("drop-target")).toBe(true);
+    await act(async () => source?.dispatchEvent(touchEvent("touchend")));
 
-  it("opens the context menu through touch events on WebKit", async () => {
-    vi.useFakeTimers();
-    const fileActions = actions();
-    await act(async () =>
-      root.render(
-        <FileTree entries={[{ path: "readme.html", type: "file" }]} actions={fileActions} />,
-      ),
+    expect(fileActions.move).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "readme.html", type: "file" }),
+      "docs",
     );
-    const item = container.querySelector<HTMLElement>(".nawc-file-tree-item");
-    expect(item).not.toBeNull();
-
-    await act(async () => item?.dispatchEvent(touchEvent("touchstart")));
-    await act(async () => vi.advanceTimersByTime(700));
-
-    expect(document.querySelector('[role="menu"]')).not.toBeNull();
-    await act(async () => item?.dispatchEvent(touchEvent("touchend")));
-    await act(async () => item?.click());
     expect(fileActions.open).not.toHaveBeenCalled();
   });
 });

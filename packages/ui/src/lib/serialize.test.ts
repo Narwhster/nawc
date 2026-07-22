@@ -50,4 +50,12 @@ describe("note serialization", () => {
       '<ref file="src/foo.ts" syntax="ts"></ref>',
     );
   });
+
+  it("stores inline runnable source as escaped text instead of note HTML", () => {
+    expect(
+      serializeHtml(
+        '<runnable data-nawc-node="runnable" data-nawc-source="&lt;b&gt;value&lt;/b&gt;" syntax="html"></runnable>',
+      ),
+    ).toBe('<runnable syntax="html">&lt;b&gt;value&lt;/b&gt;</runnable>');
+  });
 });

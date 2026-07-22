@@ -24,8 +24,9 @@ export function serializeHtml(html: string): string {
       if (!attribute.name.startsWith("data-nawc-") && attribute.name !== "source")
         replacement.setAttribute(attribute.name, attribute.value);
     }
-    if (kind === "interactive")
-      replacement.innerHTML = element.dataset.nawcSource ?? element.getAttribute("source") ?? "";
+    const source = element.dataset.nawcSource ?? element.getAttribute("source") ?? "";
+    if (kind === "interactive") replacement.innerHTML = source;
+    if (kind === "runnable" && !element.getAttribute("file")) replacement.textContent = source;
     element.replaceWith(replacement);
   }
   return document.body.innerHTML;

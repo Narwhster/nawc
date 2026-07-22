@@ -24,10 +24,12 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NawcClientPlugin } from "@nawc/plugin";
-import { highlightSource } from "./source-highlighting.js";
+import { syntaxes } from "virtual:nawc-plugins";
+import { highlightSource, sourceLanguage } from "./source-highlighting.js";
 
 type SourceAttrs = {
   file: string;
+  source?: string;
   syntax?: string;
   name?: string;
   type?: string;
@@ -134,7 +136,8 @@ function HighlightedCode({ code, syntax, file }: { code: string; syntax?: string
   return (
     <code
       className="nawc-highlighted-code"
-      dangerouslySetInnerHTML={{ __html: highlightSource(code, syntax, file) }}
+      dangerouslySetInnerHTML={{ __html: highlightSource(code, syntax, file, syntaxes) }}
+      data-language={sourceLanguage(syntax, file, syntaxes)}
     />
   );
 }
@@ -142,16 +145,18 @@ function HighlightedCode({ code, syntax, file }: { code: string; syntax?: string
 function HighlightedTextarea({
   value,
   onChange,
+  syntax = "html",
 }: {
   value: string;
   onChange: (value: string) => void;
+  syntax?: string;
 }) {
   const codeRef = useRef<HTMLPreElement>(null);
 
   return (
     <div className="nawc-code-editor">
       <pre ref={codeRef} aria-hidden="true">
-        <HighlightedCode code={value} syntax="html" />
+        <HighlightedCode code={value} syntax={syntax} />
       </pre>
       <textarea
         aria-label="Interactive source"
@@ -272,15 +277,32 @@ function InteractiveView({ node, deleteNode, updateAttributes }: NodeViewProps) 
   );
 }
 
-function SourceView({ node, deleteNode, runnable }: NodeViewProps & { runnable: boolean }) {
+function SourceView({
+  node,
+  deleteNode,
+  updateAttributes,
+  runnable,
+}: NodeViewProps & { runnable: boolean }) {
   const attrs = node.attrs as SourceAttrs;
-  const { error, source } = useSource(attrs);
+  const inline = runnable && !attrs.file;
+  const { error, source: externalSource } = useSource(inline ? undefined : attrs);
+  const source = inline
+    ? {
+        ...attrs,
+        code: attrs.source ?? "",
+        startLine: 1,
+        endLine: (attrs.source ?? "").split("\n").length,
+      }
+    : externalSource;
   const [runId, setRunId] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [inlineSource, setInlineSource] = useState(attrs.source ?? "");
   return (
     <NodeViewWrapper className="nawc-node-shell">
       <details className="nawc-source-block" open={error ? true : undefined}>
         <summary>
-          <ChevronDownIcon /> <span>{attrs.file}</span>
+          <ChevronDownIcon />{" "}
+          <span>{inline ? `Inline ${attrs.syntax ?? "code"}` : attrs.file}</span>
           {attrs.name && (
             <span className="text-muted-foreground">
               {attrs.type} {attrs.name}
@@ -312,10 +334,42 @@ function SourceView({ node, deleteNode, runnable }: NodeViewProps & { runnable: 
       </details>
       <Ribbon
         onDelete={deleteNode}
+        onEdit={
+          inline
+            ? () => {
+                setInlineSource(attrs.source ?? "");
+                setEditing(true);
+              }
+            : undefined
+        }
         onPrompt={() => promptForNode(runnable ? "runnable" : "ref", attrs)}
         onRun={runnable ? () => setRunId((id) => id + 1) : undefined}
-        source={source}
+        source={inline ? undefined : source}
       />
+      {inline && (
+        <Dialog open={editing} onOpenChange={setEditing}>
+          <DialogContent size="editor" instant>
+            <DialogHeader>
+              <DialogTitle>Edit code</DialogTitle>
+            </DialogHeader>
+            <HighlightedTextarea
+              value={inlineSource}
+              onChange={setInlineSource}
+              syntax={attrs.syntax}
+            />
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  updateAttributes({ source: inlineSource });
+                  setEditing(false);
+                }}
+              >
+                Apply
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </NodeViewWrapper>
   );
 }
@@ -391,7 +445,14 @@ function RunnableTerminal({ selection }: { selection: SourceAttrs }) {
       socket.close(1000, "Terminal closed");
       terminal.dispose();
     };
-  }, [selection.file, selection.name, selection.params, selection.syntax, selection.type]);
+  }, [
+    selection.file,
+    selection.name,
+    selection.params,
+    selection.source,
+    selection.syntax,
+    selection.type,
+  ]);
 
   return <div aria-label="Runnable terminal" className="nawc-run-terminal" ref={container} />;
 }
@@ -439,13 +500,26 @@ function sourceNode(name: "ref" | "runnable", runnable: boolean) {
     atom: true,
     draggable: true,
     addAttributes() {
-      return sourceAttributes;
+      return runnable
+        ? {
+            ...sourceAttributes,
+            source: { default: undefined, parseHTML: (element) => element.textContent ?? "" },
+          }
+        : sourceAttributes;
     },
     parseHTML() {
       return [{ tag: name }];
     },
     renderHTML({ HTMLAttributes }) {
-      return [name, mergeAttributes(HTMLAttributes, { "data-nawc-node": name })];
+      return [
+        name,
+        mergeAttributes(HTMLAttributes, {
+          "data-nawc-node": name,
+          ...(runnable && !HTMLAttributes.file
+            ? { "data-nawc-source": HTMLAttributes.source }
+            : {}),
+        }),
+      ];
     },
     addNodeView() {
       return ReactNodeViewRenderer((props) => <SourceView {...props} runnable={runnable} />);

@@ -16,6 +16,7 @@ export type NawcFileReference = {
 
 export type SourceSelection = {
   readonly file: string;
+  readonly source?: string;
   readonly syntax?: string;
   readonly name?: string;
   readonly type?: string;
@@ -39,6 +40,10 @@ export type RunResult = {
 export type NawcSyntax = {
   readonly name: string;
   readonly aliases: readonly string[];
+  /** Highlight.js language used for this syntax and all of its aliases in the browser. */
+  readonly highlight?: string;
+  /** File extension used when materializing an inline runnable, without a leading dot. */
+  readonly extension?: string;
   resolve(source: string, selection: SourceSelection): ResolvedSource | undefined;
   run?(request: RunRequest): RunResult;
 };

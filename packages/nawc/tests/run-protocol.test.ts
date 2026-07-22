@@ -45,6 +45,21 @@ describe("runnable WebSocket boundary", () => {
       cols: 120,
       rows: 30,
     });
+    expect(
+      parseRunClientEvent(
+        JSON.stringify({
+          type: "start",
+          selection: { file: "", source: "console.log(42)", syntax: "ts" },
+          cols: 80,
+          rows: 24,
+        }),
+      ),
+    ).toEqual({
+      type: "start",
+      selection: { file: "", source: "console.log(42)", syntax: "ts" },
+      cols: 80,
+      rows: 24,
+    });
   });
 
   it("rejects malformed events and non-finite terminal dimensions", () => {

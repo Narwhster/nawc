@@ -312,6 +312,9 @@ body {
   .nawc-editor-content a[data-wiki-link] {
     @apply cursor-pointer text-chart-4 underline decoration-chart-4 decoration-2 underline-offset-4 transition-colors hover:text-chart-4/70;
   }
+  .nawc-wiki-link-menu {
+    @apply fixed z-50 w-64 overflow-hidden rounded-xl border bg-popover shadow-md;
+  }
   .nawc-empty {
     @apply grid flex-1 place-items-center text-sm text-muted-foreground;
   }

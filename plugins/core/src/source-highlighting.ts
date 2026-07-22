@@ -39,10 +39,26 @@ function extensionOf(file?: string) {
   return extension && extension !== file ? extension : undefined;
 }
 
-export function sourceLanguage(syntax?: string, file?: string) {
+export type HighlightSyntax = {
+  readonly name: string;
+  readonly aliases: readonly string[];
+  readonly highlight?: string;
+};
+
+export function sourceLanguage(
+  syntax?: string,
+  file?: string,
+  syntaxes: readonly HighlightSyntax[] = [],
+) {
   for (const candidate of [syntax, extensionOf(file)]) {
     if (!candidate) continue;
-    const language = normalizeLanguage(candidate);
+    const normalized = candidate.trim().toLowerCase().replace(/^\./, "");
+    const configured = syntaxes.find(
+      (item) =>
+        item.name.toLowerCase() === normalized ||
+        item.aliases.some((alias) => alias.toLowerCase() === normalized),
+    );
+    const language = normalizeLanguage(configured?.highlight ?? configured?.name ?? normalized);
     if (hljs.getLanguage(language)) return language;
   }
   return undefined;
@@ -57,8 +73,13 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#039;");
 }
 
-export function highlightSource(code: string, syntax?: string, file?: string) {
-  const language = sourceLanguage(syntax, file);
+export function highlightSource(
+  code: string,
+  syntax?: string,
+  file?: string,
+  syntaxes: readonly HighlightSyntax[] = [],
+) {
+  const language = sourceLanguage(syntax, file, syntaxes);
   return language
     ? hljs.highlight(code, { language, ignoreIllegals: true }).value
     : escapeHtml(code);

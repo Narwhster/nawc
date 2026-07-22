@@ -32,4 +32,11 @@ describe("NAWC skills plugin", () => {
   it("does not contribute a browser client", () => {
     expect(nawcSkills()).not.toHaveProperty("client");
   });
+
+  it("documents inline code blocks in the NAWC skill", () => {
+    const skill = nawcSkills().skills?.find((entry) => entry.name === "nawc");
+    expect(skill?.content).toContain('<runnable syntax="typescript">');
+    expect(skill?.content).toContain("short executable source");
+    expect(skill?.content).toContain("Do not copy file-backed source into those elements");
+  });
 });

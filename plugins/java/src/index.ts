@@ -277,6 +277,8 @@ export function java(options?: JavaOptions): NawcPlugin {
       {
         name: "java",
         aliases: [],
+        highlight: "java",
+        extension: "java",
         resolve: resolveJava,
         run: ({ file, name, type, cwd }): RunResult => {
           const javaPath = javaBin(options?.jdk);

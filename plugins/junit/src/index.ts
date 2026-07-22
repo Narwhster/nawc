@@ -137,6 +137,7 @@ export function junit(options?: JUnitOptions): NawcPlugin {
       {
         name: "junit",
         aliases: ["test"],
+        highlight: "java",
         resolve: resolveJunit,
         run: ({ file, name, cwd }): RunResult => {
           const javaPath = javaBin(options?.jdk);

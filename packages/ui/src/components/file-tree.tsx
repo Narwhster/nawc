@@ -102,6 +102,7 @@ export function FileTree({
       className={cn("nawc-file-tree", dropTarget === "" && "drop-target")}
       role="tree"
       aria-label="Files"
+      data-drop-folder=""
       onDragOver={(event) => {
         if (!dragging) return;
         event.preventDefault();
@@ -188,31 +189,40 @@ function FileTreeItem({
     clearTouchLongPress();
     suppressClick.current = false;
     touchStart.current = { x: touch.clientX, y: touch.clientY };
-    const target = event.currentTarget;
     touchLongPress.current = window.setTimeout(() => {
       touchLongPress.current = undefined;
       suppressClick.current = true;
-      if (target.dataset.state === "open") return;
-      target.dispatchEvent(
-        new MouseEvent("contextmenu", {
-          bubbles: true,
-          cancelable: true,
-          clientX: touch.clientX,
-          clientY: touch.clientY,
-        }),
-      );
-    }, 700);
+      setDragging(node);
+      navigator.vibrate?.(30);
+    }, 450);
   };
   const moveTouchLongPress = (event: React.TouchEvent<HTMLDivElement>) => {
     const touch = event.touches[0];
+    if (!touch) return;
+    if (dragging?.path === node.path) {
+      event.preventDefault();
+      const target = document
+        .elementFromPoint(touch.clientX, touch.clientY)
+        ?.closest<HTMLElement>("[data-drop-folder]");
+      const parent = target?.dataset.dropFolder;
+      if (parent !== undefined && parent !== node.path && !parent.startsWith(`${node.path}/`))
+        setDropTarget(parent);
+      else setDropTarget(undefined);
+      return;
+    }
     const start = touchStart.current;
-    if (!touch || !start) return;
-    if (Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 10) clearTouchLongPress();
+    if (start && Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > 10)
+      clearTouchLongPress();
   };
   const endTouchLongPress = (event: React.TouchEvent<HTMLDivElement>) => {
-    const wasLongPress = suppressClick.current;
+    const wasDragging = dragging?.path === node.path;
+    if (wasDragging && dropTarget !== undefined) void actions.move(node, dropTarget);
     clearTouchLongPress();
-    if (wasLongPress) event.preventDefault();
+    if (wasDragging) {
+      event.preventDefault();
+      setDragging(undefined);
+      setDropTarget(undefined);
+    }
   };
   return (
     <div role="treeitem" aria-expanded={folder ? open : undefined}>
@@ -236,10 +246,17 @@ function FileTreeItem({
               else actions.open(node.path, event.metaKey || event.ctrlKey);
             }}
             onTouchStart={startTouchLongPress}
+            onContextMenu={(event) => {
+              if (dragging?.path === node.path) event.preventDefault();
+            }}
             onTouchMove={moveTouchLongPress}
             onTouchEnd={endTouchLongPress}
             onTouchCancel={() => {
               clearTouchLongPress();
+              if (dragging?.path === node.path) {
+                setDragging(undefined);
+                setDropTarget(undefined);
+              }
               suppressClick.current = false;
             }}
             onKeyDown={(event) => {
@@ -280,6 +297,7 @@ function FileTreeItem({
               void actions.move(dragging, node.path);
             }}
             role="button"
+            data-drop-folder={folder ? node.path : undefined}
             tabIndex={0}
           >
             {folder ? (
