@@ -34,7 +34,7 @@ describe("create-nawc", () => {
   it("defaults the plugin selection to core only", () =>
     expect(DEFAULT_PLUGIN_IDS).toEqual(["core"]));
   it("exposes one entry per available option in each catalog", () => {
-    expect(PROVIDERS.map((entry) => entry.id)).toEqual(["codex", "cursor", "opencode"]);
+    expect(PROVIDERS.map((entry) => entry.id)).toEqual(["codex", "cursor", "opencode", "pi"]);
     expect(EDITORS.map((entry) => entry.id)).toEqual([
       "vscode",
       "cursor",

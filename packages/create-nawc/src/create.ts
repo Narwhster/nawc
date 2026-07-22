@@ -30,6 +30,7 @@ export const PROVIDERS: readonly CatalogEntry[] = [
   { id: "codex", label: "Codex", package: "@nawc/provider-codex", exportName: "codex" },
   { id: "cursor", label: "Cursor", package: "@nawc/provider-cursor", exportName: "cursor" },
   { id: "opencode", label: "Opencode", package: "@nawc/provider-opencode", exportName: "opencode" },
+  { id: "pi", label: "Pi", package: "@nawc/provider-pi", exportName: "pi" },
 ];
 
 export const EDITORS: readonly CatalogEntry[] = [

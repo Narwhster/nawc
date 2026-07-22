@@ -1256,19 +1256,15 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                 </Select>
               )}
             </div>
-            {thread &&
-              (thread.provider === "codex" || thread.provider === "opencode") &&
-              latestUsage &&
-              contextWindow &&
-              usedTokens > 0 && (
-                <Context maxTokens={contextWindow} usedTokens={usedTokens} usage={latestUsage}>
-                  <ContextTrigger size="sm" />
-                  <ContextContent side="top" align="end">
-                    <ContextContentHeader />
-                    <ContextContentBody />
-                  </ContextContent>
-                </Context>
-              )}
+            {latestUsage && contextWindow && usedTokens > 0 && (
+              <Context maxTokens={contextWindow} usedTokens={usedTokens} usage={latestUsage}>
+                <ContextTrigger size="sm" />
+                <ContextContent side="top" align="end">
+                  <ContextContentHeader />
+                  <ContextContentBody />
+                </ContextContent>
+              </Context>
+            )}
             {running || thread?.status === "running" ? (
               <Button
                 aria-label="Stop agent"

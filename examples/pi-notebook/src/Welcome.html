@@ -1,0 +1,117 @@
+<h1>Pi Notebook</h1>
+
+<p>
+  This notebook demonstrates the <strong>Pi</strong> provider (<code>@nawc/provider-pi</code>) with
+  TypeScript syntax support and runnable Vitest specifications. Pi is a coding agent that supports
+  build, plan, and review modes, along with configurable reasoning effort.
+</p>
+
+<h2>Interactive prototype</h2>
+
+<p>
+  Below is a small interactive surface that computes an approximation of &pi; using the Leibniz
+  series. Adjust the iteration count to see the estimate converge.
+</p>
+
+<interactive>
+  <script>
+    let iterations = 1000;
+    function leibniz(n) {
+      let sum = 0;
+      for (let i = 0; i < n; i++) {
+        sum += Math.pow(-1, i) / (2 * i + 1);
+      }
+      return 4 * sum;
+    }
+    function update() {
+      const estimate = leibniz(iterations);
+      const error = Math.abs(Math.PI - estimate);
+      document.getElementById("estimate").textContent = estimate.toFixed(6);
+      document.getElementById("error").textContent = error.toFixed(6);
+      document.getElementById("iterations").textContent = iterations.toLocaleString();
+    }
+    function inc() {
+      iterations = Math.min(iterations * 2, 100000);
+      update();
+    }
+    function reset() {
+      iterations = 1000;
+      update();
+    }
+  </script>
+  <style>
+    .pi-interactive {
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      color: #e2e8f0;
+    }
+    .pi-interactive .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #22d3ee;
+    }
+    .pi-interactive .label {
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+    .pi-interactive input[type="range"] {
+      width: 100%;
+    }
+    .pi-interactive button {
+      padding: 0.5rem 1rem;
+      border: 0;
+      border-radius: 0.5rem;
+      background: #22d3ee;
+      color: #0f172a;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .pi-interactive button:hover {
+      background: #06b6d4;
+    }
+  </style>
+  <div class="pi-interactive">
+    <p class="label">Iterations: <span id="iterations">1,000</span></p>
+    <p class="label">Estimate</p>
+    <p class="value" id="estimate">3.140593</p>
+    <p class="label">Error</p>
+    <p class="value" id="error">0.001000</p>
+    <input
+      type="range"
+      min="1"
+      max="100000"
+      step="1"
+      value="1000"
+      oninput="
+        iterations = Number(this.value);
+        update();
+      "
+    />
+    <div style="display: flex; gap: 0.5rem; margin-top: 1rem">
+      <button onclick="inc()">Double</button>
+      <button onclick="reset()">Reset</button>
+    </div>
+  </div>
+  <script>
+    update();
+  </script>
+</interactive>
+
+<h2>Source code</h2>
+
+<p>
+  The <code>leibniz</code> function computes the Leibniz series approximation of &pi;. Reference it
+  from the notebook:
+</p>
+
+<ref
+  file="examples/pi-notebook/src/pi-utils.ts"
+  syntax="typescript"
+  name="leibniz"
+  type="function"
+></ref>
+
+<h2>Runnable specification</h2>
+
+<p>The utility functions are covered by Vitest tests. Run the tests to verify the behavior:</p>
+
+<runnable file="examples/pi-notebook/src/pi-utils.test.ts" syntax="vitest"></runnable>
