@@ -207,7 +207,7 @@ export async function createProject(options: CreateOptions): Promise<string> {
     "tsconfig.json": `${JSON.stringify({ compilerOptions: { noEmit: true, module: "nodenext", moduleResolution: "nodenext", allowImportingTsExtensions: true, esModuleInterop: true } }, null, 2)}\n`,
     "nawc.config.ts": config,
     "src/Welcome.html": welcome,
-    ".gitignore": "node_modules\n.skills\n.nawc/\n",
+    ".gitignore": "node_modules\n.skills/\n.nawc/\n",
     "README.md": `# ${packageName(root)}\n\nRun \`${options.packageManager} nawc\` and open http://localhost:6292.\n`,
   };
   for (const [relative, content] of Object.entries(files)) {
