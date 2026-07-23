@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from "vitest";
-import { normalizeSelfClosingNodes, serializeHtml } from "./serialize";
+import {
+  normalizeCodeBlocks,
+  normalizeNoteContent,
+  normalizeSelfClosingNodes,
+  serializeHtml,
+} from "./serialize";
 
 describe("note HTML normalization", () => {
   it("expands self-closing registered nodes without changing void elements", () => {
@@ -18,6 +23,36 @@ describe("note HTML normalization", () => {
   it("does not match names that only start with a registered node tag", () => {
     expect(normalizeSelfClosingNodes("<react-interactive-extra />", ["react-interactive"])).toBe(
       "<react-interactive-extra />",
+    );
+  });
+});
+
+describe("code block normalization", () => {
+  it("marks top-level code elements as code blocks", () => {
+    expect(normalizeCodeBlocks('<code file="src/foo.ts"></code><p>After</p>')).toBe(
+      '<code file="src/foo.ts" data-nawc-node="code"></code><p>After</p>',
+    );
+  });
+
+  it("marks bare top-level code elements as inline-source code blocks", () => {
+    expect(normalizeCodeBlocks('<code syntax="ts">const x = 1;</code>')).toBe(
+      '<code syntax="ts" data-nawc-node="code">const x = 1;</code>',
+    );
+  });
+
+  it("leaves inline code marks and pre blocks untouched", () => {
+    const html = "<p>run <code>npm test</code> now</p><pre><code>block</code></pre>";
+    expect(normalizeCodeBlocks(html)).toBe(html);
+  });
+
+  it("leaves already-marked code blocks untouched", () => {
+    const html = '<code data-nawc-node="code" file="src/foo.ts"></code>';
+    expect(normalizeCodeBlocks(html)).toBe(html);
+  });
+
+  it("expands self-closing code blocks before marking them", () => {
+    expect(normalizeNoteContent('<code file="src/foo.ts"/><p>After</p>', ["code"])).toBe(
+      '<code file="src/foo.ts" data-nawc-node="code"></code><p>After</p>',
     );
   });
 });
@@ -45,10 +80,18 @@ describe("note serialization", () => {
     ).toBe('<react-interactive file="src/Demo.tsx"></react-interactive>');
   });
 
-  it("keeps source references free of copied code", () => {
-    expect(serializeHtml('<ref data-nawc-node="ref" file="src/foo.ts" syntax="ts"></ref>')).toBe(
-      '<ref file="src/foo.ts" syntax="ts"></ref>',
+  it("keeps file-backed code blocks free of copied code", () => {
+    expect(serializeHtml('<code data-nawc-node="code" file="src/foo.ts" syntax="ts"></code>')).toBe(
+      '<code file="src/foo.ts" syntax="ts"></code>',
     );
+  });
+
+  it("stores inline code source as escaped text instead of note HTML", () => {
+    expect(
+      serializeHtml(
+        '<code data-nawc-node="code" data-nawc-source="&lt;b&gt;value&lt;/b&gt;" syntax="html"></code>',
+      ),
+    ).toBe('<code syntax="html">&lt;b&gt;value&lt;/b&gt;</code>');
   });
 
   it("stores inline runnable source as escaped text instead of note HTML", () => {

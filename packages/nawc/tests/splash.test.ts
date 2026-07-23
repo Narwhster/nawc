@@ -72,7 +72,7 @@ describe("extractWikiLinks", () => {
 describe("extractFileReferences", () => {
   it("merges references reported by every plugin", () => {
     const html = `
-      <ref file="src/a.ts"></ref>
+      <code file="src/a.ts"></code>
       <runnable file="src/b.ts"></runnable>
       <interactive file="src/c.html"></interactive>
       <react-interactive file="src/d.tsx"></react-interactive>
@@ -82,7 +82,7 @@ describe("extractFileReferences", () => {
   });
 
   it("ignores plugins without a references hook", () => {
-    const html = '<ref file="src/a.ts"></ref>';
+    const html = '<code file="src/a.ts"></code>';
     const references = extractFileReferences(html, [
       { name: "noop" },
       { name: "only-refs", references: () => [{ path: "src/x.ts" }] },
@@ -132,7 +132,7 @@ describe("computeSplash", () => {
     await writeNote(
       srcDir,
       "A.html",
-      `<ref file="edited.ts"></ref>
+      `<code file="edited.ts"></code>
 <p>
   <a data-wiki-link="B" href="#B">[[B]]</a>,
   <a data-wiki-link="C" href="#C">[[C]]</a>,
@@ -169,7 +169,7 @@ describe("computeSplash", () => {
     await execFileAsync("git", ["-C", baseDir, "add", "."]);
     await execFileAsync("git", ["-C", baseDir, "commit", "-m", "init"]);
     await writeFile(path.join(baseDir, "edited.ts"), "b", "utf8");
-    await writeNote(srcDir, "Isolated.html", '<ref file="edited.ts"></ref>');
+    await writeNote(srcDir, "Isolated.html", '<code file="edited.ts"></code>');
     const result = await computeSplash({
       srcDir,
       baseDir,

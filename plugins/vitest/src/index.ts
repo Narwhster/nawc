@@ -11,14 +11,14 @@ import {
 
 export const vitestSkill = `---
 name: vitest
-description: Use when writing ref or runnable blocks for Vitest tests.
+description: Use when writing code or runnable blocks for Vitest tests.
 ---
 
 # Vitest syntax
 
 Use \`syntax="vitest"\` or \`syntax="test"\` for Vitest source.
 
-## Ref blocks
+## Code blocks
 
 Use \`name\` for the exact test title. The default test type is \`it\`; \`type="it"\` selects \`it\` and \`test\` calls, while \`type="test"\` selects only \`test\` calls.
 

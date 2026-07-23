@@ -62,7 +62,7 @@ function discoverHljsLanguages(notes: Record<string, string>, sourceFiles: strin
   const langs = new Set<string>(["typescript", "javascript", "xml"]);
   for (const html of Object.values(notes)) {
     for (const match of html.matchAll(
-      /<(?:ref|runnable|interactive)\b[^>]*?syntax=(?:"([^"]+)"|'([^']+)')/gi,
+      /<(?:code|runnable|interactive)\b[^>]*?syntax=(?:"([^"]+)"|'([^']+)')/gi,
     )) {
       const syntax = (match[1] ?? match[2] ?? "").toLowerCase().trim();
       if (syntax) langs.add(hljsLanguageAliases[syntax] ?? syntax);
@@ -104,14 +104,14 @@ function staticHtml(html: string): string {
     (tag, attributes: string, content: string) => {
       const syntax = attributes.match(/\bsyntax=(?:"([^"]+)"|'([^']+)')/i);
       const name = (syntax?.[1] ?? syntax?.[2])?.toLowerCase();
-      return !name || supportedSyntaxes.has(name) ? tag : `<ref${attributes}>${content}</ref>`;
+      return !name || supportedSyntaxes.has(name) ? tag : `<code${attributes}>${content}</code>`;
     },
   );
 }
 
 function referencedFiles(html: string): string[] {
   const files = new Set<string>();
-  const nodes = html.matchAll(/<(?:ref|runnable|interactive)\b([^>]*)>/gi);
+  const nodes = html.matchAll(/<(?:code|runnable|interactive)\b([^>]*)>/gi);
   for (const node of nodes) {
     const file = node[1]?.match(/\bfile=(?:"([^"]+)"|'([^']+)')/i);
     const value = (file?.[1] ?? file?.[2])?.trim();

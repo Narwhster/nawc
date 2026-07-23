@@ -1,15 +1,20 @@
 <h1>05. Source references and runnable examples</h1>
 <p>
-  The <code>&lt;ref&gt;</code> element shows source from your project. The <code>&lt;runnable&gt;</code>
+  The <code>&lt;code&gt;</code> element shows source from your project. The <code>&lt;runnable&gt;</code>
   element shows source and adds a control for running it when the selected syntax supports execution.
   Both use paths relative to <code>baseDir</code>.
 </p>
+<p>
+  Without <code>file</code>, the <code>&lt;code&gt;</code> element stores inline source directly in
+  the note instead of referencing a file. Escape HTML characters in inline source.
+</p>
+<pre><code>&lt;code syntax="ts"&gt;const answer = 42;&lt;/code&gt;</code></pre>
 <h2>TypeScript</h2>
 <p>
   Enable <code>typescript()</code>, then use <code>typescript</code>, <code>ts</code>, or
   <code>tsx</code> as the syntax name:
 </p>
-<pre><code>&lt;ref
+<pre><code>&lt;code
   file="src/format.ts"
   syntax="typescript"
   name="formatDate"
@@ -30,7 +35,7 @@
 <p>
   Enable <code>vitest()</code>, then use <code>vitest</code> or <code>test</code>:
 </p>
-<pre><code>&lt;ref file="src/math.test.ts" syntax="vitest" name="adds numbers" /&gt;
+<pre><code>&lt;code file="src/math.test.ts" syntax="vitest" name="adds numbers" /&gt;
 &lt;runnable file="src/math.test.ts" syntax="test" name="adds numbers" /&gt;</code></pre>
 <p>
   The test name must match exactly. Without a name, a reference shows the whole test file and a

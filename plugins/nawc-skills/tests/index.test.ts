@@ -35,6 +35,8 @@ describe("NAWC skills plugin", () => {
 
   it("documents inline code blocks in the NAWC skill", () => {
     const skill = nawcSkills().skills?.find((entry) => entry.name === "nawc");
+    expect(skill?.content).toContain('<code file="path/to/file" />');
+    expect(skill?.content).toContain('<code syntax="typescript">');
     expect(skill?.content).toContain('<runnable syntax="typescript">');
     expect(skill?.content).toContain("short executable source");
     expect(skill?.content).toContain("Do not copy file-backed source into those elements");

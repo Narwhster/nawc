@@ -10,14 +10,14 @@ import path from "node:path";
 
 export const junitSkill = `---
 name: junit
-description: Use when writing ref or runnable blocks for JUnit tests.
+description: Use when writing code or runnable blocks for JUnit tests.
 ---
 
 # JUnit syntax
 
 Use \`syntax="junit"\` or \`syntax="test"\` for JUnit source.
 
-## Ref blocks
+## Code blocks
 
 Without \`name\`, the whole test file is referenced. With \`name\`, select a test method annotated with \`@Test\` or \`@org.junit.Test\`. The name is the Java method name; no declaration type is required.
 

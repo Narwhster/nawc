@@ -32,7 +32,7 @@ describe("loadStaticNotebookData", () => {
     const data = await loadStaticNotebookData(projectDir);
 
     expect(data.notes["index.html"]).toContain('<runnable syntax="typescript">');
-    expect(data.notes["index.html"]).toContain('<ref file="example.rs" syntax="rust">');
+    expect(data.notes["index.html"]).toContain('<code file="example.rs" syntax="rust">');
     expect(data.notes["index.html"]).not.toContain('<runnable file="example.rs"');
     expect(data.sources["example.rs"]).toContain("fn main()");
     expect(data.plugins.map((plugin) => plugin.name)).toEqual(["core", "typescript"]);

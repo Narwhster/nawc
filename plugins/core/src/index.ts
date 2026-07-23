@@ -5,7 +5,7 @@ type Element = DefaultTreeAdapterMap["element"];
 type ChildNode = DefaultTreeAdapterMap["node"];
 type Attr = { name: string; value: string };
 
-const REFERENCE_TAGS = new Set(["ref", "runnable", "interactive"]);
+const REFERENCE_TAGS = new Set(["code", "runnable", "interactive"]);
 
 function isElement(node: ChildNode): node is Element {
   return "tagName" in node && Array.isArray((node as Element).attrs);
@@ -41,7 +41,7 @@ export function core() {
     client: "@nawc/core/client",
     nodes: [
       { name: "interactive", tag: "interactive", description: "Sandboxed HTML prototype" },
-      { name: "ref", tag: "ref", description: "Live source reference" },
+      { name: "code", tag: "code", description: "Live or inline source code" },
       { name: "runnable", tag: "runnable", description: "Runnable source reference" },
     ],
     references: coreReferences,

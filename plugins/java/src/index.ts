@@ -10,28 +10,28 @@ import path from "node:path";
 
 export const javaSkill = `---
 name: java
-description: Use when writing ref or runnable blocks for Java source.
+description: Use when writing code or runnable blocks for Java source.
 ---
 
 # Java syntax
 
 Use \`syntax="java"\` for Java source.
 
-## Ref blocks
+## Code blocks
 
 Use \`name\` and \`type\` to select a declaration. Supported types are \`class\`, \`interface\`, \`enum\`, \`method\`, and \`constructor\`. Without both selectors, the whole file is referenced.
 
 For overloaded methods and constructors, add \`params\` with the parameter types in declaration order:
 
 \`\`\`html
-<ref file="src/VillageManager.java" syntax="java" name="processBuilding" type="method" params="BlockPos, boolean, boolean"></ref>
+<code file="src/VillageManager.java" syntax="java" name="processBuilding" type="method" params="BlockPos, boolean, boolean"></code>
 \`\`\`
 
 For example, the two \`findNearestVillage\` overloads can be selected as:
 
 \`\`\`html
-<ref file="src/VillageManager.java" syntax="java" name="findNearestVillage" type="method" params="Entity"></ref>
-<ref file="src/VillageManager.java" syntax="java" name="findNearestVillage" type="method" params="BlockPos, int"></ref>
+<code file="src/VillageManager.java" syntax="java" name="findNearestVillage" type="method" params="Entity"></code>
+<code file="src/VillageManager.java" syntax="java" name="findNearestVillage" type="method" params="BlockPos, int"></code>
 \`\`\`
 
 Parameter types are matched independent of whitespace. An empty \`params\` value selects a no-argument declaration.

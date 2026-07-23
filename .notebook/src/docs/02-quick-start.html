@@ -1,58 +1,8 @@
-<h1>02. Quick start</h1>
-<p>
-  NAWC runs as a local notebook beside the project you are working on. The quickest setup is to
-  create a notebook in a new, empty directory and point it at the project that contains your code.
-</p>
-<h2>Requirements</h2>
-<ul>
-  <li>Node.js 22.12 or newer.</li>
-  <li>A package manager: pnpm, npm, yarn, or Bun.</li>
-  <li>A Git repository for the project the notebook will describe.</li>
-  <li>An installed and authenticated agent provider, such as Codex, OpenCode, or Cursor.</li>
-</ul>
-<h2>Create a notebook</h2>
-<p>From the project directory, run:</p>
-<pre><code>pnpm create nawc .nawc
+<h1>02. Quick start</h1><p>NAWC runs as a local notebook inside your project. The quickest setup creates a notebook subdirectory within your project and points it at the project root.</p><h2>Requirements</h2><ul><li><p>Node.js 22.12 or newer.</p></li><li><p>A package manager: pnpm, npm, yarn, or Bun.</p></li><li><p>A Git repository for the project the notebook will describe.</p></li><li><p>An installed and authenticated agent provider, such as Codex, OpenCode, or Cursor.</p></li></ul><h2>Create a notebook</h2><p>From the project directory, run:</p><pre><code>pnpm create nawc .nawc
 cd .nawc
-pnpm nawc</code></pre>
-<p>
-  The creator installs the dependencies and adds a starter configuration with the core note
-  elements, agent skills, TypeScript and Vitest support, and the Codex provider. Replace the provider
-  if you use a different agent runtime.
-</p>
-<h2>Open it</h2>
-<p>
-  Open <a href="http://localhost:6292">http://localhost:6292</a> in your browser. If that port is
-  already in use, start NAWC with another one:
-</p>
-<pre><code>pnpm nawc --port 6300</code></pre>
-<h2>Check the layout</h2>
-<pre><code>.nawc/
+pnpm nawc</code></pre><p>The creator installs the dependencies and adds a starter configuration with the core note elements, agent skills, TypeScript and Vitest support, and the Codex provider. Replace the provider if you use a different agent runtime.</p><h2>Open it</h2><p>Open <a target="_blank" rel="noopener noreferrer nofollow" href="http://localhost:6292">http://localhost:6292</a> in your browser. If that port is already in use, start NAWC with another one:</p><pre><code>pnpm nawc --port 6300</code></pre><h2>Check the layout</h2><pre><code>.nawc/
   nawc.config.ts
   package.json
   src/
     Welcome.html
-  .skills/</code></pre>
-<p>
-  Notes are HTML files under <code>src/</code>. The generated <code>.skills/</code> directory contains
-  the skills supplied by your configured plugins. It is generated while NAWC runs and should stay
-  out of version control.
-</p>
-<p>
-  The generated <code>baseDir: ".."</code> points from <code>.nawc/</code> to the project directory
-  above it. Change <code>baseDir</code> if your notebook lives somewhere else. Source paths in notes
-  are resolved from that project directory, not from the note's own folder.
-</p>
-<h2>Add your first note</h2>
-<p>
-  Create another HTML file anywhere under <code>src/</code>, then link to it from another note with a
-  wiki-link such as <code>[[notes/plan]]</code>. The core plugin adds three elements for richer notes:
-  live source references, runnable source examples, and sandboxed interactive prototypes.
-</p>
-<p>
-  Continue with
-  <a data-wiki-link="docs/03-configuration" href="#docs%2F03-configuration">[[docs/03-configuration]]</a>
-  to adjust the notebook, or return to
-  <a data-wiki-link="docs/01-introduction" href="#docs%2F01-introduction">[[docs/01-introduction]]</a>
-  to learn the workflow.
-</p>
+  .skills/</code></pre><p>Notes are HTML files under <code>src/</code>. The generated <code>.skills/</code> directory contains the skills supplied by your configured plugins. It is generated while NAWC runs and should stay out of version control.</p><p>The generated <code>baseDir: ".."</code> points from <code>.nawc/</code> to the project directory above it. Change <code>baseDir</code> if your notebook lives somewhere else. Source paths in notes are resolved from that project directory, not from the note's own folder.</p><h2>Add your first note</h2><p>Create another HTML file anywhere under <code>src/</code>, then link to it from another note with a wiki-link such as <code>[[notes/plan]]</code>. The core plugin adds three elements for richer notes: live source references, runnable source examples, and sandboxed interactive prototypes.</p><p>Continue with <a data-wiki-link="docs/03-configuration" href="#docs%2F03-configuration">[[docs/03-configuration]]</a> to adjust the notebook, or return to <a data-wiki-link="docs/01-introduction" href="#docs%2F01-introduction">[[docs/01-introduction]]</a> to learn the workflow.</p>

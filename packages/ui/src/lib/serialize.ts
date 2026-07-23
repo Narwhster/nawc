@@ -10,6 +10,22 @@ export function normalizeSelfClosingNodes(html: string, tags: readonly string[])
   );
 }
 
+/**
+ * Marks top-level `<code>` elements as nawc code blocks so the editor parses
+ * them as block nodes instead of the inline code mark. Nested `<code>`
+ * elements (inside paragraphs, `<pre>`, lists, …) keep their mark semantics.
+ */
+export function normalizeCodeBlocks(html: string): string {
+  const document = new DOMParser().parseFromString(html, "text/html");
+  const blocks = document.body.querySelectorAll(":scope > code:not([data-nawc-node])");
+  for (const element of blocks) element.setAttribute("data-nawc-node", "code");
+  return blocks.length ? document.body.innerHTML : html;
+}
+
+export function normalizeNoteContent(html: string, tags: readonly string[]): string {
+  return normalizeCodeBlocks(normalizeSelfClosingNodes(html, tags));
+}
+
 export function serializeNote(editor: Editor): string {
   return serializeHtml(editor.getHTML());
 }
@@ -26,7 +42,8 @@ export function serializeHtml(html: string): string {
     }
     const source = element.dataset.nawcSource ?? element.getAttribute("source") ?? "";
     if (kind === "interactive") replacement.innerHTML = source;
-    if (kind === "runnable" && !element.getAttribute("file")) replacement.textContent = source;
+    if ((kind === "runnable" || kind === "code") && !element.getAttribute("file"))
+      replacement.textContent = source;
     element.replaceWith(replacement);
   }
   return document.body.innerHTML;

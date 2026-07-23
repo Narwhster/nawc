@@ -289,7 +289,7 @@ function SourceView({
   runnable,
 }: NodeViewProps & { runnable: boolean }) {
   const attrs = node.attrs as SourceAttrs;
-  const inline = runnable && !attrs.file;
+  const inline = !attrs.file;
   const { error, source: externalSource } = useSource(inline ? undefined : attrs);
   const source = inline
     ? {
@@ -347,7 +347,7 @@ function SourceView({
               }
             : undefined
         }
-        onPrompt={() => promptForNode(runnable ? "runnable" : "ref", attrs)}
+        onPrompt={() => promptForNode(runnable ? "runnable" : "code", attrs)}
         onRun={runnable ? () => setRunId((id) => id + 1) : undefined}
         source={inline ? undefined : source}
       />
@@ -502,7 +502,7 @@ function RunnableTerminal({ selection }: { selection: SourceAttrs }) {
 }
 
 const sourceAttributes = {
-  file: { default: "" },
+  file: { default: undefined },
   syntax: { default: undefined },
   name: { default: undefined },
   type: { default: undefined },
@@ -537,31 +537,41 @@ export const Interactive = Node.create({
   },
 });
 
-function sourceNode(name: "ref" | "runnable", runnable: boolean) {
+function sourceNode({
+  name,
+  tag,
+  parseTag = tag,
+  runnable,
+}: {
+  name: string;
+  tag: string;
+  parseTag?: string;
+  runnable: boolean;
+}) {
   return Node.create({
     name,
     group: "block",
     atom: true,
     draggable: true,
     addAttributes() {
-      return runnable
-        ? {
-            ...sourceAttributes,
-            source: { default: undefined, parseHTML: (element) => element.textContent ?? "" },
-          }
-        : sourceAttributes;
+      return {
+        ...sourceAttributes,
+        source: {
+          default: undefined,
+          parseHTML: (element) =>
+            element.getAttribute("data-nawc-source") ?? element.textContent ?? "",
+        },
+      };
     },
     parseHTML() {
-      return [{ tag: name }];
+      return [{ tag: parseTag, priority: 1000 }];
     },
     renderHTML({ HTMLAttributes }) {
       return [
-        name,
+        tag,
         mergeAttributes(HTMLAttributes, {
-          "data-nawc-node": name,
-          ...(runnable && !HTMLAttributes.file
-            ? { "data-nawc-source": HTMLAttributes.source }
-            : {}),
+          "data-nawc-node": tag,
+          ...(!HTMLAttributes.file ? { "data-nawc-source": HTMLAttributes.source } : {}),
         }),
       ];
     },
@@ -573,6 +583,21 @@ function sourceNode(name: "ref" | "runnable", runnable: boolean) {
 
 const plugin: NawcClientPlugin = {
   name: "core",
-  extensions: [Interactive, sourceNode("ref", false), sourceNode("runnable", true)],
+  tags: ["interactive", "code", "runnable"],
+  extensions: [
+    Interactive,
+    // The tiptap extension name must differ from "code" so the StarterKit code
+    // mark keeps its commands, input rules, and storage; only the HTML tag is
+    // "code". Block code elements are disambiguated from the inline code mark
+    // by the data-nawc-node attribute (stamped on note load and by renderHTML),
+    // and the rule outranks the mark's bare `code` tag rule.
+    sourceNode({
+      name: "sourceCode",
+      tag: "code",
+      parseTag: 'code[data-nawc-node="code"]',
+      runnable: false,
+    }),
+    sourceNode({ name: "runnable", tag: "runnable", runnable: true }),
+  ],
 };
 export default plugin;

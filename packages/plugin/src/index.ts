@@ -73,6 +73,12 @@ export type NawcPlugin = {
 
 export type NawcClientPlugin = {
   readonly name: string;
+  /**
+   * HTML tags of this plugin's atom nodes that may appear self-closing in raw
+   * note HTML. When omitted, the tiptap extension names are used instead.
+   * Declare this when an extension name differs from its HTML tag.
+   */
+  readonly tags?: readonly string[];
   readonly extensions: readonly AnyExtension[];
 };
 

@@ -8,14 +8,14 @@ import {
 
 export const typescriptSkill = `---
 name: typescript
-description: Use when writing ref or runnable blocks for TypeScript source.
+description: Use when writing code or runnable blocks for TypeScript source.
 ---
 
 # TypeScript syntax
 
 Use \`syntax="typescript"\`, \`syntax="ts"\`, or \`syntax="tsx"\` for TypeScript source.
 
-## Ref blocks
+## Code blocks
 
 Use \`name\` and \`type\` to select a declaration. Supported declaration types are:
 

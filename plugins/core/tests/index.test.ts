@@ -6,14 +6,14 @@ describe("core plugin", () => {
     expect(core()).not.toHaveProperty("skills");
   });
 
-  it("extracts file references from <ref>, <runnable>, and <interactive>", () => {
+  it("extracts file references from <code>, <runnable>, and <interactive>", () => {
     const plugin = core();
     expect(plugin.references).toBeDefined();
     const html = `
-      <ref file="src/a.ts"></ref>
+      <code file="src/a.ts"></code>
       <runnable file="src/b.ts" syntax="vitest"></runnable>
       <interactive file="src/c.html"></interactive>
-      <ref file="src/a.ts"></ref>
+      <code file="src/a.ts"></code>
     `;
     expect(plugin.references!({ html })).toEqual([
       { path: "src/a.ts" },

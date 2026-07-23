@@ -3,7 +3,11 @@ import StarterKit from "@tiptap/starter-kit";
 import configuredPlugins from "virtual:nawc-plugins";
 import { useEffect, useRef } from "react";
 import { shouldApplyExternalContent } from "@nawcui/lib/editor-sync";
-import { normalizeSelfClosingNodes, serializeNote } from "@nawcui/lib/serialize";
+import {
+  normalizeNoteContent,
+  normalizeSelfClosingNodes,
+  serializeNote,
+} from "@nawcui/lib/serialize";
 import { notePath, WikiLink } from "@nawcui/lib/wiki-link";
 
 type EditorProps = {
@@ -13,8 +17,8 @@ type EditorProps = {
   onNavigate: (note: string, newPanel: boolean) => void;
 };
 
-const configuredNodeTags = configuredPlugins.flatMap((plugin) =>
-  plugin.extensions.map((extension) => extension.name),
+const configuredNodeTags = configuredPlugins.flatMap(
+  (plugin) => plugin.tags ?? plugin.extensions.map((extension) => extension.name),
 );
 
 export function Editor({ note, content, onSave, onNavigate }: EditorProps) {
@@ -28,7 +32,7 @@ export function Editor({ note, content, onSave, onNavigate }: EditorProps) {
         StarterKit,
         ...configuredPlugins.flatMap((plugin) => plugin.extensions),
       ],
-      content: normalizeSelfClosingNodes(content, configuredNodeTags),
+      content: normalizeNoteContent(content, configuredNodeTags),
       editorProps: {
         attributes: { class: "nawc-editor-content" },
         transformPastedHTML: (html) => normalizeSelfClosingNodes(html, configuredNodeTags),
@@ -68,7 +72,7 @@ export function Editor({ note, content, onSave, onNavigate }: EditorProps) {
     ) {
       const timer = setTimeout(
         () =>
-          editor.commands.setContent(normalizeSelfClosingNodes(content, configuredNodeTags), {
+          editor.commands.setContent(normalizeNoteContent(content, configuredNodeTags), {
             emitUpdate: false,
           }),
         0,

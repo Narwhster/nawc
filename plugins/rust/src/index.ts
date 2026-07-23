@@ -18,14 +18,14 @@ parser.setLanguage(rustLanguage);
 
 export const rustSkill = `---
 name: rust
-description: Use when writing ref or runnable blocks for Rust source.
+description: Use when writing code or runnable blocks for Rust source.
 ---
 
 # Rust syntax
 
 Use \`syntax="rust"\` or \`syntax="rs"\` for Rust source.
 
-## Ref blocks
+## Code blocks
 
 Use \`name\` and \`type\` to select a declaration. Supported declaration types are:
 
@@ -43,7 +43,7 @@ Use \`name\` and \`type\` to select a declaration. Supported declaration types a
 Without both \`name\` and \`type\`, the whole file is referenced.
 
 \`\`\`html
-<ref file="src/calculator.rs" syntax="rust" name="add" type="fn"></ref>
+<code file="src/calculator.rs" syntax="rust" name="add" type="fn"></code>
 \`\`\`
 
 ## Runnable blocks
@@ -62,14 +62,14 @@ The cargo binary is configurable with the \`cargo\` plugin option.
 
 export const cargoTestSkill = `---
 name: cargo-test
-description: Use when writing ref or runnable blocks for Rust tests.
+description: Use when writing code or runnable blocks for Rust tests.
 ---
 
 # Cargo test syntax
 
 Use \`syntax="cargo-test"\` or \`syntax="test"\` for Rust test source.
 
-## Ref blocks
+## Code blocks
 
 Without \`name\`, the whole test file is referenced. With \`name\`, select a test function annotated with an attribute ending in \`test\`, such as \`#[test]\` or \`#[tokio::test]\`. The name is the Rust function name; no declaration type is required.
 
