@@ -36,6 +36,8 @@ minimumReleaseAgeExclude:
 
 # tree-sitter-rust ships a prebuilt .wasm grammar; its native binding build is unnecessary.
 allowBuilds:
+  "@google/genai": false
   esbuild: true
   node-pty: true
+  protobufjs: false
   tree-sitter-rust: false

@@ -1,0 +1,22 @@
+{
+  "name": "@nawc/tldraw-notebook",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "nawc": "nawc"
+  },
+  "dependencies": {
+    "@nawc/core": "workspace:*",
+    "@nawc/editor-vscode": "workspace:*",
+    "@nawc/nawc-skills": "workspace:*",
+    "@nawc/provider-codex": "workspace:*",
+    "@nawc/tldraw": "workspace:*",
+    "nawc": "workspace:*",
+    "tldraw": "^5.2.5"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

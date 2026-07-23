@@ -67,6 +67,7 @@ export const PLUGINS: readonly CatalogEntry[] = [
   { id: "react", label: "React", package: "@nawc/react", exportName: "react" },
   { id: "rust", label: "Rust", package: "@nawc/syntax-rust", exportName: "rust" },
   { id: "tailwind", label: "Tailwind", package: "@nawc/tailwind", exportName: "tailwind" },
+  { id: "tldraw", label: "tldraw", package: "@nawc/tldraw", exportName: "tldraw" },
 ];
 
 export const DEFAULT_PLUGIN_IDS: readonly string[] = ["core"];

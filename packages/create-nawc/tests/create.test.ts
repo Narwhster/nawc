@@ -54,6 +54,7 @@ describe("create-nawc", () => {
       "react",
       "rust",
       "tailwind",
+      "tldraw",
     ]);
   });
   it("validates catalog ids", () => {
