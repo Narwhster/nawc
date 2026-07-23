@@ -1,11 +1,43 @@
 import { describe, expect, it } from "vitest";
 import {
+  mapCodexAppServerEvent,
   parseCodexEvent,
   parseCodexModelsResponse,
   parseCodexSkillsResponse,
 } from "../src/index.ts";
 
 describe("Codex JSONL", () => {
+  it("maps app-server user-input requests to question choices", () => {
+    expect(
+      mapCodexAppServerEvent({
+        id: 17,
+        method: "item/tool/requestUserInput",
+        params: {
+          questions: [
+            {
+              id: "framework",
+              header: "Framework",
+              question: "Which framework?",
+              isOther: true,
+              options: [
+                { label: "React", description: "Use React" },
+                { label: "Vue", description: "Use Vue" },
+              ],
+            },
+          ],
+        },
+      }),
+    ).toEqual({
+      type: "request.opened",
+      requestId: "17",
+      requestKind: "question",
+      title: "Framework",
+      details: "Which framework?",
+      choices: ["React", "Vue"],
+      allowCustom: true,
+    });
+  });
+
   it("maps thread and message events", () => {
     expect(parseCodexEvent('{"type":"thread.started","thread_id":"abc"}')).toEqual({
       type: "thread.started",

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   cursor,
   cursorPermissionOptionId,
+  cursorQuestionChoices,
   parseCursorEvent,
   parseCursorModelsResponse,
 } from "../src/index.ts";
@@ -50,6 +51,20 @@ describe("Cursor ACP model discovery", () => {
 });
 
 describe("Cursor ACP event mapping", () => {
+  it("extracts question labels as user-facing choices", () => {
+    expect(
+      cursorQuestionChoices({
+        id: "framework",
+        prompt: "Which framework?",
+        options: [
+          { id: "react", label: "React" },
+          { id: "vue", label: "Vue" },
+        ],
+      }),
+    ).toEqual(["React", "Vue"]);
+    expect(cursorQuestionChoices({ options: [] })).toEqual(["OK"]);
+  });
+
   it("maps assistant chunks, tool updates, and plans", () => {
     expect(
       parseCursorEvent("session/update", {

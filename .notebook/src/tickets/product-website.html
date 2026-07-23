@@ -1,1 +1,142 @@
-<h1>product-website</h1><p>It'd be really cool to have this very notebook be the website of nawc.</p><p>We just need to think of a way to serve it so that the users can experiment on their own machine (update state locally, saved in localstorage or something).</p><p>But I'm also unsure how we should do the agent panel, since I don't have budget to allow users to experiment with the agent panel. But I feel like it should stay to sell the overall experience. Maybe have a simpler chatbot that just answers basic questions and gives instructions on how to try nawc out for yourself.</p>
+<h1>product-website</h1>
+<p>
+  It'd be really cool to have this very notebook be the website of nawc.
+</p>
+<p>
+  We just need to think of a way to serve it so that the users can experiment on their own machine
+  (update state locally, saved in localstorage or something).
+</p>
+<p>
+  But I'm also unsure how we should do the agent panel, since I don't have budget to allow users to
+  experiment with the agent panel. But I feel like it should stay to sell the overall experience.
+  Maybe have a simpler chatbot that just answers basic questions and gives instructions on how to
+  try nawc out for yourself.
+</p>
+<h2>Coordination role</h2>
+<p>
+  This ticket owns the full static-site effort: the build package itself plus the FAQ provider
+  that backs the agent panel inside it. It is intentionally not split, even though it carries
+  multiple goals, because the FAQ provider is small and tightly coupled to the build's provider
+  configuration. We may revisit the split if implementation surfaces a real seam.
+</p>
+<h2>Decision: a separate package, not a NAWC plugin</h2>
+<p>
+  The static build is shipped as a separate top-level package (likely under
+  <code>packages/</code>), not as a <code>NawcPlugin</code> added to the notebook's
+  <code>plugins</code> array. The static site is a fundamentally different mode of NAWC (no dev
+  server, no filesystem, in-browser only), and the build pipeline wants full control over the
+  output without having to coexist with the dev server's plugin system.
+</p>
+<h2>Decision: standalone CLI shipped as <code>@nawc/site</code></h2>
+<p>
+  The package ships its own binary. After installing it as a dev dependency of a notebook, the
+  user runs <code>npx @nawc/site build</code> to emit the static site and
+  <code>npx @nawc/site preview</code> for a local <code>vite preview</code>-style check before
+  deploying. There is no <code>nawc build</code> subcommand and no <code>vp build</code> coupling —
+  the CLI is the entry point and the package controls the entire output. The CLI uses a TypeScript
+  loader to read <code>nawc.config.ts</code> and <code>nawc-static-agent.ts</code>.
+</p>
+<h2>Decision: the package builds a static site from an existing nawc notebook</h2>
+<p>
+  The package reads an existing <code>nawc.config.ts</code> and the notebook's
+  <code>src/</code> directory, and emits a deployable static directory. It does not modify NAWC
+  core, add browser-compatibility shims to the dev runtime, or duplicate NAWC's note adapter. It
+  is a build tool, not a compatibility layer.
+</p>
+<h2>Decision: the static site runs fully in the browser</h2>
+<p>
+  No filesystem, no executables (no <code>cargo</code>, <code>java</code>, <code>tsx</code>,
+  <code>vitest</code> CLI), no server. Everything happens client-side. The bundled notebook
+  contents plus a browser-side persistence layer are the only data the site has.
+</p>
+<h2>Decision: static build supports only the core and typescript plugins</h2>
+<p>
+  The static site includes only <code>core()</code> and <code>typescript()</code>. Other plugins
+  configured in the source notebook are not active in the build. Their
+  <code>&lt;runnable&gt;</code> elements are transformed into <code>&lt;ref&gt;</code> blocks at
+  build time, so the source still shows up in the rendered page but without a run button.
+</p>
+<h2>Decision: TypeScript runnables run in the browser via esbuild-wasm</h2>
+<p>
+  The static site ships <code>esbuild-wasm</code> as a lazy-loaded dependency. TypeScript
+  <code>&lt;runnable&gt;</code> blocks compile and execute in the browser through it. No server is
+  involved.
+</p>
+<h2>Decision: SPA routing, notes are files in lightningfs</h2>
+<p>
+  The static site is a single-page app. The SPA's data model is the lightningfs filesystem:
+  each note is a file, the SPA determines which notes exist by listing the filesystem, and
+  URLs map to lightningfs paths (e.g. <code>/notes/foo</code> reads
+  <code>/notes/foo.html</code> from lightningfs). The build packages each note as a static HTML
+  file under <code>dist/notes/</code>, and the SPA seeds lightningfs by fetching those files
+  on first load. After seeding, the SPA only reads from lightningfs.
+</p>
+<p>
+  Edits write to lightningfs and persist across navigation and refresh. Routing is determined
+  by the contents of the user's filesystem, not by the build's URL structure: renames, edits,
+  and new files are reflected immediately. The build's only job regarding notes is to provide
+  the initial seed; thereafter, the SPA's view of "which notes exist" comes from lightningfs.
+</p>
+<p>
+  This subsumes the earlier "edits persist with lightningfs" and "users can edit notes"
+  decisions &mdash; both are natural consequences of notes being filesystem files.
+</p>
+<h2>Decision: agent panel uses a tree-walking static agent</h2>
+<p>
+  The static site does not talk to a real LLM. The agent panel is backed by a
+  <em>static agent</em>: a function the notebook author writes that turns a user prompt into a
+  conversation tree. Each <code>question</code> node is a multiple-choice question asked via
+  NAWC's question tool; each answer leads to a child node, and <code>answer</code> leaves are
+  emitted as the final canned response. The provider walks the tree step by step.
+</p>
+<p>
+  The matching strategy is implicit in the tree itself: there is no "best match" computation.
+  The function decides the root question from the prompt and the matched files, and the user
+  chooses their path through the tree.
+</p>
+<p>
+  This is the interaction primitive, so the static agent depends on
+  <a
+    data-wiki-link="tickets/agent-question-tool"
+    href="#tickets%2Fagent-question-tool"
+    >[[tickets/agent-question-tool]]</a
+  >
+  being implemented first. Until the question tool actually works end to end, the static agent
+  has no way to ask its tree's questions.
+</p>
+<p>
+  The shape of the static agent is captured by
+  <a
+    data-wiki-link="tickets/static-agent-probe"
+    href="#tickets%2Fstatic-agent-probe"
+    >[[tickets/static-agent-probe]]</a
+  >, which carries a runnable example and a vitest probe.
+</p>
+<h2>Decision: static agent lives in <code>nawc-static-agent.ts</code></h2>
+<p>
+  A notebook author adds a new file alongside <code>nawc.config.ts</code>, named
+  <code>nawc-static-agent.ts</code>. It is a plain TypeScript module that exports a default
+  static-agent config &mdash; not a config file in the
+  <code>nawc.config.ts</code>-style schema sense. The <code>@nawc/site</code> build CLI reads
+  it at build time and bakes the result into the bundle. The dev server ignores it &mdash; the
+  author's real-LLM <code>nawc.config.ts</code> provider is untouched.
+</p>
+<p>
+  The file's exports are:
+</p>
+<ul>
+  <li>
+    <code>files: { match: RegExp }</code> &mdash; a top-level regex that selects which notes
+    flow into the function as <code>files</code>.
+  </li>
+  <li>
+    <code>faq: ({ prompt, files, history }) =&gt; ConversationTree</code> &mdash; the function
+    that builds the tree. <code>history</code> is the chain of
+    <code>{ question, chosenAnswer }</code> steps the user has already walked through in this
+    thread.
+  </li>
+</ul>
+<h2>Open questions</h2>
+<ul>
+  <li>Which deployment targets does the package document (Netlify, Cloudflare Pages, GitHub Pages)?</li>
+</ul>

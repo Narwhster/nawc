@@ -31,6 +31,7 @@ import {
   ContextContentHeader,
   ContextTrigger,
 } from "@nawcui/components/ai-elements/context";
+import { Suggestion, Suggestions } from "@nawcui/components/ai-elements/suggestion";
 import { Alert, AlertDescription, AlertTitle } from "@nawcui/components/ui/alert";
 import { parseNoteLink } from "@nawcui/lib/note-link";
 import { Badge } from "@nawcui/components/ui/badge";
@@ -64,7 +65,13 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@nawcui/components/ui/empty";
-import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@nawcui/components/ui/input-group";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupTextarea,
+} from "@nawcui/components/ui/input-group";
 import {
   Select,
   SelectContent,
@@ -121,6 +128,8 @@ type AgentRequest = {
   readonly turnId: string;
   readonly title: string;
   readonly details?: string;
+  readonly choices?: readonly string[];
+  readonly allowCustom?: boolean;
   readonly status: "pending" | "resolved";
 };
 type Turn = {
@@ -458,6 +467,97 @@ function TurnActivity({
         ))}
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+function RequestActions({
+  request,
+  threadId,
+}: {
+  readonly request: AgentRequest;
+  readonly threadId: string;
+}) {
+  const [custom, setCustom] = useState("");
+  const [responding, setResponding] = useState(false);
+  const respond = (decision: string) => {
+    if (responding) return;
+    setResponding(true);
+    void api(
+      `/api/agent/threads/${encodeURIComponent(threadId)}/requests/${encodeURIComponent(request.id)}`,
+      json({ decision }),
+    ).catch((error: unknown) => {
+      setResponding(false);
+      toast.error(error instanceof Error ? error.message : String(error));
+    });
+  };
+  const decisions = request.choices?.length
+    ? request.choices.map((choice) => [choice, choice] as const)
+    : [
+        ["decline", "Decline"],
+        ["accept", "Allow once"],
+        ["acceptForSession", "Allow for session"],
+      ];
+  return (
+    <div className="mt-3 flex min-w-0 flex-col gap-2 group-has-[>svg]/alert:col-start-2">
+      {request.choices?.length ? (
+        <Suggestions>
+          {decisions.map(([decision, label]) => (
+            <Suggestion
+              disabled={responding}
+              key={decision}
+              onClick={() => respond(decision)}
+              size="xs"
+              suggestion={label}
+            />
+          ))}
+        </Suggestions>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {decisions.map(([decision, label]) => (
+            <Button
+              disabled={responding}
+              key={decision}
+              size="xs"
+              variant={decision === "decline" ? "outline" : "default"}
+              onClick={() => respond(decision)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+      )}
+      {request.allowCustom && (
+        <form
+          className="w-full"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const answer = custom.trim();
+            if (answer) respond(answer);
+          }}
+        >
+          <InputGroup className="h-8 bg-background">
+            <InputGroupInput
+              aria-label="Custom answer"
+              disabled={responding}
+              onChange={(event) => setCustom(event.target.value)}
+              placeholder="Or type your own answer…"
+              value={custom}
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                aria-label="Submit custom answer"
+                disabled={responding || !custom.trim()}
+                size="icon-xs"
+                type="submit"
+                variant="default"
+              >
+                <SendIcon />
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </form>
+      )}
+    </div>
   );
 }
 
@@ -970,27 +1070,7 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                       <CircleAlertIcon />
                       <AlertTitle>{request.title}</AlertTitle>
                       {request.details && <AlertDescription>{request.details}</AlertDescription>}
-                      <div className="mt-2 flex gap-2">
-                        {[
-                          ["decline", "Decline"],
-                          ["accept", "Allow once"],
-                          ["acceptForSession", "Allow for session"],
-                        ].map(([decision, label]) => (
-                          <Button
-                            key={decision}
-                            size="xs"
-                            variant={decision === "decline" ? "outline" : "default"}
-                            onClick={() => {
-                              void api(
-                                `/api/agent/threads/${thread.id}/requests/${request.id}`,
-                                json({ decision }),
-                              );
-                            }}
-                          >
-                            {label}
-                          </Button>
-                        ))}
-                      </div>
+                      <RequestActions request={request} threadId={thread.id} />
                     </Alert>
                   ))}
                 </Message>

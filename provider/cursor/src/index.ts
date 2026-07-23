@@ -574,6 +574,8 @@ function referencesPrompt(
 function requestDetails(request: PendingRequest): {
   readonly title: string;
   readonly details?: string;
+  readonly choices?: readonly string[];
+  readonly allowCustom?: boolean;
 } {
   const params = isRecord(request.params) ? request.params : {};
   if (request.method === "session/request_permission") {
@@ -586,12 +588,23 @@ function requestDetails(request: PendingRequest): {
   if (request.method === "cursor/ask_question") {
     const questions = Array.isArray(params.questions) ? params.questions : [];
     const first = isRecord(questions[0]) ? questions[0] : undefined;
+    const choices = cursorQuestionChoices(first);
     return {
       title: typeof params.title === "string" ? params.title : "Cursor asks a question",
       ...(typeof first?.prompt === "string" ? { details: first.prompt } : {}),
+      ...(choices.length > 0 ? { choices } : {}),
+      allowCustom: true,
     };
   }
   return { title: request.method };
+}
+
+export function cursorQuestionChoices(question: unknown): readonly string[] {
+  if (!isRecord(question) || !Array.isArray(question.options)) return ["OK"];
+  const choices = question.options.flatMap((option) =>
+    isRecord(option) && typeof option.label === "string" && option.label ? [option.label] : [],
+  );
+  return choices.length > 0 ? choices : ["OK"];
 }
 
 export function cursorPermissionOptionId(params: unknown, decision: string): string | undefined {
@@ -866,6 +879,8 @@ export function cursor(options: CursorOptions = {}): NawcProvider {
               requestKind: item.request.method,
               title: details.title,
               ...(details.details ? { details: details.details } : {}),
+              ...(details.choices ? { choices: details.choices } : {}),
+              ...(details.allowCustom ? { allowCustom: true } : {}),
             };
           } else if (item.kind === "prompt-failed") {
             throw item.error;
@@ -892,6 +907,8 @@ export function cursor(options: CursorOptions = {}): NawcProvider {
             requestKind: item.request.method,
             title: details.title,
             ...(details.details ? { details: details.details } : {}),
+            ...(details.choices ? { choices: details.choices } : {}),
+            ...(details.allowCustom ? { allowCustom: true } : {}),
           };
         }
       }

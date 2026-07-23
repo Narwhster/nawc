@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
   createOpencodeClient,
   type OpencodeClient,
   type ProviderListResponse,
+  type QuestionRequest,
 } from "@opencode-ai/sdk/v2";
 import { execa } from "execa";
 import type {
@@ -120,6 +121,87 @@ export function parseOpencodeEvent(line: string): ProviderEvent | undefined {
     return { type: "error", message: `OpenCode emitted invalid JSON: ${line}` };
   }
   return mapOpencodeEvent(event);
+}
+
+export function mapOpencodeSdkEvent(
+  value: unknown,
+  sessionId: string,
+  userMessageIds: Set<string> = new Set(),
+): ProviderEvent | undefined {
+  if (!isJsonObject(value) || typeof value.type !== "string") return;
+  const properties = isJsonObject(value.properties) ? value.properties : {};
+  const eventSessionId =
+    typeof properties.sessionID === "string" ? properties.sessionID : undefined;
+  if (eventSessionId && eventSessionId !== sessionId) return;
+
+  if (value.type === "message.updated") {
+    const info = isJsonObject(properties.info) ? properties.info : undefined;
+    if (info?.role === "user" && typeof info.id === "string") userMessageIds.add(info.id);
+    return;
+  }
+  if (value.type === "question.asked") {
+    const questions = Array.isArray(properties.questions) ? properties.questions : [];
+    const first = isJsonObject(questions[0]) ? questions[0] : undefined;
+    if (typeof properties.id !== "string" || !first) return;
+    const choices = Array.isArray(first.options)
+      ? first.options.flatMap((option) =>
+          isJsonObject(option) && typeof option.label === "string" && option.label
+            ? [option.label]
+            : [],
+        )
+      : [];
+    return {
+      type: "request.opened",
+      requestId: properties.id,
+      requestKind: "question",
+      title: typeof first.header === "string" ? first.header : "OpenCode asks a question",
+      ...(typeof first.question === "string" ? { details: first.question } : {}),
+      ...(choices.length > 0 ? { choices } : {}),
+      allowCustom: true,
+    };
+  }
+  if (value.type === "session.idle") return { type: "turn.completed" };
+  if (value.type === "session.error") {
+    const error = isJsonObject(properties.error) ? properties.error : {};
+    const data = isJsonObject(error.data) ? error.data : {};
+    return {
+      type: "error",
+      message:
+        typeof data.message === "string"
+          ? data.message
+          : typeof error.name === "string"
+            ? error.name
+            : "OpenCode failed",
+    };
+  }
+  if (value.type === "message.part.updated") {
+    const part = isJsonObject(properties.part) ? properties.part : undefined;
+    if (!part) return;
+    if (typeof part.messageID === "string" && userMessageIds.has(part.messageID)) return;
+    if (part.type === "text" && typeof part.text === "string")
+      return {
+        type: "message.completed",
+        ...(typeof part.id === "string" ? { itemId: part.id } : {}),
+        text: part.text,
+      };
+    if (part.type === "tool" && typeof part.tool === "string") {
+      const state = isJsonObject(part.state) ? part.state : {};
+      const status = typeof state.status === "string" ? state.status : "pending";
+      return {
+        type: status === "pending" || status === "running" ? "tool.started" : "tool.completed",
+        ...(typeof part.callID === "string" ? { itemId: part.callID } : {}),
+        tool: part.tool,
+        title: typeof state.title === "string" ? state.title : part.tool,
+        status:
+          status === "error"
+            ? "failed"
+            : status === "pending" || status === "running"
+              ? "running"
+              : "completed",
+        ...(typeof state.output === "string" ? { output: state.output } : {}),
+      };
+    }
+  }
 }
 
 export function parseOpencodeModels(output: string): readonly NawcProviderModel[] {
@@ -324,13 +406,14 @@ async function startOpencodeServer(
   executable: string,
   cwd: string,
   timeoutMs: number,
+  configContent = JSON.stringify({}),
 ): Promise<RunningOpencodeServer> {
   const child = execa(executable, ["serve", "--hostname=127.0.0.1", "--port=0"], {
     cwd,
     detached: process.platform !== "win32",
     env: {
       ...process.env,
-      OPENCODE_CONFIG_CONTENT: JSON.stringify({}),
+      OPENCODE_CONFIG_CONTENT: configContent,
     },
     reject: false,
   });
@@ -492,7 +575,16 @@ async function listOpencodeSkills(
 }
 
 export function opencode(options: OpencodeOptions = {}): NawcProvider {
-  const active = new Map<string, ReturnType<typeof execa>>();
+  type OpencodeSession = {
+    readonly id: string;
+    readonly cwd: string;
+    providerThreadId?: string;
+    server?: RunningOpencodeServer;
+    client?: OpencodeClient;
+    readonly pendingQuestions: Map<string, QuestionRequest>;
+    readonly userMessageIds: Set<string>;
+  };
+  const sessions = new Map<string, OpencodeSession>();
   const contextWindows = new Map<string, number>();
 
   const discoverModels = async (cwd: string) => {
@@ -506,9 +598,20 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
     }
     return models;
   };
+  const createSession = (cwd: string, providerThreadId?: string): OpencodeSession => {
+    const session: OpencodeSession = {
+      id: randomUUID(),
+      cwd,
+      providerThreadId,
+      pendingQuestions: new Map(),
+      userMessageIds: new Set(),
+    };
+    sessions.set(session.id, session);
+    return session;
+  };
 
   const runTurn = async function* (
-    session: { readonly id: string; readonly providerThreadId?: string },
+    session: OpencodeSession,
     {
       prompt,
       cwd,
@@ -546,104 +649,89 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
         : mode === "review"
           ? "\n\nReview the current work. Report concrete findings without editing files."
           : "";
-    const resume = session.providerThreadId;
-    const args = ["run", "--format", "json", "--dir", cwd];
-    if (resume) args.push("--session", resume);
-    if (model ?? options.model) args.push("--model", model ?? options.model!);
-    if (reasoningEffort ?? options.reasoningEffort)
-      args.push("--variant", reasoningEffort ?? options.reasoningEffort!);
-    const readOnly = mode === "plan" || mode === "review";
-    if (!readOnly) args.push("--auto");
-    const attachmentDirectory = attachments?.length
-      ? await mkdtemp(path.join(os.tmpdir(), "nawc-opencode-"))
-      : undefined;
-    if (attachmentDirectory) {
-      for (const [index, attachment] of attachments!.entries()) {
-        const safeName = path.basename(attachment.name).replaceAll(/[^a-zA-Z0-9._-]/g, "-");
-        const file = path.join(attachmentDirectory, `${index}-${safeName || "attachment"}`);
-        const encoded = attachment.dataUrl.slice(attachment.dataUrl.indexOf(",") + 1);
-        await writeFile(file, Buffer.from(encoded, "base64"));
-        args.push("-f", file);
-      }
-    }
     const opencodeConfigContent = buildOpencodeConfigContent(
       skillsDir,
       process.env.OPENCODE_CONFIG_CONTENT,
     );
-    const child = execa(options.executable ?? "opencode", args, {
-      cwd,
-      extendEnv: true,
-      ...(opencodeConfigContent ? { env: { OPENCODE_CONFIG_CONTENT: opencodeConfigContent } } : {}),
-      input: prompt + referenceInstruction + skillInstruction + modeInstruction,
-      reject: false,
-    });
-    active.set(session.id, child);
-    const abort = () => child.kill("SIGTERM");
+    if (!session.server || !session.client) {
+      session.server = await startOpencodeServer(
+        options.executable ?? "opencode",
+        cwd,
+        options.serverTimeoutMs ?? DEFAULT_OPENCODE_SERVER_TIMEOUT_MS,
+        opencodeConfigContent,
+      );
+      session.client = createOpencodeClient({
+        baseUrl: session.server.url,
+        directory: cwd,
+        throwOnError: true,
+      });
+    }
+    const client = session.client;
+    if (!session.providerThreadId) {
+      const created = await client.session.create();
+      if (!created.data) throw new Error("OpenCode returned an empty session");
+      session.providerThreadId = created.data.id;
+    }
+    const threadId = session.providerThreadId;
+    const subscription = await client.event.subscribe();
+    const abort = () => void client.session.abort({ sessionID: threadId });
     signal?.addEventListener("abort", abort, { once: true });
     try {
-      if (!child.stdout) {
-        yield { type: "error", message: "OpenCode did not expose an output stream" };
-        return;
+      yield { type: "thread.started", threadId };
+      const selectedModel = model ?? options.model;
+      const separator = selectedModel?.indexOf("/") ?? -1;
+      await client.session.promptAsync({
+        sessionID: threadId,
+        system: referenceInstruction + skillInstruction + modeInstruction,
+        ...(selectedModel && separator > 0
+          ? {
+              model: {
+                providerID: selectedModel.slice(0, separator),
+                modelID: selectedModel.slice(separator + 1),
+              },
+            }
+          : {}),
+        ...((reasoningEffort ?? options.reasoningEffort)
+          ? { variant: reasoningEffort ?? options.reasoningEffort }
+          : {}),
+        parts: [
+          {
+            type: "text",
+            text: prompt,
+          },
+          ...(attachments ?? []).map((attachment) => ({
+            type: "file" as const,
+            mime: attachment.mimeType,
+            filename: attachment.name,
+            url: attachment.dataUrl,
+          })),
+        ],
+      });
+      for await (const native of subscription.stream) {
+        const event = mapOpencodeSdkEvent(native, threadId, session.userMessageIds);
+        if (!event) continue;
+        if (event.type === "request.opened") {
+          const properties = isJsonObject(native) ? native.properties : undefined;
+          if (isJsonObject(properties))
+            session.pendingQuestions.set(event.requestId, properties as QuestionRequest);
+        }
+        yield event;
+        if (
+          event.type === "turn.completed" ||
+          event.type === "turn.interrupted" ||
+          event.type === "error"
+        )
+          break;
       }
-      let buffer = "";
-      let threadStarted = Boolean(resume);
-      let turnStarted = false;
-      let sawError = false;
-      const eventsFromLine = (eventLine: string): readonly ProviderEvent[] => {
-        let raw: JsonObject;
-        try {
-          raw = JSON.parse(eventLine) as JsonObject;
-        } catch {
-          sawError = true;
-          return [{ type: "error", message: `OpenCode emitted invalid JSON: ${eventLine}` }];
-        }
-        const out: ProviderEvent[] = [];
-        if (!threadStarted) {
-          const sid = typeof raw.sessionID === "string" ? raw.sessionID : undefined;
-          if (sid) {
-            out.push({ type: "thread.started", threadId: sid });
-            threadStarted = true;
-          }
-        }
-        const mapped = mapOpencodeEvent(raw, contextWindows.get(model ?? options.model ?? ""));
-        if (!mapped) return out;
-        if (mapped.type === "error") sawError = true;
-        if (mapped.type === "turn.started") {
-          if (turnStarted) return out;
-          turnStarted = true;
-        }
-        out.push(mapped);
-        return out;
-      };
-      for await (const chunk of child.stdout) {
-        buffer += chunk;
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const eventLine of lines) {
-          if (!eventLine.trim()) continue;
-          for (const event of eventsFromLine(eventLine)) yield event;
-        }
-      }
-      if (buffer.trim()) {
-        for (const event of eventsFromLine(buffer)) yield event;
-      }
-      const result = await child;
-      if (result.exitCode !== 0 && !signal?.aborted && !sawError)
-        yield {
-          type: "error",
-          message: result.stderr || `OpenCode exited with code ${result.exitCode}`,
-        };
     } finally {
       signal?.removeEventListener("abort", abort);
-      active.delete(session.id);
-      if (attachmentDirectory) await rm(attachmentDirectory, { recursive: true, force: true });
     }
   };
 
   return {
     name: "opencode",
     label: "OpenCode",
-    capabilities: ["attachments", "resume", "interrupt", "session-model-switch"],
+    capabilities: ["attachments", "resume", "interrupt", "requests", "session-model-switch"],
     modes: [
       {
         id: "default",
@@ -679,15 +767,43 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
         ...(model?.reasoningEfforts ? { reasoningEfforts: model.reasoningEfforts } : {}),
       };
     },
-    async startSession({ providerThreadId }) {
-      return { id: randomUUID(), providerThreadId };
+    async startSession({ cwd, providerThreadId }) {
+      return createSession(cwd, providerThreadId);
     },
-    sendTurn: runTurn,
+    sendTurn(session, input) {
+      const active = sessions.get(session.id);
+      if (!active) throw new Error(`Unknown OpenCode session: ${session.id}`);
+      return runTurn(active, input);
+    },
     async interrupt(session) {
-      active.get(session.id)?.kill("SIGTERM");
+      const active = sessions.get(session.id);
+      if (active?.client && active.providerThreadId)
+        await active.client.session.abort({ sessionID: active.providerThreadId });
+    },
+    async respondToRequest(session, requestId, decision) {
+      const active = sessions.get(session.id);
+      if (!active?.client) throw new Error(`Unknown OpenCode session: ${session.id}`);
+      const request = active.pendingQuestions.get(requestId);
+      if (!request) throw new Error(`Unknown OpenCode question: ${requestId}`);
+      await active.client.question.reply({
+        requestID: requestId,
+        answers: request.questions.map((_question, index) => (index === 0 ? [decision] : [])),
+      });
+      active.pendingQuestions.delete(requestId);
+    },
+    async closeSession(session) {
+      const active = sessions.get(session.id);
+      sessions.delete(session.id);
+      await active?.server?.close();
     },
     async *prompt(input) {
-      yield* runTurn({ id: randomUUID() }, input);
+      const session = createSession(input.cwd);
+      try {
+        yield* runTurn(session, input);
+      } finally {
+        await session.server?.close();
+        sessions.delete(session.id);
+      }
     },
   };
 }

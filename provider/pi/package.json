@@ -16,7 +16,8 @@
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.81.1",
-    "@nawc/config": "workspace:*"
+    "@nawc/config": "workspace:*",
+    "typebox": "^1.1.38"
   },
   "devDependencies": {
     "@types/node": "catalog:",

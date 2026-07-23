@@ -1,7 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { mapPiEvent, pi, piModels } from "../src/index.ts";
+import { mapPiEvent, pi, piModels, piQuestionEvent } from "../src/index.ts";
 
 describe("Pi provider", () => {
+  it("maps question tool input to a provider request", () => {
+    expect(
+      piQuestionEvent("question-1", {
+        question: "Which framework?",
+        options: [{ label: "React" }, { label: "Vue" }],
+        allowCustom: true,
+      }),
+    ).toEqual({
+      type: "request.opened",
+      requestId: "question-1",
+      requestKind: "question",
+      title: "Pi asks a question",
+      details: "Which framework?",
+      choices: ["React", "Vue"],
+      allowCustom: true,
+    });
+  });
+
   it("exposes provider metadata", () => {
     const provider = pi();
     expect(provider.name).toBe("pi");
@@ -9,6 +27,7 @@ describe("Pi provider", () => {
       "attachments",
       "resume",
       "interrupt",
+      "requests",
       "session-model-switch",
     ]);
     expect(provider.modes?.map((mode) => mode.id)).toEqual(["default", "plan", "review"]);

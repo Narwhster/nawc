@@ -1,9 +1,5 @@
 import { spawn as spawnProcess } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { execa } from "execa";
 import type {
   NawcProvider,
   NawcProviderModel,
@@ -155,6 +151,252 @@ type JsonRpcResponse = {
   readonly result?: unknown;
   readonly error?: { readonly message?: unknown };
 };
+
+type CodexAppMessage = {
+  readonly id?: unknown;
+  readonly method?: unknown;
+  readonly params?: unknown;
+  readonly result?: unknown;
+  readonly error?: { readonly message?: unknown };
+};
+
+class CodexAppServer {
+  readonly #child;
+  readonly #pending = new Map<
+    number,
+    { resolve: (value: unknown) => void; reject: (error: Error) => void }
+  >();
+  readonly #messages: CodexAppMessage[] = [];
+  readonly #waiters: ((message: CodexAppMessage) => void)[] = [];
+  #id = 0;
+  #buffer = "";
+  #stderr = "";
+
+  private constructor(executable: string, cwd: string) {
+    this.#child = spawnProcess(executable, ["app-server"], {
+      cwd,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    this.#child.stdout.setEncoding("utf8");
+    this.#child.stdout.on("data", (chunk: string) => this.#onData(chunk));
+    this.#child.stderr.setEncoding("utf8");
+    this.#child.stderr.on("data", (chunk: string) => {
+      this.#stderr += chunk;
+    });
+    this.#child.on("error", (error) => this.#fail(error));
+    this.#child.on("close", (code) =>
+      this.#fail(
+        new Error(this.#stderr.trim() || `Codex app-server exited with code ${code ?? "unknown"}`),
+      ),
+    );
+  }
+
+  static async start(executable: string, cwd: string): Promise<CodexAppServer> {
+    const server = new CodexAppServer(executable, cwd);
+    await server.request("initialize", {
+      clientInfo: { name: "nawc", title: "NAWC", version: "0.0.0" },
+      capabilities: { experimentalApi: true },
+    });
+    server.notify("initialized", {});
+    return server;
+  }
+
+  request(method: string, params: Record<string, unknown>): Promise<unknown> {
+    const id = ++this.#id;
+    return new Promise((resolve, reject) => {
+      this.#pending.set(id, { resolve, reject });
+      this.#send({ jsonrpc: "2.0", id, method, params });
+    });
+  }
+
+  respond(id: unknown, result: unknown): void {
+    this.#send({ jsonrpc: "2.0", id, result });
+  }
+
+  notify(method: string, params: Record<string, unknown>): void {
+    this.#send({ jsonrpc: "2.0", method, params });
+  }
+
+  next(signal?: AbortSignal): Promise<CodexAppMessage> {
+    const message = this.#messages.shift();
+    if (message) return Promise.resolve(message);
+    return new Promise((resolve, reject) => {
+      const waiter = (value: CodexAppMessage) => {
+        signal?.removeEventListener("abort", abort);
+        resolve(value);
+      };
+      const abort = () => {
+        const index = this.#waiters.indexOf(waiter);
+        if (index >= 0) this.#waiters.splice(index, 1);
+        reject(new Error("Codex request interrupted"));
+      };
+      signal?.addEventListener("abort", abort, { once: true });
+      this.#waiters.push(waiter);
+    });
+  }
+
+  close(): void {
+    this.#child.kill();
+  }
+
+  #send(message: Record<string, unknown>): void {
+    this.#child.stdin.write(`${JSON.stringify(message)}\n`);
+  }
+
+  #fail(error: Error): void {
+    for (const pending of this.#pending.values()) pending.reject(error);
+    this.#pending.clear();
+    const message: CodexAppMessage = {
+      method: "error",
+      params: { message: error.message },
+    };
+    const waiter = this.#waiters.shift();
+    if (waiter) waiter(message);
+    else this.#messages.push(message);
+  }
+
+  #onData(chunk: string): void {
+    this.#buffer += chunk;
+    const lines = this.#buffer.split("\n");
+    this.#buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      let message: CodexAppMessage;
+      try {
+        message = JSON.parse(line) as CodexAppMessage;
+      } catch {
+        continue;
+      }
+      if (typeof message.id === "number" && !message.method) {
+        const pending = this.#pending.get(message.id);
+        if (!pending) continue;
+        this.#pending.delete(message.id);
+        if (message.error)
+          pending.reject(
+            new Error(
+              typeof message.error.message === "string"
+                ? message.error.message
+                : "Codex app-server request failed",
+            ),
+          );
+        else pending.resolve(message.result);
+        continue;
+      }
+      const waiter = this.#waiters.shift();
+      if (waiter) waiter(message);
+      else this.#messages.push(message);
+    }
+  }
+}
+
+export function mapCodexAppServerEvent(message: CodexAppMessage): ProviderEvent | undefined {
+  const method = typeof message.method === "string" ? message.method : undefined;
+  const params =
+    message.params && typeof message.params === "object"
+      ? (message.params as Record<string, unknown>)
+      : {};
+  if (method === "item/tool/requestUserInput") {
+    const questions = Array.isArray(params.questions) ? params.questions : [];
+    const first =
+      questions[0] && typeof questions[0] === "object"
+        ? (questions[0] as Record<string, unknown>)
+        : undefined;
+    if (!first || (typeof message.id !== "string" && typeof message.id !== "number")) return;
+    const options = Array.isArray(first.options) ? first.options : [];
+    const choices = options.flatMap((option) =>
+      option &&
+      typeof option === "object" &&
+      typeof (option as Record<string, unknown>).label === "string"
+        ? [(option as Record<string, unknown>).label as string]
+        : [],
+    );
+    return {
+      type: "request.opened",
+      requestId: `${message.id}`,
+      requestKind: "question",
+      title: typeof first.header === "string" ? first.header : "Codex asks a question",
+      ...(typeof first.question === "string" ? { details: first.question } : {}),
+      ...(choices.length > 0 ? { choices } : {}),
+      allowCustom: true,
+    };
+  }
+  if (
+    method === "item/commandExecution/requestApproval" ||
+    method === "item/fileChange/requestApproval"
+  ) {
+    if (typeof message.id !== "string" && typeof message.id !== "number") return;
+    return {
+      type: "request.opened",
+      requestId: `${message.id}`,
+      requestKind: method,
+      title:
+        method === "item/commandExecution/requestApproval"
+          ? typeof params.command === "string"
+            ? params.command
+            : "Codex requests command approval"
+          : "Codex requests file-change approval",
+    };
+  }
+  if (method === "turn/started") return { type: "turn.started" };
+  if (method === "turn/completed") return { type: "turn.completed" };
+  if (method === "item/agentMessage/delta" && typeof params.delta === "string")
+    return {
+      type: "message.delta",
+      ...(typeof params.itemId === "string" ? { itemId: params.itemId } : {}),
+      text: params.delta,
+    };
+  if (method === "item/completed" || method === "item/started") {
+    const item =
+      params.item && typeof params.item === "object"
+        ? (params.item as Record<string, unknown>)
+        : undefined;
+    if (!item || typeof item.type !== "string") return;
+    if (item.type === "agentMessage" && method === "item/started")
+      return {
+        type: "message.started",
+        ...(typeof item.id === "string" ? { itemId: item.id } : {}),
+        role: "assistant",
+      };
+    if (item.type === "agentMessage")
+      return {
+        type: "message.completed",
+        ...(typeof item.id === "string" ? { itemId: item.id } : {}),
+        ...(typeof item.text === "string" ? { text: item.text } : {}),
+      };
+    const title =
+      item.type === "commandExecution" && typeof item.command === "string"
+        ? item.command
+        : item.type === "mcpToolCall" && typeof item.tool === "string"
+          ? item.tool
+          : item.type;
+    return {
+      type: method === "item/started" ? "tool.started" : "tool.completed",
+      ...(typeof item.id === "string" ? { itemId: item.id } : {}),
+      tool: item.type,
+      title,
+      status:
+        method === "item/started" ? "running" : item.status === "failed" ? "failed" : "completed",
+      ...(typeof item.aggregatedOutput === "string" ? { output: item.aggregatedOutput } : {}),
+    };
+  }
+  if (method === "warning" && typeof params.message === "string")
+    return { type: "warning", message: params.message };
+  if (method === "error") {
+    const error =
+      params.error && typeof params.error === "object"
+        ? (params.error as Record<string, unknown>)
+        : {};
+    return {
+      type: "error",
+      message:
+        typeof error.message === "string"
+          ? error.message
+          : typeof params.message === "string"
+            ? params.message
+            : "Codex failed",
+    };
+  }
+}
 
 async function requestCodexAppServer(
   executable: string,
@@ -422,9 +664,21 @@ async function getCodexSettings(
 }
 
 export function codex(options: CodexOptions = {}): NawcProvider {
-  const active = new Map<string, ReturnType<typeof execa>>();
+  type CodexSession = {
+    readonly id: string;
+    readonly cwd: string;
+    providerThreadId?: string;
+    threadLoaded: boolean;
+    server?: CodexAppServer;
+    readonly requests: Map<
+      string,
+      { readonly id: unknown; readonly method: string; readonly questionId?: string }
+    >;
+  };
+  const sessions = new Map<string, CodexSession>();
+
   const runTurn = async function* (
-    session: { readonly id: string; readonly providerThreadId?: string },
+    session: CodexSession,
     {
       prompt,
       cwd,
@@ -463,89 +717,100 @@ export function codex(options: CodexOptions = {}): NawcProvider {
         : mode === "review"
           ? "\n\nReview the current work. Report concrete findings without editing files."
           : "";
-    const resume = session.providerThreadId;
-    const args = resume
-      ? ["exec", "resume", "--json"]
-      : [
-          "exec",
-          "--json",
-          "--color",
-          "never",
-          "--sandbox",
-          mode === "plan" || mode === "review"
-            ? "read-only"
-            : (options.sandbox ?? "workspace-write"),
-          "-C",
+    session.server ??= await CodexAppServer.start(options.executable ?? "codex", cwd);
+    const server = session.server;
+    if (session.providerThreadId && !session.threadLoaded) {
+      await server.request("thread/resume", {
+        threadId: session.providerThreadId,
+        cwd,
+        model: model ?? options.model ?? null,
+      });
+      session.threadLoaded = true;
+    } else {
+      if (!session.providerThreadId) {
+        const started = (await server.request("thread/start", {
           cwd,
-        ];
-    if (model ?? options.model) args.push("--model", model ?? options.model!);
-    if (reasoningEffort ?? options.reasoningEffort)
-      args.push(
-        "--config",
-        `model_reasoning_effort=${JSON.stringify(reasoningEffort ?? options.reasoningEffort)}`,
-      );
-    for (const selection of modelOptions ?? []) {
-      if (selection.id === "serviceTier" && typeof selection.value === "string")
-        args.push("--config", `service_tier=${JSON.stringify(selection.value)}`);
-    }
-    const attachmentDirectory = attachments?.length
-      ? await mkdtemp(path.join(os.tmpdir(), "nawc-codex-"))
-      : undefined;
-    if (attachmentDirectory) {
-      for (const [index, attachment] of attachments!.entries()) {
-        const safeName = path.basename(attachment.name).replaceAll(/[^a-zA-Z0-9._-]/g, "-");
-        const file = path.join(attachmentDirectory, `${index}-${safeName || "image"}`);
-        const encoded = attachment.dataUrl.slice(attachment.dataUrl.indexOf(",") + 1);
-        await writeFile(file, Buffer.from(encoded, "base64"));
-        args.push("--image", file);
+          model: model ?? options.model ?? null,
+          sandbox:
+            mode === "plan" || mode === "review"
+              ? "read-only"
+              : (options.sandbox ?? "workspace-write"),
+          approvalPolicy: "on-request",
+          experimentalRawEvents: false,
+        })) as { readonly thread?: { readonly id?: unknown } };
+        const threadId = started.thread?.id;
+        if (typeof threadId !== "string") throw new Error("Codex did not return a thread id");
+        session.providerThreadId = threadId;
+        session.threadLoaded = true;
+        yield { type: "thread.started", threadId };
       }
     }
-    if (resume) args.push(resume);
-    args.push("-");
-    const child = execa(options.executable ?? "codex", args, {
-      cwd,
-      input: prompt + referenceInstruction + skillInstruction + modeInstruction,
-      reject: false,
-    });
-    active.set(session.id, child);
-    const abort = () => child.kill("SIGTERM");
+    const threadId = session.providerThreadId;
+    const serviceTier = modelOptions?.find((selection) => selection.id === "serviceTier")?.value;
+    const abort = () => {
+      if (threadId) void server.request("turn/interrupt", { threadId }).catch(() => undefined);
+    };
     signal?.addEventListener("abort", abort, { once: true });
     try {
-      if (!child.stdout) {
-        yield { type: "error", message: "Codex did not expose an output stream" };
-        return;
-      }
-      let buffer = "";
-      for await (const chunk of child.stdout) {
-        buffer += chunk;
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const eventLine of lines) {
-          if (!eventLine.trim()) continue;
-          const parsed = parseCodexEvent(eventLine);
-          if (parsed) yield parsed;
+      await server.request("turn/start", {
+        threadId,
+        additionalContext: {
+          nawc: {
+            kind: "application",
+            value: referenceInstruction + skillInstruction + modeInstruction,
+          },
+        },
+        input: [
+          {
+            type: "text",
+            text: prompt,
+            text_elements: [],
+          },
+          ...(attachments ?? []).map((attachment) => ({
+            type: "image",
+            url: attachment.dataUrl,
+          })),
+        ],
+        model: model ?? options.model ?? null,
+        effort: reasoningEffort ?? options.reasoningEffort ?? null,
+        ...(typeof serviceTier === "string" ? { serviceTier } : {}),
+      });
+      while (true) {
+        const native = await server.next(signal);
+        const event = mapCodexAppServerEvent(native);
+        if (!event) continue;
+        if (event.type === "request.opened" && native.id !== undefined) {
+          const params =
+            native.params && typeof native.params === "object"
+              ? (native.params as Record<string, unknown>)
+              : {};
+          const questions = Array.isArray(params.questions) ? params.questions : [];
+          const first =
+            questions[0] && typeof questions[0] === "object"
+              ? (questions[0] as Record<string, unknown>)
+              : undefined;
+          session.requests.set(event.requestId, {
+            id: native.id,
+            method: typeof native.method === "string" ? native.method : event.requestKind,
+            ...(typeof first?.id === "string" ? { questionId: first.id } : {}),
+          });
         }
+        yield event;
+        if (
+          event.type === "turn.completed" ||
+          event.type === "turn.interrupted" ||
+          event.type === "error"
+        )
+          break;
       }
-      if (buffer.trim()) {
-        const parsed = parseCodexEvent(buffer);
-        if (parsed) yield parsed;
-      }
-      const result = await child;
-      if (result.exitCode !== 0 && !signal?.aborted)
-        yield {
-          type: "error",
-          message: result.stderr || `Codex exited with code ${result.exitCode}`,
-        };
     } finally {
       signal?.removeEventListener("abort", abort);
-      active.delete(session.id);
-      if (attachmentDirectory) await rm(attachmentDirectory, { recursive: true, force: true });
     }
   };
   return {
     name: "codex",
     label: "Codex",
-    capabilities: ["attachments", "resume", "interrupt", "session-model-switch"],
+    capabilities: ["attachments", "resume", "interrupt", "requests", "session-model-switch"],
     modes: [
       {
         id: "default",
@@ -567,15 +832,57 @@ export function codex(options: CodexOptions = {}): NawcProvider {
       getCodexSettings(options.executable ?? "codex", cwd, options.model, options.reasoningEffort),
     listSkills: ({ cwd }) => listCodexSkills(options.executable ?? "codex", cwd),
     listModels: ({ cwd }) => listCodexModels(options.executable ?? "codex", cwd),
-    async startSession({ providerThreadId }) {
-      return { id: randomUUID(), providerThreadId };
+    async startSession({ cwd, providerThreadId }) {
+      const session: CodexSession = {
+        id: randomUUID(),
+        cwd,
+        providerThreadId,
+        threadLoaded: false,
+        requests: new Map(),
+      };
+      sessions.set(session.id, session);
+      return session;
     },
-    sendTurn: runTurn,
+    sendTurn(session, input) {
+      const active = sessions.get(session.id);
+      if (!active) throw new Error(`Unknown Codex session: ${session.id}`);
+      return runTurn(active, input);
+    },
     async interrupt(session) {
-      active.get(session.id)?.kill("SIGTERM");
+      const active = sessions.get(session.id);
+      if (active?.server && active.providerThreadId)
+        await active.server.request("turn/interrupt", { threadId: active.providerThreadId });
+    },
+    async respondToRequest(session, requestId, decision) {
+      const active = sessions.get(session.id);
+      const request = active?.requests.get(requestId);
+      if (!active?.server || !request) throw new Error(`Unknown Codex request: ${requestId}`);
+      if (request.method === "item/tool/requestUserInput") {
+        active.server.respond(request.id, {
+          answers: {
+            [request.questionId ?? "answer"]: { answers: [decision] },
+          },
+        });
+      } else active.server.respond(request.id, { decision });
+      active.requests.delete(requestId);
+    },
+    async closeSession(session) {
+      const active = sessions.get(session.id);
+      sessions.delete(session.id);
+      active?.server?.close();
     },
     async *prompt(input) {
-      yield* runTurn({ id: randomUUID() }, input);
+      const session: CodexSession = {
+        id: randomUUID(),
+        cwd: input.cwd,
+        threadLoaded: false,
+        requests: new Map(),
+      };
+      try {
+        yield* runTurn(session, input);
+      } finally {
+        session.server?.close();
+      }
     },
   };
 }

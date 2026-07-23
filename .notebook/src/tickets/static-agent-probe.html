@@ -1,0 +1,51 @@
+<h1>nawc-static-agent probe</h1>
+<p>
+  A concrete example of the <code>nawc-static-agent.ts</code> shape a notebook author would
+  write. Used as a probe for
+  <a
+    data-wiki-link="tickets/product-website"
+    href="#tickets%2Fproduct-website"
+    >[[tickets/product-website]]</a
+  >.
+</p>
+<h2>The shape</h2>
+<p>
+  The notebook author exports a default config with two fields:
+</p>
+<ul>
+  <li>
+    <code>files.match</code> &mdash; a regex that selects which notes flow into the function as
+    <code>files</code>.
+  </li>
+  <li>
+    <code>faq</code> &mdash; the function called with
+    <code>{ prompt, files, history }</code> that returns a
+    <code>ConversationTree</code>.
+  </li>
+</ul>
+<p>
+  The tree is recursive: <code>question</code> nodes are multiple-choice questions (asked via
+  the question tool), each answer leads to a child node, and <code>answer</code> leaves are
+  emitted as the final canned response. The provider walks the tree by asking each question and
+  following the chosen branch.
+</p>
+<h2>Example <code>nawc-static-agent.ts</code></h2>
+<p>
+  In a real notebook this file lives at the notebook root. It imports
+  <code>defineStaticAgent</code> from <code>@nawc/site</code> and only writes usage code. The
+  types of every field are inferred from the package's exports.
+</p>
+<p>
+  This file is expected to <em>fail typecheck</em> until
+  <a
+    data-wiki-link="tickets/agent-question-tool"
+    href="#tickets%2Fagent-question-tool"
+    >[[tickets/agent-question-tool]]</a
+  >
+  and the <code>@nawc/site</code> package itself are implemented. The failure is the signal
+  that the implementation ticket is not done yet.
+</p>
+<ref
+  file=".notebook/src/tickets/static-agent-probe.example.ts"
+  syntax="ts"
+></ref>

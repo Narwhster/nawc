@@ -279,6 +279,7 @@ describe("CompletionMenu", () => {
         {
           id: "permission-1",
           turnId: "turn-1",
+          kind: "permission",
           title: "Write file",
           status: "pending" as const,
         },
@@ -313,6 +314,75 @@ describe("CompletionMenu", () => {
         (button) => button.textContent === "Allow once",
       ),
     ).toHaveLength(1);
+  });
+
+  it("renders question choices and sends the selected label", async () => {
+    const questionThread = {
+      ...emptyThread,
+      status: "running" as const,
+      messages: [
+        {
+          id: "message-1",
+          role: "assistant" as const,
+          text: "One question.",
+          turnId: "turn-1",
+          createdAt: "2026-07-12T00:00:01.000Z",
+          streaming: true,
+        },
+      ],
+      turns: [{ id: "turn-1", status: "running" as const }],
+      requests: [
+        {
+          id: "question-1",
+          turnId: "turn-1",
+          kind: "cursor/ask_question",
+          title: "Choose a framework",
+          details: "Which framework should I use?",
+          choices: ["React", "Vue"],
+          allowCustom: true,
+          status: "pending" as const,
+        },
+      ],
+    };
+    const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/api/agent/provider")) {
+        return Promise.resolve(jsonResponse({ label: "Test agent", capabilities: [], modes: [] }));
+      }
+      if (url.endsWith("/api/prompt/models")) return Promise.resolve(jsonResponse([]));
+      if (url.endsWith("/api/prompt/settings")) return Promise.resolve(jsonResponse({}));
+      if (url.endsWith("/api/agent/threads")) {
+        return Promise.resolve(jsonResponse([questionThread]));
+      }
+      if (url.endsWith("/api/agent/threads/thread-1/requests/question-1")) {
+        return Promise.resolve(jsonResponse({ ok: true }));
+      }
+      throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    localStorage.setItem("nawc:agent-active-thread:v1", questionThread.id);
+
+    await act(async () =>
+      root.render(
+        <TooltipProvider>
+          <AgentPanel />
+        </TooltipProvider>,
+      ),
+    );
+    await act(async () => Promise.resolve());
+
+    expect(container.textContent).toContain("Which framework should I use?");
+    expect(container.querySelector('[aria-label="Custom answer"]')).not.toBeNull();
+    const react = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "React",
+    );
+    await act(async () => react?.click());
+
+    const response = fetchMock.mock.calls.find(([input]) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      return url.endsWith("/api/agent/threads/thread-1/requests/question-1");
+    });
+    expect(response?.[1]?.body).toBe(JSON.stringify({ decision: "React" }));
   });
 
   it("clears the local running state after interrupting an in-flight turn", async () => {

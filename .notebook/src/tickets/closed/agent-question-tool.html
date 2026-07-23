@@ -1,0 +1,31 @@
+<h1>agent-question-tool</h1>
+<p>
+  The agent's "question tool" &mdash; the structured way for an agent to pause and ask the user a
+  multiple-choice question &mdash; currently does not work in NAWC. When an agent emits a
+  <code>request.opened</code> with <code>requestKind</code> for a question, the user-facing side
+  never receives the prompt and the request times out.
+</p>
+<p>
+  This is the prerequisite for
+  <a
+    data-wiki-link="tickets/product-website"
+    href="#tickets%2Fproduct-website"
+    >[[tickets/product-website]]</a
+  >'s static-site FAQ provider, which is being redesigned around the question tool. Until this
+  ticket is resolved, the FAQ provider has no working interaction primitive to walk its
+  conversation tree.
+</p>
+<h2>What needs to be true</h2>
+<ul>
+  <li>An agent emits a <code>request.opened</code> event with a question and a list of choices.</li>
+  <li>The agent panel renders the question to the user with clickable options.</li>
+  <li>The user picks an option; the panel emits a <code>request.resolved</code> back to the
+    provider with the chosen label.</li>
+  <li>The provider receives the resolved request and continues the turn with that input.</li>
+</ul>
+<h2>Open questions</h2>
+<ul>
+  <li>Is the timeout a server-side bug (request never fanned out to the client) or a client-side bug (client never subscribed to the channel)?</li>
+  <li>Does the existing <code>ProviderEvent</code> shape cover this end to end, or does the wire protocol need new fields?</li>
+  <li>Should the panel also support free-text input alongside multiple choice, or are questions strictly multiple choice?</li>
+</ul>

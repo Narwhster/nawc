@@ -7,6 +7,7 @@ import {
   SessionManager,
   type AgentSession,
   type AgentSessionEvent,
+  type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import type {
   NawcAgentAttachment,
@@ -15,6 +16,7 @@ import type {
   NawcProviderSkill,
   ProviderEvent,
 } from "@nawc/config";
+import { Type } from "typebox";
 
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
 type ThinkingLevel = (typeof THINKING_LEVELS)[number];
@@ -31,7 +33,41 @@ type PiSession = {
   readonly providerThreadId?: string;
   readonly agent: AgentSession;
   readonly runtime: ModelRuntime;
+  readonly pendingQuestions: Map<string, (answer: string) => void>;
+  emit?: (event: ProviderEvent) => void;
 };
+
+const PiQuestionParams = Type.Object({
+  question: Type.String({ description: "The question to ask the user" }),
+  options: Type.Array(
+    Type.Object({
+      label: Type.String({ description: "Display label for the option" }),
+      description: Type.Optional(Type.String({ description: "Explanation of the option" })),
+    }),
+  ),
+  allowCustom: Type.Optional(
+    Type.Boolean({ description: "Whether the user may type a custom answer" }),
+  ),
+});
+
+export function piQuestionEvent(
+  requestId: string,
+  input: {
+    readonly question: string;
+    readonly options: readonly { readonly label: string }[];
+    readonly allowCustom?: boolean;
+  },
+): ProviderEvent {
+  return {
+    type: "request.opened",
+    requestId,
+    requestKind: "question",
+    title: "Pi asks a question",
+    details: input.question,
+    choices: input.options.map((option) => option.label),
+    allowCustom: true,
+  };
+}
 
 function modelRuntime(options: PiOptions): Promise<ModelRuntime> {
   return ModelRuntime.create({
@@ -175,6 +211,36 @@ export function pi(options: PiOptions = {}): NawcProvider {
     const sessionManager = input.providerThreadId
       ? SessionManager.open(input.providerThreadId, options.sessionDir, input.cwd)
       : SessionManager.create(input.cwd, options.sessionDir);
+    const pendingQuestions = new Map<string, (answer: string) => void>();
+    let value: PiSession | undefined;
+    const questionTool: ToolDefinition<typeof PiQuestionParams> = {
+      name: "question",
+      label: "Question",
+      description:
+        "Ask the user one multiple-choice question and wait for their answer before continuing.",
+      promptSnippet: "Ask the user a question with clickable choices.",
+      parameters: PiQuestionParams,
+      executionMode: "sequential",
+      async execute(toolCallId, params, signal) {
+        const answer = await new Promise<string>((resolve, reject) => {
+          const abort = () => {
+            pendingQuestions.delete(toolCallId);
+            reject(new Error("Question cancelled"));
+          };
+          signal?.addEventListener("abort", abort, { once: true });
+          pendingQuestions.set(toolCallId, (decision) => {
+            signal?.removeEventListener("abort", abort);
+            resolve(decision);
+          });
+          value?.emit?.(piQuestionEvent(toolCallId, params));
+        });
+        pendingQuestions.delete(toolCallId);
+        return {
+          content: [{ type: "text", text: answer }],
+          details: { question: params.question, answer },
+        };
+      },
+    };
     const { session } = await createAgentSession({
       cwd: input.cwd,
       ...(options.agentDir ? { agentDir: options.agentDir } : {}),
@@ -184,11 +250,18 @@ export function pi(options: PiOptions = {}): NawcProvider {
       thinkingLevel:
         (input.reasoningEffort as ThinkingLevel | undefined) ?? options.reasoningEffort,
       ...(input.mode === "plan" || input.mode === "review"
-        ? { tools: ["read", "grep", "find", "ls"] }
+        ? { tools: ["read", "grep", "find", "ls", "question"] }
         : {}),
+      customTools: [questionTool],
     });
     const providerThreadId = session.sessionFile;
-    const value: PiSession = { id: randomUUID(), providerThreadId, agent: session, runtime };
+    value = {
+      id: randomUUID(),
+      providerThreadId,
+      agent: session,
+      runtime,
+      pendingQuestions,
+    };
     sessions.set(value.id, value);
     return value;
   }
@@ -211,6 +284,11 @@ export function pi(options: PiOptions = {}): NawcProvider {
     const queued: ProviderEvent[] = [];
     let wake: (() => void) | undefined;
     let finished = false;
+    session.emit = (event) => {
+      queued.push(event);
+      wake?.();
+      wake = undefined;
+    };
     const unsubscribe = session.agent.subscribe((native) => {
       const mapped = mapPiEvent(native);
       if (mapped) queued.push(mapped);
@@ -263,6 +341,7 @@ export function pi(options: PiOptions = {}): NawcProvider {
         };
       }
     } finally {
+      session.emit = undefined;
       unsubscribe();
       input.signal?.removeEventListener("abort", abort);
     }
@@ -271,7 +350,7 @@ export function pi(options: PiOptions = {}): NawcProvider {
   return {
     name: "pi",
     label: "Pi",
-    capabilities: ["attachments", "resume", "interrupt", "session-model-switch"],
+    capabilities: ["attachments", "resume", "interrupt", "requests", "session-model-switch"],
     modes: [
       { id: "default", label: "Build", description: "Allow Pi to inspect and edit the workspace" },
       {
@@ -306,6 +385,13 @@ export function pi(options: PiOptions = {}): NawcProvider {
     },
     async interrupt(session) {
       await sessions.get(session.id)?.agent.abort();
+    },
+    async respondToRequest(session, requestId, decision) {
+      const active = sessions.get(session.id);
+      const resolve = active?.pendingQuestions.get(requestId);
+      if (!active || !resolve) throw new Error(`Unknown Pi question: ${requestId}`);
+      active.pendingQuestions.delete(requestId);
+      resolve(decision);
     },
     async closeSession(session) {
       sessions.get(session.id)?.agent.dispose();

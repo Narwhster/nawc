@@ -189,6 +189,8 @@ describe("AgentManager", () => {
           requestId: "permission-1",
           requestKind: "permission",
           title: "Allow?",
+          choices: ["Yes", "No"],
+          allowCustom: true,
         };
         await new Promise<void>(() => undefined);
       },
@@ -211,7 +213,13 @@ describe("AgentManager", () => {
 
     expect(responses).toEqual([{ requestId: "permission-1", decision: "accept" }]);
     expect(thread.requests).toMatchObject([
-      { id: "permission-1", status: "resolved", decision: "accept" },
+      {
+        id: "permission-1",
+        choices: ["Yes", "No"],
+        allowCustom: true,
+        status: "resolved",
+        decision: "accept",
+      },
     ]);
     await manager.interrupt(thread.id);
   });

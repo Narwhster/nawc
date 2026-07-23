@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildOpencodeConfigContent,
   flattenOpencodeModels,
+  mapOpencodeSdkEvent,
   parseOpencodeEvent,
   parseOpencodeModels,
   parseOpencodeSkillFile,
@@ -10,6 +11,74 @@ import {
 } from "../src/index.ts";
 
 describe("OpenCode JSONL", () => {
+  it("does not echo persisted user text as an assistant message", () => {
+    const userMessageIds = new Set<string>();
+    expect(
+      mapOpencodeSdkEvent(
+        {
+          type: "message.updated",
+          properties: {
+            info: { id: "message-1", sessionID: "session-1", role: "user" },
+          },
+        },
+        "session-1",
+        userMessageIds,
+      ),
+    ).toBeUndefined();
+    expect(
+      mapOpencodeSdkEvent(
+        {
+          type: "message.part.updated",
+          properties: {
+            part: {
+              id: "part-1",
+              messageID: "message-1",
+              sessionID: "session-1",
+              type: "text",
+              text: "Do not echo me",
+            },
+          },
+        },
+        "session-1",
+        userMessageIds,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("maps native question requests to question choices", () => {
+    expect(
+      mapOpencodeSdkEvent(
+        {
+          type: "question.asked",
+          properties: {
+            id: "question-1",
+            sessionID: "session-1",
+            questions: [
+              {
+                header: "Framework",
+                question: "Which framework?",
+                custom: true,
+                options: [
+                  { label: "React", description: "Use React" },
+                  { label: "Vue", description: "Use Vue" },
+                ],
+              },
+            ],
+          },
+        },
+        "session-1",
+      ),
+    ).toEqual({
+      type: "request.opened",
+      requestId: "question-1",
+      requestKind: "question",
+      title: "Framework",
+      details: "Which framework?",
+      choices: ["React", "Vue"],
+      allowCustom: true,
+    });
+  });
+
   it("maps step_start to a turn lifecycle event", () => {
     expect(
       parseOpencodeEvent(

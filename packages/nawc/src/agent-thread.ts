@@ -34,6 +34,8 @@ export type AgentRequest = {
   readonly kind: string;
   readonly title: string;
   readonly details?: string;
+  readonly choices?: readonly string[];
+  readonly allowCustom?: boolean;
   status: "pending" | "resolved";
   decision?: string;
 };
@@ -221,6 +223,8 @@ export function projectProviderEvent(
         kind: event.requestKind,
         title: event.title,
         details: event.details,
+        choices: event.choices,
+        allowCustom: event.allowCustom,
         status: "pending",
       });
       return;
