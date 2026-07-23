@@ -1,8 +1,7 @@
 import { Node, mergeAttributes } from "@tiptap/core";
-import { FitAddon } from "@xterm/addon-fit";
-import { Terminal } from "@xterm/xterm";
-import "@xterm/xterm/css/xterm.css";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
+import type { Terminal as XTerm } from "@xterm/xterm";
+import type { IDisposable } from "@xterm/xterm";
 import { Button } from "@nawc/ui/components/ui/button";
 import {
   Dialog,
@@ -36,6 +35,12 @@ type SourceAttrs = {
   params?: string;
 };
 type SourceResult = SourceAttrs & { code: string; startLine: number; endLine: number };
+
+declare global {
+  interface Window {
+    __nawcBrowserRun?: (selection: SourceAttrs, write: (output: string) => void) => Promise<void>;
+  }
+}
 
 const resizeReporter = `<script>
 (() => {
@@ -379,71 +384,110 @@ function RunnableTerminal({ selection }: { selection: SourceAttrs }) {
 
   useEffect(() => {
     if (!container.current) return;
-    const styles = getComputedStyle(document.documentElement);
-    const color = (property: string) => styles.getPropertyValue(property).trim();
-    const terminal = new Terminal({
-      convertEol: true,
-      cursorBlink: true,
-      cursorStyle: "bar",
-      fontFamily: "var(--font-mono)",
-      fontSize: 12,
-      scrollback: 5_000,
-      theme: {
-        background: color("--background"),
-        foreground: color("--foreground"),
-        cursor: color("--foreground"),
-        selectionBackground: color("--terminal-selection"),
-      },
-    });
-    const fit = new FitAddon();
-    terminal.loadAddon(fit);
-    terminal.open(container.current);
-    fit.fit();
-    terminal.focus();
+    let disposed = false;
+    let resize: ResizeObserver | undefined;
+    let input: IDisposable | undefined;
+    let terminalResize: IDisposable | undefined;
+    let socket: WebSocket | undefined;
+    let terminal: XTerm | undefined;
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const socket = new WebSocket(`${protocol}//${window.location.host}/api/run`);
-    socket.addEventListener("open", () => {
-      socket.send(
-        JSON.stringify({
-          type: "start",
-          selection,
-          cols: terminal.cols,
-          rows: terminal.rows,
-        }),
-      );
-    });
-    socket.addEventListener("message", (event) => {
-      const message = JSON.parse(String(event.data)) as
-        | { type: "output"; data: string }
-        | { type: "exit"; exitCode: number }
-        | { type: "error"; message: string };
-      if (message.type === "output") terminal.write(message.data);
-      else if (message.type === "error") terminal.writeln(`\r\n\x1b[31m${message.message}\x1b[0m`);
-    });
-    socket.addEventListener("close", (event) => {
-      if (event.code !== 1000)
-        terminal.writeln(
-          `\r\n\x1b[31mProcess disconnected: ${event.reason || "unknown error"}\x1b[0m`,
+    void (async () => {
+      const [{ Terminal }, { FitAddon }] = await Promise.all([
+        import("@xterm/xterm"),
+        import("@xterm/addon-fit"),
+        import("@xterm/xterm/css/xterm.css"),
+      ]);
+      if (disposed || !container.current) return;
+
+      const styles = getComputedStyle(document.documentElement);
+      const color = (property: string) => styles.getPropertyValue(property).trim();
+      const next = new Terminal({
+        convertEol: true,
+        cursorBlink: true,
+        cursorStyle: "bar",
+        fontFamily: "var(--font-mono)",
+        fontSize: 12,
+        scrollback: 5_000,
+        theme: {
+          background: color("--background"),
+          foreground: color("--foreground"),
+          cursor: color("--foreground"),
+          selectionBackground: color("--terminal-selection"),
+        },
+      });
+      if (disposed) {
+        next.dispose();
+        return;
+      }
+      terminal = next;
+      const fit = new FitAddon();
+      terminal.loadAddon(fit);
+      terminal.open(container.current);
+      fit.fit();
+      terminal.focus();
+
+      resize = new ResizeObserver(() => fit.fit());
+      resize.observe(container.current);
+
+      if (window.__nawcBrowserRun) {
+        void window
+          .__nawcBrowserRun(selection, (output) => {
+            if (!disposed) terminal?.write(output.replaceAll("\n", "\r\n"));
+          })
+          .catch((error: unknown) => {
+            if (!disposed)
+              terminal?.writeln(
+                `\r\n\x1b[31m${error instanceof Error ? error.message : String(error)}\x1b[0m`,
+              );
+          });
+        return;
+      }
+
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      socket = new WebSocket(`${protocol}//${window.location.host}/api/run`);
+      socket.addEventListener("open", () => {
+        if (!terminal || !socket) return;
+        socket.send(
+          JSON.stringify({
+            type: "start",
+            selection,
+            cols: terminal.cols,
+            rows: terminal.rows,
+          }),
         );
-    });
-    const input = terminal.onData((data) => {
-      if (socket.readyState === WebSocket.OPEN)
-        socket.send(JSON.stringify({ type: "input", data }));
-    });
-    const terminalResize = terminal.onResize(({ cols, rows }) => {
-      if (socket.readyState === WebSocket.OPEN)
-        socket.send(JSON.stringify({ type: "resize", cols, rows }));
-    });
-    const resize = new ResizeObserver(() => fit.fit());
-    resize.observe(container.current);
+      });
+      socket.addEventListener("message", (event) => {
+        const message = JSON.parse(String(event.data)) as
+          | { type: "output"; data: string }
+          | { type: "exit"; exitCode: number }
+          | { type: "error"; message: string };
+        if (message.type === "output") terminal?.write(message.data);
+        else if (message.type === "error")
+          terminal?.writeln(`\r\n\x1b[31m${message.message}\x1b[0m`);
+      });
+      socket.addEventListener("close", (event) => {
+        if (event.code !== 1000)
+          terminal?.writeln(
+            `\r\n\x1b[31mProcess disconnected: ${event.reason || "unknown error"}\x1b[0m`,
+          );
+      });
+      input = terminal.onData((data) => {
+        if (socket?.readyState === WebSocket.OPEN)
+          socket.send(JSON.stringify({ type: "input", data }));
+      });
+      terminalResize = terminal.onResize(({ cols, rows }) => {
+        if (socket?.readyState === WebSocket.OPEN)
+          socket.send(JSON.stringify({ type: "resize", cols, rows }));
+      });
+    })();
 
     return () => {
-      resize.disconnect();
-      input.dispose();
-      terminalResize.dispose();
-      socket.close(1000, "Terminal closed");
-      terminal.dispose();
+      disposed = true;
+      resize?.disconnect();
+      input?.dispose();
+      terminalResize?.dispose();
+      socket?.close(1000, "Terminal closed");
+      terminal?.dispose();
     };
   }, [
     selection.file,

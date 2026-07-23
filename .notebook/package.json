@@ -6,6 +6,9 @@
   "scripts": {
     "nawc": "nawc",
     "notebook:test": "vp test",
+    "site:dev": "nawc-site dev",
+    "site:build": "nawc-site build",
+    "site:start": "nawc-site start",
     "check": "vp check"
   },
   "dependencies": {
@@ -16,6 +19,7 @@
     "@nawc/plugin": "workspace:*",
     "@nawc/provider-codex": "workspace:*",
     "@nawc/provider-opencode": "workspace:*",
+    "@nawc/site": "workspace:*",
     "@nawc/syntax-typescript": "workspace:*",
     "@nawc/syntax-vitest": "workspace:*",
     "@nawc/ui": "workspace:*",

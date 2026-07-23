@@ -28,4 +28,10 @@ describe("note links", () => {
     expect(parseNoteLink("/note//Architecture.html", "http://localhost:6292")).toBe(undefined);
     expect(parseNoteLink("https://example.com/docs", "http://localhost:6292")).toBe(undefined);
   });
+
+  it("reads static-site note routes from the hash", () => {
+    expect(parseNoteLink("https://example.com/docs/#/note/guides/start.html")).toBe(
+      "guides/start.html",
+    );
+  });
 });

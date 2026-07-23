@@ -16,8 +16,11 @@ export function parseNoteLink(
   if (!href) return undefined;
   try {
     const url = new URL(href, base);
-    if (!url.pathname.startsWith(notePrefix)) return undefined;
-    const raw = decodeURIComponent(url.pathname.slice(notePrefix.length));
+    const hashPath = url.hash.startsWith(`#${notePrefix}`) ? url.hash.slice(1) : undefined;
+    const path = hashPath ?? url.pathname;
+    const index = path.lastIndexOf(notePrefix);
+    if (index < 0) return undefined;
+    const raw = decodeURIComponent(path.slice(index + notePrefix.length));
     if (
       !raw ||
       raw.split("/").some((segment) => segment === "" || segment === "." || segment === "..")

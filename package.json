@@ -8,6 +8,7 @@
     "test": "vp test",
     "nawc": "vp run @nawc/self-notebook#nawc",
     "nawc:test": "vp run @nawc/self-notebook#notebook:test",
+    "site:dev": "vp run @nawc/self-notebook#site:dev",
     "prepare": "vp config"
   },
   "devDependencies": {

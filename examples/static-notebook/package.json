@@ -1,0 +1,23 @@
+{
+  "name": "@nawc/static-notebook-example",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "nawc": "nawc",
+    "dev": "nawc-site dev",
+    "build": "nawc-site build",
+    "start": "nawc-site start"
+  },
+  "dependencies": {
+    "@nawc/core": "workspace:*",
+    "@nawc/provider-opencode": "workspace:*",
+    "@nawc/site": "workspace:*",
+    "@nawc/syntax-rust": "workspace:*",
+    "@nawc/syntax-typescript": "workspace:*",
+    "nawc": "workspace:*"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  }
+}

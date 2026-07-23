@@ -207,7 +207,7 @@ const THREAD_KEY = "nawc:agent-active-thread:v1";
 
 function readStorage<T>(key: string, fallback: T): T {
   try {
-    const value = localStorage.getItem(key);
+    const value = window.localStorage.getItem(key);
     return value ? (JSON.parse(value) as T) : fallback;
   } catch {
     return fallback;
@@ -564,7 +564,7 @@ function RequestActions({
 export function AgentPanel({ note }: { readonly note?: string }) {
   const [provider, setProvider] = useState<ProviderMetadata>();
   const [threads, setThreads] = useState<readonly AgentThread[]>([]);
-  const [threadId, setThreadId] = useState(() => localStorage.getItem(THREAD_KEY) ?? "");
+  const [threadId, setThreadId] = useState(() => window.localStorage.getItem(THREAD_KEY) ?? "");
   const [models, setModels] = useState<readonly ModelOption[]>([]);
   const [preferences, setPreferences] = useState<AgentPreferences>(() =>
     readStorage(PREFERENCES_KEY, {}),
@@ -675,13 +675,13 @@ export function AgentPanel({ note }: { readonly note?: string }) {
   }, [refreshThreads]);
 
   useEffect(
-    () => localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences)),
+    () => window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences)),
     [preferences],
   );
-  useEffect(() => localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts)), [drafts]);
+  useEffect(() => window.localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts)), [drafts]);
   useEffect(() => {
-    if (threadId) localStorage.setItem(THREAD_KEY, threadId);
-    else localStorage.removeItem(THREAD_KEY);
+    if (threadId) window.localStorage.setItem(THREAD_KEY, threadId);
+    else window.localStorage.removeItem(THREAD_KEY);
   }, [threadId]);
 
   useEffect(() => {

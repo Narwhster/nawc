@@ -31,6 +31,26 @@ describe("CompletionMenu", () => {
 
   beforeEach(() => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const values = new Map<string, string>();
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        get length() {
+          return values.size;
+        },
+        clear: () => {
+          values.clear();
+        },
+        getItem: (key: string) => values.get(key) ?? null,
+        key: (index: number) => [...values.keys()][index] ?? null,
+        removeItem: (key: string) => {
+          values.delete(key);
+        },
+        setItem: (key: string, value: string) => {
+          values.set(key, value);
+        },
+      } satisfies Storage,
+    });
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -52,7 +72,7 @@ describe("CompletionMenu", () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
-    localStorage.clear();
+    window.localStorage.clear();
     vi.unstubAllGlobals();
   });
 
@@ -161,7 +181,7 @@ describe("CompletionMenu", () => {
       throw new Error(`Unexpected request: ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
-    localStorage.setItem("nawc:agent-active-thread:v1", runningThread.id);
+    window.localStorage.setItem("nawc:agent-active-thread:v1", runningThread.id);
 
     await act(async () =>
       root.render(
@@ -231,7 +251,7 @@ describe("CompletionMenu", () => {
       throw new Error(`Unexpected request: ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
-    localStorage.setItem("nawc:agent-active-thread:v1", reconnectedThread.id);
+    window.localStorage.setItem("nawc:agent-active-thread:v1", reconnectedThread.id);
 
     await act(async () =>
       root.render(
@@ -297,7 +317,7 @@ describe("CompletionMenu", () => {
       throw new Error(`Unexpected request: ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
-    localStorage.setItem("nawc:agent-active-thread:v1", requestedThread.id);
+    window.localStorage.setItem("nawc:agent-active-thread:v1", requestedThread.id);
 
     await act(async () =>
       root.render(
@@ -360,7 +380,7 @@ describe("CompletionMenu", () => {
       throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
     });
     vi.stubGlobal("fetch", fetchMock);
-    localStorage.setItem("nawc:agent-active-thread:v1", questionThread.id);
+    window.localStorage.setItem("nawc:agent-active-thread:v1", questionThread.id);
 
     await act(async () =>
       root.render(
@@ -504,7 +524,7 @@ describe("CompletionMenu", () => {
     await act(async () => send?.click());
     await act(async () => Promise.resolve());
 
-    expect(localStorage.getItem("nawc:agent-active-thread:v1")).toBe("thread-1");
+    expect(window.localStorage.getItem("nawc:agent-active-thread:v1")).toBe("thread-1");
     expect(container.querySelector('[aria-label="Conversation"]')).not.toBeNull();
     expect(threadReads).toBe(1);
   });

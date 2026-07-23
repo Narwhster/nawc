@@ -617,13 +617,13 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
       const syntax = syntaxFor(config, selection.syntax);
       if (!syntax?.run) throw new Error(`Syntax ${selection.syntax ?? ""} is not runnable`);
       let runSelection = selection;
-      if (selection.source !== undefined) {
+      if (!selection.file) {
         if (!syntax.extension)
           throw new Error(`Syntax ${syntax.name} does not support inline runs`);
         const runsDir = await safePath(baseDir, ".nawc/runs");
         await mkdir(runsDir, { recursive: true });
         inlineFile = path.join(runsDir, `${randomUUID()}.${syntax.extension}`);
-        await writeFile(inlineFile, selection.source, "utf8");
+        await writeFile(inlineFile, selection.source ?? "", "utf8");
         runSelection = { ...selection, file: path.relative(baseDir, inlineFile) };
       } else {
         await safePath(baseDir, selection.file);
