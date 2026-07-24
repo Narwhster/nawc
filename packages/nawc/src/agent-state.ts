@@ -1,7 +1,13 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { z } from "zod";
 import type { AgentThread } from "./agent-thread.ts";
+
+const agentWarningSchema = z.object({
+  message: z.string(),
+  turnId: z.string().optional(),
+});
 
 export class AgentState {
   readonly #database: DatabaseSync;
@@ -24,7 +30,14 @@ export class AgentState {
     const rows = this.#database.prepare("SELECT data FROM agent_threads").all();
     return rows.map((row) => {
       if (typeof row.data !== "string") throw new Error("Invalid persisted agent thread");
-      return JSON.parse(row.data) as AgentThread;
+      const thread = JSON.parse(row.data) as AgentThread;
+      return {
+        ...thread,
+        warnings: thread.warnings
+          .map((w) => agentWarningSchema.safeParse(w))
+          .filter((r) => r.success)
+          .map((r) => r.data),
+      };
     });
   }
 

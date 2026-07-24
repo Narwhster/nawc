@@ -1,10 +1,10 @@
-import { defineConfig } from "vite-plus";
+import { defineConfig, type PluginOption } from "vite-plus";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 export default defineConfig({
   resolve: { alias: { "@nawcui": path.resolve(import.meta.dirname, "src") } },
   plugins: [
-    tailwindcss(),
+    tailwindcss() as PluginOption,
     {
       name: "nawc-empty-plugin-fallback",
       apply: "build",

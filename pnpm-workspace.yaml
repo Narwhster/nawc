@@ -31,6 +31,7 @@ catalog:
   react-markdown: ^10.1.0
   remark-gfm: ^4.0.1
   "@tiptap/extension-table": ^3.28.0
+  "@playwright/test": ^1.61.1
 
 minimumReleaseAgeExclude:
   - hono@4.12.29

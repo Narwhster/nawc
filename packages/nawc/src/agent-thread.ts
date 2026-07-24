@@ -65,7 +65,7 @@ export type AgentThread = {
   readonly messages: AgentMessage[];
   readonly activities: AgentActivity[];
   readonly requests: AgentRequest[];
-  readonly warnings: string[];
+  readonly warnings: { readonly message: string; readonly turnId?: string }[];
   readonly unknownEvents: ProviderEvent[];
   /** Keys of refs already injected with full content into this thread's provider context. */
   readonly attachedReferenceKeys: string[];
@@ -237,14 +237,14 @@ export function projectProviderEvent(
       return;
     }
     case "warning":
-      thread.warnings.push(event.message);
+      thread.warnings.push({ message: event.message, turnId: event.turnId });
       return;
     case "error": {
       thread.status = "error";
       const turn = findTurn(thread, turnId);
       turn.status = "failed";
       turn.updatedAt = now;
-      thread.warnings.push(event.message);
+      thread.warnings.push({ message: event.message, turnId: event.turnId ?? turnId });
       return;
     }
     case "turn.interrupted": {

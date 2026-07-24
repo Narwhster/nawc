@@ -76,7 +76,7 @@ it("restores a complete conversation after the agent manager restarts", async ()
       activities: [
         { id: "activity-1", status: "completed", output: "src/index.ts" },
       ],
-      warnings: ["The provider returned a partial result."],
+      warnings: [{ message: "The provider returned a partial result." }],
     });
   } finally {
     await rm(root, { recursive: true, force: true });

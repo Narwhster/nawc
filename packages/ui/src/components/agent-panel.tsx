@@ -19,7 +19,15 @@ import {
 } from "lucide-react";
 import type { NawcProviderUsage } from "@nawc/config";
 import { createId } from "@paralleldrive/cuid2";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { ChatMarkdown } from "@nawcui/components/chat-markdown";
@@ -151,7 +159,7 @@ type AgentThread = {
   readonly messages: readonly MessageData[];
   readonly activities: readonly Activity[];
   readonly requests: readonly AgentRequest[];
-  readonly warnings: readonly string[];
+  readonly warnings: readonly { readonly message: string; readonly turnId?: string }[];
 };
 type ModelOption = {
   readonly id: string;
@@ -1000,110 +1008,150 @@ export function AgentPanel({ note }: { readonly note?: string }) {
           }}
         >
           <div className="flex flex-col gap-4">
-            {thread.messages.map((message) => {
-              const turn = turnById.get(message.turnId);
-              const activities = thread.activities.filter((item) => item.turnId === message.turnId);
-              const pendingRequests =
-                latestMessageIdByTurn.get(message.turnId) === message.id
-                  ? thread.requests.filter(
-                      (item) => item.turnId === message.turnId && item.status === "pending",
-                    )
-                  : [];
-              const showTurnActivity = turn !== undefined && message.role === "assistant";
-              return (
-                <Message key={message.id} role={message.role}>
-                  <Bubble role={message.role}>
-                    {message.role === "assistant" ? (
-                      <ChatMarkdown>{message.text}</ChatMarkdown>
-                    ) : (
-                      message.text
-                    )}
-                    {message.streaming && <Spinner className="ml-2 inline-flex" />}
-                  </Bubble>
-                  {showTurnActivity && <TurnActivity turn={turn} activities={activities} />}
-                  {message.references && message.references.length > 0 && (
-                    <div className="flex max-w-[92%] flex-wrap justify-end gap-1">
-                      {message.references.map((reference, index) =>
-                        reference.type === "diagnostic" ? null : (
-                          <Attachment kind={reference.type} key={`${reference.type}:${index}`}>
-                            {reference.type === "skill" ? `$${reference.name}` : reference.path}
-                          </Attachment>
-                        ),
-                      )}
-                    </div>
-                  )}
-                  {message.attachments && message.attachments.length > 0 && (
-                    <div className="flex max-w-[92%] flex-wrap justify-end gap-1">
-                      {message.attachments.map((attachment) => (
-                        <Attachment kind="file" key={attachment.id}>
-                          {attachment.name}
-                        </Attachment>
+            {(() => {
+              const warningsByTurn = new Map<string, { message: string; turnId?: string }[]>();
+              for (const warning of thread.warnings) {
+                if (warning.turnId) {
+                  const list = warningsByTurn.get(warning.turnId);
+                  if (list) list.push(warning);
+                  else warningsByTurn.set(warning.turnId, [{ ...warning }]);
+                }
+              }
+              const seenTurns = new Set<string>();
+              return [
+                ...thread.messages.map((message) => {
+                  const turn = turnById.get(message.turnId);
+                  const activities = thread.activities.filter(
+                    (item) => item.turnId === message.turnId,
+                  );
+                  const pendingRequests =
+                    latestMessageIdByTurn.get(message.turnId) === message.id
+                      ? thread.requests.filter(
+                          (item) => item.turnId === message.turnId && item.status === "pending",
+                        )
+                      : [];
+                  const showTurnActivity = turn !== undefined && message.role === "assistant";
+                  seenTurns.add(message.turnId);
+                  const isLastOfTurn =
+                    thread.messages.indexOf(message) ===
+                    thread.messages.findLastIndex((m) => m.turnId === message.turnId);
+                  const turnWarnings = isLastOfTurn
+                    ? (warningsByTurn.get(message.turnId) ?? [])
+                    : [];
+                  return (
+                    <Fragment key={message.id}>
+                      <Message role={message.role}>
+                        <Bubble role={message.role}>
+                          {message.role === "assistant" ? (
+                            <ChatMarkdown>{message.text}</ChatMarkdown>
+                          ) : (
+                            message.text
+                          )}
+                          {message.streaming && <Spinner className="ml-2 inline-flex" />}
+                        </Bubble>
+                        {showTurnActivity && <TurnActivity turn={turn} activities={activities} />}
+                        {message.references && message.references.length > 0 && (
+                          <div className="flex max-w-[92%] flex-wrap justify-end gap-1">
+                            {message.references.map((reference, index) =>
+                              reference.type === "diagnostic" ? null : (
+                                <Attachment
+                                  kind={reference.type}
+                                  key={`${reference.type}:${index}`}
+                                >
+                                  {reference.type === "skill"
+                                    ? `$${reference.name}`
+                                    : reference.path}
+                                </Attachment>
+                              ),
+                            )}
+                          </div>
+                        )}
+                        {message.attachments && message.attachments.length > 0 && (
+                          <div className="flex max-w-[92%] flex-wrap justify-end gap-1">
+                            {message.attachments.map((attachment) => (
+                              <Attachment kind="file" key={attachment.id}>
+                                {attachment.name}
+                              </Attachment>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <span>{formatTime(message.createdAt)}</span>
+                          <Button
+                            aria-label="Copy message"
+                            size="icon-xs"
+                            variant="ghost"
+                            onClick={() => copy(message.text)}
+                          >
+                            <CopyIcon />
+                          </Button>
+                          {message.role === "user" && (
+                            <Button
+                              aria-label="Reuse message"
+                              size="icon-xs"
+                              variant="ghost"
+                              onClick={() => {
+                                updatePrompt(message.text);
+                                requestAnimationFrame(() => textarea.current?.focus());
+                              }}
+                            >
+                              <RotateCcwIcon />
+                            </Button>
+                          )}
+                        </div>
+                        {pendingRequests.map((request) => (
+                          <Alert key={request.id}>
+                            <CircleAlertIcon />
+                            <AlertTitle>{request.title}</AlertTitle>
+                            {request.details && (
+                              <AlertDescription>{request.details}</AlertDescription>
+                            )}
+                            <RequestActions request={request} threadId={thread.id} />
+                          </Alert>
+                        ))}
+                      </Message>
+                      {turnWarnings.map((warning, wIndex) => (
+                        <Alert variant="destructive" key={`warning:${message.turnId}:${wIndex}`}>
+                          <CircleAlertIcon />
+                          <AlertTitle>Agent error</AlertTitle>
+                          <AlertDescription>{warning.message}</AlertDescription>
+                        </Alert>
                       ))}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <span>{formatTime(message.createdAt)}</span>
-                    <Button
-                      aria-label="Copy message"
-                      size="icon-xs"
-                      variant="ghost"
-                      onClick={() => copy(message.text)}
-                    >
-                      <CopyIcon />
-                    </Button>
-                    {message.role === "user" && (
-                      <Button
-                        aria-label="Reuse message"
-                        size="icon-xs"
-                        variant="ghost"
-                        onClick={() => {
-                          updatePrompt(message.text);
-                          requestAnimationFrame(() => textarea.current?.focus());
-                        }}
-                      >
-                        <RotateCcwIcon />
-                      </Button>
-                    )}
-                  </div>
-                  {pendingRequests.map((request) => (
-                    <Alert key={request.id}>
+                    </Fragment>
+                  );
+                }),
+                ...thread.turns
+                  .filter(
+                    (turn) =>
+                      turn.status === "running" &&
+                      !thread.messages.some(
+                        (item) => item.role === "assistant" && item.turnId === turn.id,
+                      ),
+                  )
+                  .map((turn) => {
+                    const activities = thread.activities.filter((item) => item.turnId === turn.id);
+                    const isThinking = activities.length === 0 && !turn.plan;
+                    return (
+                      <Message key={`turn-activity:${turn.id}`} role="assistant">
+                        {isThinking ? (
+                          <ThinkingIndicator />
+                        ) : (
+                          <TurnActivity turn={turn} activities={activities} />
+                        )}
+                      </Message>
+                    );
+                  }),
+                ...thread.warnings
+                  .filter((warning) => !warning.turnId || !seenTurns.has(warning.turnId))
+                  .map((warning, index) => (
+                    <Alert variant="destructive" key={`warning:orphan:${index}`}>
                       <CircleAlertIcon />
-                      <AlertTitle>{request.title}</AlertTitle>
-                      {request.details && <AlertDescription>{request.details}</AlertDescription>}
-                      <RequestActions request={request} threadId={thread.id} />
+                      <AlertTitle>Agent error</AlertTitle>
+                      <AlertDescription>{warning.message}</AlertDescription>
                     </Alert>
-                  ))}
-                </Message>
-              );
-            })}
-            {thread.turns
-              .filter(
-                (turn) =>
-                  turn.status === "running" &&
-                  !thread.messages.some(
-                    (item) => item.role === "assistant" && item.turnId === turn.id,
-                  ),
-              )
-              .map((turn) => {
-                const activities = thread.activities.filter((item) => item.turnId === turn.id);
-                const isThinking = activities.length === 0 && !turn.plan;
-                return (
-                  <Message key={`turn-activity:${turn.id}`} role="assistant">
-                    {isThinking ? (
-                      <ThinkingIndicator />
-                    ) : (
-                      <TurnActivity turn={turn} activities={activities} />
-                    )}
-                  </Message>
-                );
-              })}
-            {thread.warnings.map((warning, index) => (
-              <Alert variant="destructive" key={`${warning}:${index}`}>
-                <CircleAlertIcon />
-                <AlertTitle>Agent error</AlertTitle>
-                <AlertDescription>{warning}</AlertDescription>
-              </Alert>
-            ))}
+                  )),
+              ];
+            })()}
             <Marker>{thread.status === "running" ? "Agent is working" : "Latest"}</Marker>
           </div>
           <MessageScrollerButton />

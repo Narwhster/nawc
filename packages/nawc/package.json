@@ -33,7 +33,8 @@
     "node-pty": "1.2.0-beta.12",
     "parse5": "catalog:",
     "vite": "catalog:",
-    "ws": "^8.18.3"
+    "ws": "^8.18.3",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@nawc/core": "workspace:*",
