@@ -343,8 +343,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     }
     for (const reference of body.references ?? []) {
       if (reference.type === "file") {
-        if (!(await isProjectPath(baseDir, reference.path)))
-          throw new Error(`Unknown or ignored file reference: ${reference.path}`);
+        if (!(await isProjectPath(baseDir, reference.path))) continue;
         references.push(reference);
       } else if (reference.type === "skill") {
         const skillPath = availableSkills.get(reference.name);
@@ -497,8 +496,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     const references: PromptReference[] = [];
     for (const reference of body.references ?? []) {
       if (reference.type === "file") {
-        if (!(await isProjectPath(baseDir, reference.path)))
-          throw new Error(`Unknown or ignored file reference: ${reference.path}`);
+        if (!(await isProjectPath(baseDir, reference.path))) continue;
         references.push({ type: "file", path: reference.path });
       } else if (reference.type === "skill") {
         const skillPath = availableSkills.get(reference.name);
