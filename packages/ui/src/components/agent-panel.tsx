@@ -28,6 +28,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useLocalStorageState } from "@nawcui/lib/local-storage";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { ChatMarkdown } from "@nawcui/components/chat-markdown";
@@ -214,15 +215,6 @@ type ProviderSettings = Omit<AgentPreferences, "options"> & {
 const PREFERENCES_KEY = "nawc:agent-preferences:v1";
 const DRAFTS_KEY = "nawc:agent-drafts:v1";
 const THREAD_KEY = "nawc:agent-active-thread:v1";
-
-function readStorage<T>(key: string, fallback: T): T {
-  try {
-    const value = window.localStorage.getItem(key);
-    return value ? (JSON.parse(value) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 function formatTime(value: string): string {
   return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(
@@ -582,12 +574,10 @@ function RequestActions({
 export function AgentPanel({ note }: { readonly note?: string }) {
   const [provider, setProvider] = useState<ProviderMetadata>();
   const [threads, setThreads] = useState<readonly AgentThread[]>([]);
-  const [threadId, setThreadId] = useState(() => window.localStorage.getItem(THREAD_KEY) ?? "");
+  const [threadId, setThreadId] = useLocalStorageState(THREAD_KEY, "");
   const [models, setModels] = useState<readonly ModelOption[]>([]);
-  const [preferences, setPreferences] = useState<AgentPreferences>(() =>
-    readStorage(PREFERENCES_KEY, {}),
-  );
-  const [drafts, setDrafts] = useState<Record<string, string>>(() => readStorage(DRAFTS_KEY, {}));
+  const [preferences, setPreferences] = useLocalStorageState<AgentPreferences>(PREFERENCES_KEY, {});
+  const [drafts, setDrafts] = useLocalStorageState<Record<string, string>>(DRAFTS_KEY, {});
   const [running, setRunning] = useState(false);
   const [trigger, setTrigger] = useState<ComposerTrigger>();
   const [completions, setCompletions] = useState<readonly Completion[]>([]);
@@ -691,16 +681,6 @@ export function AgentPanel({ note }: { readonly note?: string }) {
       window.removeEventListener("nawc:agent-changed", onAgentChange);
     };
   }, [refreshThreads]);
-
-  useEffect(
-    () => window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences)),
-    [preferences],
-  );
-  useEffect(() => window.localStorage.setItem(DRAFTS_KEY, JSON.stringify(drafts)), [drafts]);
-  useEffect(() => {
-    if (threadId) window.localStorage.setItem(THREAD_KEY, threadId);
-    else window.localStorage.removeItem(THREAD_KEY);
-  }, [threadId]);
 
   useEffect(() => {
     const fill = (event: Event) => {

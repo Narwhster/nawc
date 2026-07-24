@@ -7,6 +7,7 @@ import type {
 } from "dockview-react";
 import { createId } from "@paralleldrive/cuid2";
 import type { PanelImperativeHandle } from "react-resizable-panels";
+import { useDefaultLayout } from "react-resizable-panels";
 import { DockviewReact } from "dockview-react";
 import "dockview-react/dist/styles/dockview.css";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocalStorageState } from "@nawcui/lib/local-storage";
 import { Button } from "@nawcui/components/ui/button";
 import {
   ResizableHandle,
@@ -97,10 +99,18 @@ export default function App() {
     canGoBack: false,
     canGoForward: false,
   });
-  const [sidebarOpen, setSidebarOpen] = useState(
-    () => !window.matchMedia(mobileMediaQuery).matches,
+  const [sidebarOpen, setSidebarOpen] = useLocalStorageState(
+    "nawc:sidebar-open:v1",
+    !window.matchMedia(mobileMediaQuery).matches,
   );
-  const [agentOpen, setAgentOpen] = useState(() => !window.matchMedia(mobileMediaQuery).matches);
+  const [agentOpen, setAgentOpen] = useLocalStorageState(
+    "nawc:agent-open:v1",
+    !window.matchMedia(mobileMediaQuery).matches,
+  );
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    id: "nawc-panels",
+    storage: localStorage,
+  });
   const [dialog, setDialog] = useState<WorkspaceDialogState>();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchRevision, setSearchRevision] = useState(0);
@@ -108,11 +118,7 @@ export default function App() {
 
   useEffect(() => {
     const media = window.matchMedia(mobileMediaQuery);
-    const onChange = () => {
-      setIsMobile(media.matches);
-      setSidebarOpen(!media.matches);
-      setAgentOpen(!media.matches);
-    };
+    const onChange = () => setIsMobile(media.matches);
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
   }, []);
@@ -534,6 +540,8 @@ export default function App() {
             className="nawc-panel-group"
             id="nawc-panels"
             orientation="horizontal"
+            defaultLayout={defaultLayout}
+            onLayoutChanged={onLayoutChanged}
           >
             <ResizablePanel
               id="files"
