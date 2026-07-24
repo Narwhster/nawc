@@ -106,6 +106,10 @@ function mapOpencodeEvent(event: JsonObject, contextWindow?: number): ProviderEv
     };
   }
 
+  if (type === "reasoning" && part && typeof part.text === "string") {
+    return { type: "thinking", text: part.text };
+  }
+
   return {
     type: "unknown",
     sourceType: type ?? "opencode.unknown",
@@ -184,6 +188,8 @@ export function mapOpencodeSdkEvent(
         ...(typeof part.id === "string" ? { itemId: part.id } : {}),
         text: part.text,
       };
+    if (part.type === "reasoning" && typeof part.text === "string")
+      return { type: "thinking", text: part.text };
     if (part.type === "tool" && typeof part.tool === "string") {
       const state = isJsonObject(part.state) ? part.state : {};
       const status = typeof state.status === "string" ? state.status : "pending";

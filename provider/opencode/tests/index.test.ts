@@ -142,15 +142,14 @@ describe("OpenCode JSONL", () => {
     ).toEqual({ type: "error", message: "rate limited" });
   });
 
-  it("preserves unknown native events", () => {
+  it("maps reasoning events to thinking", () => {
     expect(
       parseOpencodeEvent(
         '{"type":"reasoning","timestamp":1,"part":{"type":"reasoning","text":"..."}}',
       ),
     ).toEqual({
-      type: "unknown",
-      sourceType: "reasoning",
-      payload: { type: "reasoning", timestamp: 1, part: { type: "reasoning", text: "..." } },
+      type: "thinking",
+      text: "...",
     });
   });
 

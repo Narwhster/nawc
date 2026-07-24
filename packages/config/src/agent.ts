@@ -147,6 +147,7 @@ export type ProviderEvent = ProviderEventBase &
         readonly allowCustom?: boolean;
       }
     | { readonly type: "request.resolved"; readonly requestId: string; readonly decision: string }
+    | { readonly type: "thinking"; readonly text: string }
     | { readonly type: "warning"; readonly message: string }
     | { readonly type: "error"; readonly message: string }
     | { readonly type: "unknown"; readonly sourceType: string }

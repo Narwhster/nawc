@@ -22,6 +22,7 @@ export type AgentMessage = {
 export type AgentActivity = {
   readonly id: string;
   readonly turnId: string;
+  readonly createdAt: string;
   readonly tool: string;
   title: string;
   status: "running" | "completed" | "failed" | "declined";
@@ -46,6 +47,7 @@ export type AgentTurn = {
   readonly createdAt: string;
   updatedAt: string;
   plan?: string;
+  thinking?: { text: string; createdAt: string }[];
   usage?: NawcProviderUsage;
 };
 
@@ -205,6 +207,7 @@ export function projectProviderEvent(
         thread.activities.push({
           id,
           turnId,
+          createdAt: now,
           tool: legacy ? "command_execution" : event.tool,
           title: legacy ? event.command : event.title,
           status,
@@ -216,6 +219,12 @@ export function projectProviderEvent(
     case "plan.updated":
       findTurn(thread, turnId).plan = event.markdown;
       return;
+    case "thinking": {
+      const turn = findTurn(thread, turnId);
+      if (!turn.thinking) turn.thinking = [];
+      turn.thinking.push({ text: event.text, createdAt: now });
+      return;
+    }
     case "request.opened":
       thread.requests.push({
         id: event.requestId,
