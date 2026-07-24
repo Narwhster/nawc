@@ -452,8 +452,18 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     if (request.column !== undefined && (!Number.isInteger(request.column) || request.column < 1))
       throw new Error("Invalid editor column");
     let file: string;
+    let reveal: string | undefined;
     try {
-      file = await safeExistingPath(request.scope === "note" ? srcDir : baseDir, request.file);
+      const resolved = await safeExistingPath(
+        request.scope === "note" ? srcDir : baseDir,
+        request.file,
+      );
+      if (resolved.startsWith(`${baseDir}${path.sep}`) || resolved === baseDir) {
+        reveal = path.relative(baseDir, resolved);
+        file = baseDir;
+      } else {
+        file = resolved;
+      }
     } catch (err) {
       if (err && typeof err === "object" && "code" in err && err.code === "ENOENT")
         throw new Error(`File not found: ${request.file}`);
@@ -463,6 +473,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
       file,
       line: request.line,
       column: request.column,
+      reveal,
     });
     return context.json({ ok: true });
   });

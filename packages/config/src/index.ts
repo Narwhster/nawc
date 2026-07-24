@@ -14,6 +14,7 @@ export type EditorLocation = {
   readonly file: string;
   readonly line?: number;
   readonly column?: number;
+  readonly reveal?: string;
 };
 
 export type NawcEditorIcon = {
