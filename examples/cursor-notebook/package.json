@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@nawc/cli": "workspace:*",
     "@nawc/core": "workspace:*",
     "@nawc/editor-cursor": "workspace:*",
     "@nawc/nawc-skills": "workspace:*",
@@ -17,7 +18,6 @@
     "@nawc/syntax-typescript": "workspace:*",
     "@nawc/syntax-vitest": "workspace:*",
     "@nawc/tailwind": "workspace:*",
-    "nawc": "workspace:*",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

@@ -92,7 +92,7 @@ describe("create-nawc", () => {
     );
     const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
     expect(pkg.dependencies).toEqual({
-      nawc: "latest",
+      "@nawc/cli": "latest",
       "@nawc/provider-codex": "latest",
       "@nawc/editor-vscode": "latest",
       "@nawc/theme-nawc": "latest",

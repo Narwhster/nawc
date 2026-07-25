@@ -110,6 +110,9 @@ importers:
 
   .notebook:
     dependencies:
+      '@nawc/cli':
+        specifier: workspace:*
+        version: link:../packages/nawc
       '@nawc/config':
         specifier: workspace:*
         version: link:../packages/config
@@ -143,9 +146,6 @@ importers:
       '@nawc/ui':
         specifier: workspace:*
         version: link:../packages/ui
-      nawc:
-        specifier: workspace:*
-        version: link:../packages/nawc
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -270,6 +270,9 @@ importers:
 
   examples/cursor-notebook:
     dependencies:
+      '@nawc/cli':
+        specifier: workspace:*
+        version: link:../../packages/nawc
       '@nawc/core':
         specifier: workspace:*
         version: link:../../plugins/core
@@ -294,9 +297,6 @@ importers:
       '@nawc/tailwind':
         specifier: workspace:*
         version: link:../../plugins/tailwind
-      nawc:
-        specifier: workspace:*
-        version: link:../../packages/nawc
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -322,6 +322,9 @@ importers:
 
   examples/java-notebook:
     dependencies:
+      '@nawc/cli':
+        specifier: workspace:*
+        version: link:../../packages/nawc
       '@nawc/core':
         specifier: workspace:*
         version: link:../../plugins/core
@@ -340,9 +343,6 @@ importers:
       '@nawc/syntax-junit':
         specifier: workspace:*
         version: link:../../plugins/junit
-      nawc:
-        specifier: workspace:*
-        version: link:../../packages/nawc
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -356,6 +356,9 @@ importers:
 
   examples/pi-notebook:
     dependencies:
+      '@nawc/cli':
+        specifier: workspace:*
+        version: link:../../packages/nawc
       '@nawc/core':
         specifier: workspace:*
         version: link:../../plugins/core
@@ -374,9 +377,6 @@ importers:
       '@nawc/syntax-vitest':
         specifier: workspace:*
         version: link:../../plugins/vitest
-      nawc:
-        specifier: workspace:*
-        version: link:../../packages/nawc
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -390,6 +390,9 @@ importers:
 
   examples/react-notebook:
     dependencies:
+      '@nawc/cli':
+        specifier: workspace:*
+        version: link:../../packages/nawc
       '@nawc/core':
         specifier: workspace:*
         version: link:../../plugins/core
@@ -405,9 +408,6 @@ importers:
       '@nawc/react':
         specifier: workspace:*
         version: link:../../plugins/react
-      nawc:
-        specifier: workspace:*
-        version: link:../../packages/nawc
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -430,6 +430,9 @@ importers:
 
   examples/rust-notebook:
     dependencies:
+      '@nawc/cli':
+        specifier: workspace:*
+        version: link:../../packages/nawc
       '@nawc/core':
         specifier: workspace:*
         version: link:../../plugins/core
@@ -445,9 +448,6 @@ importers:
       '@nawc/syntax-rust':
         specifier: workspace:*
         version: link:../../plugins/rust
-      nawc:
-        specifier: workspace:*
-        version: link:../../packages/nawc
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -458,6 +458,9 @@ importers:
 
   examples/static-notebook:
     dependencies:
+      '@nawc/cli':
+        specifier: workspace:*
+        version: link:../../packages/nawc
       '@nawc/core':
         specifier: workspace:*
         version: link:../../plugins/core
@@ -473,9 +476,6 @@ importers:
       '@nawc/syntax-typescript':
         specifier: workspace:*
         version: link:../../plugins/typescript
-      nawc:
-        specifier: workspace:*
-        version: link:../../packages/nawc
     devDependencies:
       vite-plus:
         specifier: 'catalog:'
@@ -483,6 +483,9 @@ importers:
 
   examples/tldraw-notebook:
     dependencies:
+      '@nawc/cli':
+        specifier: workspace:*
+        version: link:../../packages/nawc
       '@nawc/core':
         specifier: workspace:*
         version: link:../../plugins/core
@@ -498,9 +501,6 @@ importers:
       '@nawc/tldraw':
         specifier: workspace:*
         version: link:../../plugins/tldraw
-      nawc:
-        specifier: workspace:*
-        version: link:../../packages/nawc
       tldraw:
         specifier: ^5.2.5
         version: 5.2.5(@floating-ui/dom@1.7.6)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -514,6 +514,9 @@ importers:
 
   examples/zed-notebook:
     dependencies:
+      '@nawc/cli':
+        specifier: workspace:*
+        version: link:../../packages/nawc
       '@nawc/core':
         specifier: workspace:*
         version: link:../../plugins/core
@@ -532,9 +535,6 @@ importers:
       '@nawc/syntax-vitest':
         specifier: workspace:*
         version: link:../../plugins/vitest
-      nawc:
-        specifier: workspace:*
-        version: link:../../packages/nawc
 
   packages/config:
     dependencies:

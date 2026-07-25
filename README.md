@@ -54,7 +54,7 @@ import { nawcSkills } from "@nawc/nawc-skills";
 import { codex } from "@nawc/provider-codex";
 import { typescript } from "@nawc/syntax-typescript";
 import { vitest } from "@nawc/syntax-vitest";
-import { defineConfig, nawcLight, vscode } from "nawc";
+import { defineConfig, nawcLight, vscode } from "@nawc/cli";
 
 export default defineConfig({
   plugins: [core(), nawcSkills(), typescript(), vitest()],
@@ -76,7 +76,7 @@ nawc splash --depth 1
 
 ## First-party packages
 
-- `nawc` and `create-nawc` — notebook server, CLI, and project generator
+- `@nawc/cli` and `create-nawc` — notebook server, CLI, and project generator
 - `@nawc/core`, `@nawc/react`, `@nawc/tldraw`, and `@nawc/tailwind` — notebook capabilities
 - `@nawc/syntax-typescript`, `@nawc/syntax-vitest`, `@nawc/syntax-java`, `@nawc/syntax-junit`, and `@nawc/syntax-rust` — source and runnable syntax support
 - `@nawc/provider-codex`, `@nawc/provider-cursor`, `@nawc/provider-opencode`, and `@nawc/provider-pi` — agent runtime adapters

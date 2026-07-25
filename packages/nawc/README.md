@@ -1,4 +1,4 @@
-# `nawc`
+# `@nawc/cli`
 
 Local HTML-backed notebooks for specification- and test-driven development with coding agents.
 

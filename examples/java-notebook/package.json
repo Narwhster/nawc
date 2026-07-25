@@ -9,13 +9,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@nawc/cli": "workspace:*",
     "@nawc/core": "workspace:*",
     "@nawc/editor-idea": "workspace:*",
     "@nawc/nawc-skills": "workspace:*",
     "@nawc/provider-codex": "workspace:*",
     "@nawc/syntax-java": "workspace:*",
-    "@nawc/syntax-junit": "workspace:*",
-    "nawc": "workspace:*"
+    "@nawc/syntax-junit": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

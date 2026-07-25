@@ -23,7 +23,7 @@
     "@nawc/syntax-typescript": "workspace:*",
     "@nawc/syntax-vitest": "workspace:*",
     "@nawc/ui": "workspace:*",
-    "nawc": "workspace:*",
+    "@nawc/cli": "workspace:*",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

@@ -1,6 +1,6 @@
 {
   "name": "@nawc/syntax-rust",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Rust source syntax support for NAWC notebooks.",
   "keywords": [
     "coding-agents",

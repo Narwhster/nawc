@@ -1,6 +1,6 @@
 {
   "name": "@nawc/theme-nawc",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Built-in light and dark themes for NAWC notebooks.",
   "keywords": [
     "coding-agents",

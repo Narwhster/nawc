@@ -11,12 +11,12 @@
     "start": "node ../../packages/site/dist/cli.mjs start"
   },
   "dependencies": {
+    "@nawc/cli": "workspace:*",
     "@nawc/core": "workspace:*",
     "@nawc/provider-opencode": "workspace:*",
     "@nawc/site": "workspace:*",
     "@nawc/syntax-rust": "workspace:*",
-    "@nawc/syntax-typescript": "workspace:*",
-    "nawc": "workspace:*"
+    "@nawc/syntax-typescript": "workspace:*"
   },
   "devDependencies": {
     "vite-plus": "catalog:"

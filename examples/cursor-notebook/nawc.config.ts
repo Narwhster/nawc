@@ -1,4 +1,4 @@
-import { defineConfig, nawcDark } from "nawc";
+import { defineConfig, nawcDark } from "@nawc/cli";
 import { cursor } from "@nawc/editor-cursor";
 import { core } from "@nawc/core";
 import { nawcSkills } from "@nawc/nawc-skills";

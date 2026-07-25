@@ -1,6 +1,6 @@
 {
   "name": "@nawc/syntax-typescript",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript and TSX source and execution support for NAWC notebooks.",
   "keywords": [
     "coding-agents",

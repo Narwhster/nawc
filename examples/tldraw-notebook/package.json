@@ -8,12 +8,12 @@
     "nawc": "nawc"
   },
   "dependencies": {
+    "@nawc/cli": "workspace:*",
     "@nawc/core": "workspace:*",
     "@nawc/editor-vscode": "workspace:*",
     "@nawc/nawc-skills": "workspace:*",
     "@nawc/provider-codex": "workspace:*",
     "@nawc/tldraw": "workspace:*",
-    "nawc": "workspace:*",
     "tldraw": "^5.2.5"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 <h1>08. Themes</h1>
 <p>The theme setting controls the notebook's color scheme. Import <code>nawcLight</code> or <code>nawcDark</code> from <code>nawc</code> and pass it to <code>defineConfig</code>.</p>
 <h2>Quick start</h2>
-<code syntax="typescript" auto-expand>import { defineConfig, nawcLight } from "nawc";
+<code syntax="typescript" auto-expand>import { defineConfig, nawcLight } from "@nawc/cli";
 
 export default defineConfig({
   theme: nawcLight(),
@@ -10,7 +10,7 @@ export default defineConfig({
 <p>Use <code>nawcLight()</code> for a light appearance and <code>nawcDark()</code> for a dark appearance. The default is <code>nawcLight()</code>.</p>
 <h2>Creating your own theme</h2>
 <p>Create your own or customize an existing theme by spreading the built-in theme and overriding its <code>name</code> and <code>variables</code>.</p>
-<code syntax="typescript" auto-expand>import { defineConfig, nawcDark } from "nawc";
+<code syntax="typescript" auto-expand>import { defineConfig, nawcDark } from "@nawc/cli";
 
 const theme = {
   ...nawcDark(),

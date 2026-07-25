@@ -1,4 +1,4 @@
-import { defineConfig, nawcLight } from "nawc";
+import { defineConfig, nawcLight } from "@nawc/cli";
 import { zed } from "@nawc/editor-zed";
 import { core } from "@nawc/core";
 import { nawcSkills } from "@nawc/nawc-skills";

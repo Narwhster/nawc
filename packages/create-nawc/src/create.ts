@@ -158,7 +158,7 @@ function generateConfig(selection: Selection): {
   const plugins = selection.pluginIds.map((id) => findEntry(PLUGINS, id));
 
   const used = new Set<string>(["defineConfig"]);
-  const imports: NamedImport[] = [{ name: "defineConfig", source: "nawc", call: "" }];
+  const imports: NamedImport[] = [{ name: "defineConfig", source: "@nawc/cli", call: "" }];
 
   const providerName = uniqueImportName(used, provider.exportName, `${provider.id}Provider`);
   imports.push({ name: providerName, source: provider.package, call: `${providerName}()` });
@@ -187,7 +187,7 @@ function generateConfig(selection: Selection): {
   const config = `${lines.join("\n")}\n`;
 
   const dependencies: Record<string, string> = {
-    nawc: "latest",
+    "@nawc/cli": "latest",
     [provider.package]: "latest",
     [editor.package]: "latest",
     [theme.package]: "latest",

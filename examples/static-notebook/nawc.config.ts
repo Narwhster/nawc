@@ -2,7 +2,7 @@ import { core } from "@nawc/core";
 import { opencode } from "@nawc/provider-opencode";
 import { rust } from "@nawc/syntax-rust";
 import { typescript } from "@nawc/syntax-typescript";
-import { defineConfig, nawcDark } from "nawc";
+import { defineConfig, nawcDark } from "@nawc/cli";
 
 export default defineConfig({
   baseDir: ".",

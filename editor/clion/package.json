@@ -1,6 +1,6 @@
 {
   "name": "@nawc/editor-clion",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Open NAWC source references in CLion.",
   "keywords": [
     "coding-agents",

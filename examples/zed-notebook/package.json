@@ -8,12 +8,12 @@
     "nawc": "nawc"
   },
   "dependencies": {
+    "@nawc/cli": "workspace:*",
     "@nawc/core": "workspace:*",
     "@nawc/editor-zed": "workspace:*",
     "@nawc/nawc-skills": "workspace:*",
     "@nawc/provider-codex": "workspace:*",
     "@nawc/syntax-typescript": "workspace:*",
-    "@nawc/syntax-vitest": "workspace:*",
-    "nawc": "workspace:*"
+    "@nawc/syntax-vitest": "workspace:*"
   }
 }
