@@ -152,6 +152,8 @@ function assistantMessage(thread: AgentThread, turnId: string, event: ProviderEv
   return message;
 }
 
+export const MAX_UNKNOWN_EVENTS_PER_THREAD = 500;
+
 export function projectProviderEvent(
   thread: AgentThread,
   defaultTurnId: string,
@@ -284,6 +286,8 @@ export function projectProviderEvent(
     }
     case "unknown":
       thread.unknownEvents.push(event);
+      if (thread.unknownEvents.length > MAX_UNKNOWN_EVENTS_PER_THREAD)
+        thread.unknownEvents.splice(0, thread.unknownEvents.length - MAX_UNKNOWN_EVENTS_PER_THREAD);
       return;
   }
 }

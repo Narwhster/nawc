@@ -215,6 +215,22 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     noteSearch.invalidate();
     for (const listener of fileListeners) listener(event, file);
   });
+  const watchedSourcePaths: string[] = [];
+  const MAX_WATCHED_SOURCE_PATHS = 1000;
+  function watchSourcePath(absolutePath: string): void {
+    if (watchedSourcePaths.includes(absolutePath)) {
+      const idx = watchedSourcePaths.indexOf(absolutePath);
+      watchedSourcePaths.splice(idx, 1);
+      watchedSourcePaths.push(absolutePath);
+      return;
+    }
+    if (watchedSourcePaths.length >= MAX_WATCHED_SOURCE_PATHS) {
+      const evicted = watchedSourcePaths.shift();
+      if (evicted) watcher.unwatch(evicted);
+    }
+    watchedSourcePaths.push(absolutePath);
+    watcher.add(absolutePath);
+  }
 
   const app = new Hono();
   app.onError((error, context) => context.json({ error: message(error) }, 400));
@@ -353,9 +369,13 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
         references.push(reference);
       } else throw new Error("Invalid agent reference");
     }
+    const threadId = context.req.param("id");
     return streamSSE(context, async (stream) => {
-      for await (const event of agentManager.sendTurn({
-        threadId: context.req.param("id"),
+      stream.onAbort(() => {
+        void agentManager.interrupt(threadId);
+      });
+      const turn = agentManager.sendTurn({
+        threadId,
         prompt: body.prompt,
         references,
         attachments,
@@ -363,8 +383,23 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
         reasoningEffort: body.reasoningEffort,
         options: body.options,
         mode: body.mode,
-      }))
-        await stream.writeSSE({ data: JSON.stringify(event), event: event.type });
+      });
+      let drainError: unknown;
+      const drain = (async () => {
+        try {
+          for await (const event of turn) {
+            await stream.writeSSE({
+              data: JSON.stringify(event),
+              event: event.type,
+            });
+          }
+        } catch (error) {
+          drainError = error;
+        }
+      })();
+      agentManager.trackActiveTurn(drain);
+      await drain;
+      if (drainError) throw drainError;
     });
   });
   app.get("/api/events", (context) =>
@@ -435,7 +470,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   });
   app.post("/api/source", async (context) => {
     const selection = await context.req.json<SourceSelection>();
-    watcher.add(await safePath(baseDir, selection.file));
+    watchSourcePath(await safePath(baseDir, selection.file));
     return context.json(await resolveSource(config, baseDir, selection));
   });
   app.post("/api/editor/open", async (context) => {

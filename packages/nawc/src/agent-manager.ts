@@ -26,6 +26,7 @@ export class AgentManager {
   readonly #state: AgentState | undefined;
   readonly #sessions = new Map<string, NawcProviderSession>();
   readonly #controllers = new Map<string, AbortController>();
+  readonly #activeTurns = new Set<Promise<void>>();
   readonly #listeners = new Set<AgentChangeListener>();
   #closed = false;
 
@@ -89,9 +90,11 @@ export class AgentManager {
   async deleteThread(id: string): Promise<void> {
     const thread = this.#requireThread(id);
     const session = this.#sessions.get(id);
-    if (session) await this.#provider.closeSession?.(session);
     this.#controllers.get(id)?.abort();
     this.#controllers.delete(id);
+    const waiting = [...this.#activeTurns];
+    if (waiting.length > 0) await Promise.allSettled(waiting);
+    if (session) await this.#provider.closeSession?.(session);
     this.#sessions.delete(id);
     this.#threads.delete(thread.id);
     this.#notify(thread.id);
@@ -211,9 +214,21 @@ export class AgentManager {
   async close(): Promise<void> {
     if (this.#closed) return;
     for (const threadId of this.#controllers.keys()) await this.interrupt(threadId);
+    if (this.#activeTurns.size > 0) await Promise.allSettled(this.#activeTurns);
     for (const session of this.#sessions.values()) await this.#provider.closeSession?.(session);
     this.#closed = true;
     this.#state?.close();
+  }
+
+  trackActiveTurn(promise: Promise<unknown>): void {
+    const settled: Promise<void> = promise.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.#activeTurns.add(settled);
+    void settled.finally(() => {
+      this.#activeTurns.delete(settled);
+    });
   }
 
   #requireThread(id: string): AgentThread {

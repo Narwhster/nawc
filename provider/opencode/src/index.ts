@@ -21,6 +21,30 @@ type JsonObject = Record<string, unknown>;
 
 const DEFAULT_OPENCODE_SERVER_TIMEOUT_MS = 5_000;
 
+const trackedChildPids = new Set<number>();
+let exitHandlerInstalled = false;
+
+function trackChildPid(pid: number | undefined): void {
+  if (pid === undefined) return;
+  trackedChildPids.add(pid);
+  if (!exitHandlerInstalled) {
+    exitHandlerInstalled = true;
+    process.on("exit", () => {
+      for (const pid of trackedChildPids) {
+        try {
+          process.kill(pid, "SIGKILL");
+        } catch {
+          // Already gone or no permission; nothing to do.
+        }
+      }
+    });
+  }
+}
+
+function untrackChildPid(pid: number | undefined): void {
+  if (pid !== undefined) trackedChildPids.delete(pid);
+}
+
 type RunningOpencodeServer = {
   readonly url: string;
   readonly close: () => Promise<void>;
@@ -416,23 +440,23 @@ async function startOpencodeServer(
 ): Promise<RunningOpencodeServer> {
   const child = execa(executable, ["serve", "--hostname=127.0.0.1", "--port=0"], {
     cwd,
-    detached: process.platform !== "win32",
     env: {
       ...process.env,
       OPENCODE_CONFIG_CONTENT: configContent,
     },
     reject: false,
   });
+  trackChildPid(child.pid);
 
   let output = "";
   let closed = false;
   const terminate = (signal: NodeJS.Signals) => {
-    if (process.platform !== "win32" && child.pid) {
+    if (child.pid) {
       try {
-        process.kill(-child.pid, signal);
+        process.kill(child.pid, signal);
         return;
       } catch {
-        // Fall back to terminating the direct child below.
+        // Already gone or no permission; nothing to do.
       }
     }
     child.kill(signal);
@@ -461,6 +485,7 @@ async function startOpencodeServer(
     child.stderr?.on("data", onChunk);
     child.once("error", (error) => settle(() => reject(error)));
     child.once("exit", (code, signal) => {
+      untrackChildPid(child.pid);
       settle(() =>
         reject(
           new Error(
@@ -497,6 +522,7 @@ async function startOpencodeServer(
         terminate("SIGKILL");
         await child;
       }
+      untrackChildPid(child.pid);
     },
   };
 }
@@ -591,7 +617,6 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
     readonly userMessageIds: Set<string>;
   };
   const sessions = new Map<string, OpencodeSession>();
-  const contextWindows = new Map<string, number>();
 
   const discoverModels = async (cwd: string) => {
     const models = await listOpencodeModels(
@@ -599,9 +624,6 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
       cwd,
       options.serverTimeoutMs,
     );
-    for (const model of models) {
-      if (model.contextWindow !== undefined) contextWindows.set(model.id, model.contextWindow);
-    }
     return models;
   };
   const createSession = (cwd: string, providerThreadId?: string): OpencodeSession => {
@@ -791,11 +813,14 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
       if (!active?.client) throw new Error(`Unknown OpenCode session: ${session.id}`);
       const request = active.pendingQuestions.get(requestId);
       if (!request) throw new Error(`Unknown OpenCode question: ${requestId}`);
-      await active.client.question.reply({
-        requestID: requestId,
-        answers: request.questions.map((_question, index) => (index === 0 ? [decision] : [])),
-      });
-      active.pendingQuestions.delete(requestId);
+      try {
+        await active.client.question.reply({
+          requestID: requestId,
+          answers: request.questions.map((_question, index) => (index === 0 ? [decision] : [])),
+        });
+      } finally {
+        active.pendingQuestions.delete(requestId);
+      }
     },
     async closeSession(session) {
       const active = sessions.get(session.id);

@@ -12,6 +12,30 @@ import type {
   ProviderEvent,
 } from "@nawc/config";
 
+const trackedChildPids = new Set<number>();
+let exitHandlerInstalled = false;
+
+function trackChildPid(pid: number | undefined): void {
+  if (pid === undefined) return;
+  trackedChildPids.add(pid);
+  if (!exitHandlerInstalled) {
+    exitHandlerInstalled = true;
+    process.on("exit", () => {
+      for (const pid of trackedChildPids) {
+        try {
+          process.kill(pid, "SIGKILL");
+        } catch {
+          // Already gone or no permission; nothing to do.
+        }
+      }
+    });
+  }
+}
+
+function untrackChildPid(pid: number | undefined): void {
+  if (pid !== undefined) trackedChildPids.delete(pid);
+}
+
 type JsonObject = Record<string, unknown>;
 type JsonRpcId = string | number;
 
@@ -154,6 +178,10 @@ class CursorAcpProcess {
 
   private constructor(child: ChildProcessWithoutNullStreams) {
     this.#child = child;
+    trackChildPid(child.pid);
+    child.once("close", () => {
+      untrackChildPid(child.pid);
+    });
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk: string) => this.#consume(chunk));
     child.on("error", (error) => this.#fail(error));

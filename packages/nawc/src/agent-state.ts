@@ -9,10 +9,14 @@ const agentWarningSchema = z.object({
   turnId: z.string().optional(),
 });
 
+const SAVE_DEBOUNCE_MS = 100;
+
 export class AgentState {
   readonly #database: DatabaseSync;
   readonly #saveStatement;
   readonly #deleteStatement;
+  readonly #pending = new Map<string, AgentThread>();
+  readonly #timers = new Map<string, NodeJS.Timeout>();
 
   constructor(file: string) {
     mkdirSync(path.dirname(file), { recursive: true });
@@ -42,14 +46,38 @@ export class AgentState {
   }
 
   save(thread: AgentThread): void {
+    this.#pending.set(thread.id, thread);
+    const existing = this.#timers.get(thread.id);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      this.#timers.delete(thread.id);
+      this.#flushOne(thread.id);
+    }, SAVE_DEBOUNCE_MS);
+    timer.unref?.();
+    this.#timers.set(thread.id, timer);
+  }
+
+  #flushOne(threadId: string): void {
+    const thread = this.#pending.get(threadId);
+    if (!thread) return;
+    this.#pending.delete(threadId);
     this.#saveStatement.run(thread.id, JSON.stringify(thread));
   }
 
   delete(threadId: string): void {
+    const timer = this.#timers.get(threadId);
+    if (timer) {
+      clearTimeout(timer);
+      this.#timers.delete(threadId);
+    }
+    this.#pending.delete(threadId);
     this.#deleteStatement.run(threadId);
   }
 
   close(): void {
+    for (const timer of this.#timers.values()) clearTimeout(timer);
+    this.#timers.clear();
+    for (const threadId of Array.from(this.#pending.keys())) this.#flushOne(threadId);
     this.#database.close();
   }
 }

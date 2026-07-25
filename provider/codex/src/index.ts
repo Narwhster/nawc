@@ -9,6 +9,30 @@ import type {
   ProviderEvent,
 } from "@nawc/config";
 
+const trackedChildPids = new Set<number>();
+let exitHandlerInstalled = false;
+
+function trackChildPid(pid: number | undefined): void {
+  if (pid === undefined) return;
+  trackedChildPids.add(pid);
+  if (!exitHandlerInstalled) {
+    exitHandlerInstalled = true;
+    process.on("exit", () => {
+      for (const pid of trackedChildPids) {
+        try {
+          process.kill(pid, "SIGKILL");
+        } catch {
+          // Already gone or no permission; nothing to do.
+        }
+      }
+    });
+  }
+}
+
+function untrackChildPid(pid: number | undefined): void {
+  if (pid !== undefined) trackedChildPids.delete(pid);
+}
+
 type JsonObject = Record<string, unknown>;
 
 export function parseCodexEvent(line: string): ProviderEvent | undefined {
@@ -176,6 +200,10 @@ class CodexAppServer {
     this.#child = spawnProcess(executable, ["app-server"], {
       cwd,
       stdio: ["pipe", "pipe", "pipe"],
+    });
+    trackChildPid(this.#child.pid);
+    this.#child.once("close", () => {
+      untrackChildPid(this.#child.pid);
     });
     this.#child.stdout.setEncoding("utf8");
     this.#child.stdout.on("data", (chunk: string) => this.#onData(chunk));
@@ -409,6 +437,7 @@ async function requestCodexAppServer(
       cwd,
       stdio: ["pipe", "pipe", "pipe"],
     });
+    trackChildPid(child.pid);
     let buffer = "";
     let stderr = "";
     let settled = false;
@@ -418,6 +447,7 @@ async function requestCodexAppServer(
       if (settled) return;
       settled = true;
       if (timeout) clearTimeout(timeout);
+      untrackChildPid(child.pid);
       child.kill();
       if (error) reject(error);
       else resolve(value);
@@ -867,9 +897,8 @@ export function codex(options: CodexOptions = {}): NawcProvider {
       active.requests.delete(requestId);
     },
     async closeSession(session) {
-      const active = sessions.get(session.id);
       sessions.delete(session.id);
-      active?.server?.close();
+      (session as CodexSession).server?.close();
     },
     async *prompt(input) {
       const session: CodexSession = {
