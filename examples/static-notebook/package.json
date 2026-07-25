@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "nawc": "nawc",
-    "dev": "nawc-site dev",
-    "build": "nawc-site build",
-    "start": "nawc-site start"
+    "dev": "node ../../packages/site/dist/cli.mjs dev",
+    "build": "node ../../packages/site/dist/cli.mjs build",
+    "start": "node ../../packages/site/dist/cli.mjs start"
   },
   "dependencies": {
     "@nawc/core": "workspace:*",

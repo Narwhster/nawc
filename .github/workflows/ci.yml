@@ -36,14 +36,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build publishable packages
+        run: pnpm run build:packages
+
       - name: Check formatting, lint, and types
         run: pnpm exec vp check
 
       - name: Run tests
         run: pnpm exec vp test
 
-      - name: Build packages and examples
-        run: pnpm exec vp run -r build
+      - name: Build examples
+        run: pnpm run build:examples
 
       - name: Build static website
         run: pnpm run site:build

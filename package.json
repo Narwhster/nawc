@@ -13,8 +13,10 @@
   },
   "type": "module",
   "scripts": {
-    "ci": "vp check && vp test && vp run -r build && vp run site:build",
-    "ready": "vp check && vp test && vp run -r build",
+    "build:examples": "pnpm --filter './examples/**' -r run build",
+    "build:packages": "pnpm --filter './packages/**' --filter './plugins/**' --filter './provider/**' --filter './editor/**' --filter './theme/**' -r run build",
+    "ci": "pnpm run build:packages && vp check && vp test && pnpm run build:examples && vp run site:build",
+    "ready": "pnpm run build:packages && vp check && vp test && pnpm run build:examples",
     "test": "vp test",
     "nawc": "vp run @nawc/self-notebook#nawc",
     "nawc:test": "vp run @nawc/self-notebook#notebook:test",

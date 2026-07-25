@@ -19,7 +19,7 @@
     "directory": "packages/site"
   },
   "bin": {
-    "site": "./dist/cli.mjs"
+    "nawc-site": "./dist/cli.mjs"
   },
   "files": [
     "dist"
