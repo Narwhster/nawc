@@ -36,7 +36,7 @@
     "check": "vp check"
   },
   "dependencies": {
-    "@tiptap/core": "^3.27.3",
+    "@tiptap/core": "catalog:",
     "vite": "catalog:"
   },
   "devDependencies": {

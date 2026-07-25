@@ -1,5 +1,10 @@
 import { defineConfig } from "vite-plus";
 export default defineConfig({
-  pack: { dts: true, exports: true, entry: ["src/index.ts", "src/client.tsx"] },
+  pack: {
+    dts: true,
+    exports: true,
+    entry: ["src/index.ts", "src/client.tsx"],
+    deps: { neverBundle: ["virtual:nawc-plugins"] },
+  },
   test: { environment: "jsdom" },
 });

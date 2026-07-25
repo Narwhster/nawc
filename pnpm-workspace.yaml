@@ -33,9 +33,18 @@ catalog:
   "@tiptap/extension-table": ^3.28.0
   "@playwright/test": ^1.61.1
   wrangler: ^4.114.0
+  "@tiptap/core": ^3.29.0
+  "@tiptap/extension-link": ^3.29.0
+  "@tiptap/pm": ^3.29.0
+  "@tiptap/react": ^3.29.0
+  "@tiptap/starter-kit": ^3.29.0
 
 minimumReleaseAgeExclude:
   - hono@4.12.29
+  - "@earendil-works/pi-agent-core@0.82.1"
+  - "@earendil-works/pi-ai@0.82.1"
+  - "@earendil-works/pi-coding-agent@0.82.1"
+  - "@earendil-works/pi-tui@0.82.1"
 
 # tree-sitter-rust ships a prebuilt .wasm grammar; its native binding build is unnecessary.
 allowBuilds:
