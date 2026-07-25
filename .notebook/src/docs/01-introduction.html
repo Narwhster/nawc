@@ -1,4 +1,12 @@
-<h1>01. The NAWC workflow</h1><blockquote><p>Everything in these docs was generated using the nawc skills.</p><p>If I'm honest it's mostly because I was too lazy to write the docs myself.</p></blockquote><p>NAWC uses a "diffusion workflow". A rough idea gradually spreads into a durable note, recorded decisions, prototypes, runnable examples, tests, and focused implementation tickets. This keeps your preferences and intent available to the agents that work on the project later, instead of compressing them into one plain-text issue.</p><h2>Start with an idea</h2><p>Create a note and describe what you want in whatever form is useful: a sketch, a problem, a preference, or an incomplete feature idea. You do not need to know the final design before you begin. The note is a shared workspace for discovering it.</p><interactive><style>
+<h1>01. The NAWC workflow</h1>
+<blockquote>
+<p>Everything in these docs was generated using the nawc skills.</p>
+<p>If I'm honest it's mostly because I was too lazy to write the docs myself.</p>
+</blockquote>
+<p>NAWC uses a "diffusion workflow". A rough idea gradually spreads into a durable note, recorded decisions, prototypes, runnable examples, tests, and focused implementation tickets. This keeps your preferences and intent available to the agents that work on the project later, instead of compressing them into one plain-text issue.</p>
+<h2>Start with an idea</h2>
+<p>Create a note and describe what you want in whatever form is useful: a sketch, a problem, a preference, or an incomplete feature idea. You do not need to know the final design before you begin. The note is a shared workspace for discovering it.</p>
+<interactive><style>
   :root {
     color-scheme: dark;
     font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -270,4 +278,21 @@
     starter.querySelector("button").addEventListener("click", run);
     restart.addEventListener("click", run);
   })();
-</script></interactive><h2>Step 1 - Refine the idea</h2><ol><li><p><strong>Ask the agent to </strong><code>refine</code><strong>.</strong> It asks one blocking question at a time and records your answers as design decisions. If your first idea changes as you think through the questions, update it. Reworking the idea is part of the workflow, not a failure of the original request.</p></li><li><p><strong>Review the evidence.</strong> The agent turns important decisions into artifacts such as interactive prototypes, runnable examples, and tests. Use these artifacts to react to the evolving idea, answer more questions, and redirect the design until it represents what you want.</p></li><li><p><strong>Let the plan diffuse into tickets.</strong> Once the intent is clear, the agent records the dependencies and breaks the plan into focused implementation tickets when necessary. Each ticket carries the decisions and evidence that led to it, so another agent can work from the same context.</p></li></ol><h2>Step 2 - Implement the result</h2><p>When a ticket is ready, use <code>implement</code>. The agent follows the recorded decisions, changes the code or notes, and runs the relevant checks.</p><p>The short version is: <code>rough idea -&gt; refine &lt;-&gt; decisions and evidence -&gt; ready ticket -&gt; implement</code></p><h2>Other skills</h2><p>The <code>nawc</code> skill gives the agent the notebook vocabulary: interactive prototypes, live source references, runnable examples, wiki links, and the notes that connect decisions and evidence to the codebase.</p><p>The other skills from <code>nawcSkills</code> support the workflow. <code>orient</code> recovers context, <code>probe</code> creates evidence, <code>split</code> separates independent goals, <code>ticket-ready</code> checks readiness, and <code>review-implementation</code> checks the result. You do not need to invoke them directly.</p><p>Other plugins can add their own skills for languages, test frameworks, and other tools. For example, <code>typescript</code> and <code>vitest</code> tell the agent which syntax names, selectors, and runner behavior are valid for code references and runnable examples. You do not need to invoke these directly either.</p><p>Next: <a data-wiki-link="docs/02-quick-start" href="#docs%2F02-quick-start">[[docs/02-quick-start]]</a>.</p>
+</script></interactive>
+<h2>Step 1 - Refine the idea</h2>
+<ol>
+  <li><p><strong>Ask the agent to </strong><code>refine</code><strong>.</strong> It asks one blocking question at a time and records your answers as design decisions. If your first idea changes as you think through the questions, update it. Reworking the idea is part of the workflow, not a failure of the original request.</p></li>
+  <li><p><strong>Review the evidence.</strong> The agent turns important decisions into artifacts such as interactive prototypes, runnable examples, and tests. Use these artifacts to react to the evolving idea, answer more questions, and redirect the design until it represents what you want.</p></li>
+  <li><p><strong>Let the plan diffuse into tickets.</strong> Once the intent is clear, the agent records the dependencies and breaks the plan into focused implementation tickets when necessary. Each ticket carries the decisions and evidence that led to it, so another agent can work from the same context.</p></li>
+</ol>
+<h2>Step 2 - Implement the result</h2>
+<p>When a ticket is ready, use <code>implement</code>. The agent follows the recorded decisions, changes the code or notes, and runs the relevant checks.</p>
+<p>The short version is: <code>rough idea -&gt; refine &lt;-&gt; decisions and evidence -&gt; ready ticket -&gt; implement</code></p>
+<h2>Other skills</h2>
+<p>The <code>nawc</code> skill gives the agent the notebook vocabulary: interactive prototypes, live source references, runnable examples, wiki links, and the notes that connect decisions and evidence to the codebase.</p>
+<p>The other skills from <code>nawcSkills</code> support the workflow. <code>orient</code> recovers context, <code>probe</code> creates evidence, <code>split</code> separates independent goals, <code>ticket-ready</code> checks readiness, and <code>review-implementation</code> checks the result. You do not need to invoke them directly.</p>
+<p>Other plugins can add their own skills for languages, test frameworks, and other tools. For example, <code>typescript</code> and <code>vitest</code> tell the agent which syntax names, selectors, and runner behavior are valid for code references and runnable examples. You do not need to invoke these directly either.</p>
+<p></p>
+<hr>
+<p></p>
+<p>Continue with <a data-wiki-link="docs/02-quick-start" href="#docs%2F02-quick-start">[[docs/02-quick-start]]</a>.</p>

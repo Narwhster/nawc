@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import MiniSearch, { type SearchResult as MiniSearchResult } from "minisearch";
 import { parseFragment } from "parse5";
@@ -59,9 +59,9 @@ function createIndex(): MiniSearch<NoteDocument> {
     storeFields: ["path", "title", "text"],
     searchOptions: {
       boost: { title: 6, path: 4, text: 1 },
-      combineWith: "AND",
+      combineWith: "OR",
       fuzzy: 0.2,
-      prefix: true,
+      prefix: (_term, index, terms) => index === terms.length - 1,
     },
   });
 }
@@ -72,6 +72,7 @@ export class NoteSearchIndex {
   #revision = 0;
   #index = createIndex();
   #rebuild?: Promise<void>;
+  #recencyBoost = new Map<string, number>();
 
   constructor(srcDir: string) {
     this.#srcDir = srcDir;
@@ -88,15 +89,29 @@ export class NoteSearchIndex {
         const revision = this.#revision;
         this.#rebuild = (async () => {
           const notes = await listNotes(this.#srcDir);
-          const documents = await Promise.all(
-            notes.map(async (notePath): Promise<NoteDocument> => {
-              const html = await readFile(path.join(this.#srcDir, notePath), "utf8");
-              return { path: notePath, title: noteTitle(notePath), text: htmlText(html) };
+          const entries = await Promise.all(
+            notes.map(async (notePath) => {
+              const fullPath = path.join(this.#srcDir, notePath);
+              const [html, fileStat] = await Promise.all([
+                readFile(fullPath, "utf8"),
+                stat(fullPath),
+              ]);
+              const daysOld = (Date.now() - fileStat.mtimeMs) / (1000 * 60 * 60 * 24);
+              const boost = 1 + 0.5 * Math.exp(-daysOld / 14);
+              return {
+                doc: {
+                  path: notePath,
+                  title: noteTitle(notePath),
+                  text: htmlText(html),
+                } satisfies NoteDocument,
+                boost,
+              };
             }),
           );
           const next = createIndex();
-          next.addAll(documents);
+          next.addAll(entries.map((e) => e.doc));
           this.#index = next;
+          this.#recencyBoost = new Map(entries.map((e) => [e.doc.path, e.boost]));
           this.#dirty = revision !== this.#revision;
         })().finally(() => {
           this.#rebuild = undefined;
@@ -111,7 +126,9 @@ export class NoteSearchIndex {
     const normalized = query.trim();
     if (!normalized) return [];
     return this.#index
-      .search(normalized)
+      .search(normalized, {
+        boostDocument: (docId) => this.#recencyBoost.get(docId as string) ?? 1,
+      })
       .slice(0, limit)
       .map((result: MiniSearchResult) => {
         const note = result as MiniSearchResult & NoteDocument;

@@ -1,0 +1,40 @@
+<h1>07. Editors</h1>
+<p>The editor setting controls where a source reference opens when you click its open action. Set it in <code>nawc.config.ts</code> with an editor factory from one of the editor packages.</p>
+<h2>Configuration</h2>
+<p>Import the editor factory and pass it to <code>defineConfig</code>. The editor package must be installed in the notebook before it can be imported.</p>
+<code syntax="typescript" auto-expand>import { vscode } from "@nawc/editor-vscode";
+
+export default defineConfig({
+  editor: vscode(),
+  // ...the rest of your configuration
+});</code>
+<h2>Supported editors</h2>
+<ul>
+  <li><p><strong>vscode</strong> (<code>@nawc/editor-vscode</code>) — opens via <code>vscode://</code> URL or the <code>code</code> CLI when <code>reveal</code> is set.</p></li>
+  <li><p><strong>cursor</strong> (<code>@nawc/editor-cursor</code>) — opens via the <code>cursor</code> CLI.</p></li>
+  <li><p><strong>zed</strong> (<code>@nawc/editor-zed</code>) — opens via <code>zed://</code> URL.</p></li>
+  <li><p><strong>idea</strong> (<code>@nawc/editor-idea</code>) — opens via the <code>idea</code> CLI.</p></li>
+  <li><p><strong>webstorm</strong> (<code>@nawc/editor-webstorm</code>) — opens via the <code>webstorm</code> CLI.</p></li>
+  <li><p><strong>clion</strong> (<code>@nawc/editor-clion</code>) — opens via the <code>clion</code> CLI.</p></li>
+</ul>
+<p>Editors that use a CLI command need the editor's shell launcher installed and on your <code>PATH</code>.</p>
+<h2>Creating your own editor</h2>
+<p>An editor is an object that implements the <code>NawcEditor</code> interface. The <code>open</code> method receives the file location and returns either a <code>url</code> (opened by the platform) or a <code>command</code> (spawned directly).</p>
+<code syntax="typescript" auto-expand>import type { NawcEditor } from "@nawc/config";
+
+export function myEditor(): NawcEditor {
+  return {
+    name: "my-editor",
+    label: "My Editor",
+    open({ file, line, column }) {
+      return {
+        type: "command",
+        command: ["my-editor", line ? `${file}:${line}:${column ?? 1}` : file],
+      };
+    },
+  };
+}</code>
+<p></p>
+<hr>
+<p></p>
+<p>Continue with <a data-wiki-link="docs/08-themes" href="#docs%2F08-themes">[[docs/08-themes]]</a> to customize the notebook appearance.</p>

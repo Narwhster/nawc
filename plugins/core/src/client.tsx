@@ -33,6 +33,7 @@ type SourceAttrs = {
   name?: string;
   type?: string;
   params?: string;
+  autoExpand?: boolean;
 };
 type SourceResult = SourceAttrs & { code: string; startLine: number; endLine: number };
 
@@ -304,7 +305,7 @@ function SourceView({
   const [inlineSource, setInlineSource] = useState(attrs.source ?? "");
   return (
     <NodeViewWrapper className="nawc-node-shell">
-      <details className="nawc-source-block" open={error ? true : undefined}>
+      <details className="nawc-source-block" open={error || attrs.autoExpand ? true : undefined}>
         <summary>
           <ChevronDownIcon />{" "}
           <span>{inline ? `Inline ${attrs.syntax ?? "code"}` : attrs.file}</span>
@@ -507,6 +508,10 @@ const sourceAttributes = {
   name: { default: undefined },
   type: { default: undefined },
   params: { default: undefined },
+  autoExpand: {
+    default: undefined,
+    parseHTML: (element: HTMLElement) => element.hasAttribute("auto-expand") || undefined,
+  },
 };
 
 export const Interactive = Node.create({
@@ -558,7 +563,7 @@ function sourceNode({
         ...sourceAttributes,
         source: {
           default: undefined,
-          parseHTML: (element) =>
+          parseHTML: (element: HTMLElement) =>
             element.getAttribute("data-nawc-source") ?? element.textContent ?? "",
         },
       };

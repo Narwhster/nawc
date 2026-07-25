@@ -288,7 +288,7 @@ function staticNotebookPlugin(
 function viteConfig(options: SiteOptions): InlineConfig {
   const projectDir = path.resolve(options.projectDir);
   const configFile = options.configFile ?? "nawc.config.ts";
-  const agentFile = options.agentFile ?? "nawc-static-agent.ts";
+  const agentFile = options.agentFile ?? "nawc-site.config.ts";
   const outDir = path.resolve(projectDir, options.outDir ?? "dist");
   const { uiRoot, browserEntry, coreClient, fontRoot } = packagePaths();
   return {

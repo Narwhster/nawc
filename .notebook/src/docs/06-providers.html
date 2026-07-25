@@ -1,62 +1,118 @@
 <h1>06. Agent providers</h1>
-<p>
-  A provider connects NAWC to the agent runtime that handles your conversations and edits. Choose one
-  that is installed and authenticated on your machine, then set it in <code>nawc.config.ts</code>.
-</p>
-<h2>Built-in providers</h2>
-<ul>
-  <li>
-    <code>codex()</code> uses the Codex command-line app. Install and authenticate Codex, then add
-    <code>@nawc/provider-codex</code> to the notebook.
-  </li>
-  <li>
-    <code>opencode()</code> uses OpenCode. Install and configure OpenCode, then add
-    <code>@nawc/provider-opencode</code>.
-  </li>
-  <li>
-    <code>cursor()</code> uses Cursor's agent interface. Install and authenticate Cursor, then add
-    <code>@nawc/provider-cursor</code>.
-  </li>
-</ul>
+<p>A provider connects NAWC to the agent runtime that handles your conversations and edits. Choose one that is installed and authenticated on your machine, then set it in <code>nawc.config.ts</code>.</p>
 <h2>Choose a provider</h2>
-<pre><code>import { opencode } from "@nawc/provider-opencode";
+<p>Import the provider package's factory and pass it to <code>defineConfig</code>. The provider package must be installed in the notebook before it can be imported. Restart NAWC after changing providers.</p>
+<code syntax="typescript" auto-expand>import { codex } from "@nawc/provider-codex";
 
 export default defineConfig({
-  provider: opencode(),
+  provider: codex({
+    model: "your-model-id",
+    reasoningEffort: "medium",
+    sandbox: "workspace-write",
+  }),
   // ...the rest of your configuration
-});</code></pre>
-<p>
-  The provider package must be installed in the notebook before it can be imported. Restart NAWC
-  after changing providers.
-</p>
-<h2>Provider options</h2>
-<p>
-  Provider factories accept optional settings for the executable path, model, and reasoning effort.
-  Codex also accepts a sandbox setting; OpenCode accepts a model-discovery timeout; Cursor accepts an
-  API endpoint. For example:
-</p>
-<pre><code>import { codex } from "@nawc/provider-codex";
+});</code>
+<p>If you omit model settings, the provider exposes the models and controls available from the runtime in the agent panel. If the panel cannot connect, check that the provider's command is on your PATH and that its own login or setup is complete.</p>
+<h2>Built-in providers</h2>
+<h3>codex</h3>
+<p>The <code>codex()</code> factory connects to the Codex command-line app. Install and authenticate Codex, then add <code>@nawc/provider-codex</code> to the notebook.</p>
+<ul>
+  <li><p><code>executable</code> (<code>string</code>, default <code>"codex"</code>) &mdash; Path to the Codex CLI binary.</p></li>
+  <li><p><code>model</code> (<code>string</code>, runtime default) &mdash; Default model ID for conversations.</p></li>
+  <li><p><code>reasoningEffort</code> (<code>string</code>, runtime default) &mdash; Default reasoning effort level.</p></li>
+  <li><p><code>sandbox</code> (<code>"read-only" | "workspace-write"</code>, default <code>"workspace-write"</code>) &mdash; Restrict file access to read-only or allow workspace writes.</p></li>
+</ul>
+<h3>opencode</h3>
+<p>The <code>opencode()</code> factory connects to OpenCode. Install and configure OpenCode, then add <code>@nawc/provider-opencode</code> to the notebook.</p>
+<ul>
+  <li><p><code>executable</code> (<code>string</code>, default <code>"opencode"</code>) &mdash; Path to the OpenCode CLI binary.</p></li>
+  <li><p><code>model</code> (<code>string</code>, runtime default) &mdash; Default model ID for conversations.</p></li>
+  <li><p><code>reasoningEffort</code> (<code>string</code>, runtime default) &mdash; Default reasoning effort level.</p></li>
+  <li><p><code>serverTimeoutMs</code> (<code>number</code>, default <code>5000</code>) &mdash; Timeout in ms for OpenCode server startup.</p></li>
+</ul>
+<h3>cursor</h3>
+<p>The <code>cursor()</code> factory connects to Cursor's agent interface via the Agent Control Protocol (ACP). Install and authenticate Cursor, then add <code>@nawc/provider-cursor</code> to the notebook.</p>
+<ul>
+  <li><p><code>executable</code> (<code>string</code>, default <code>"agent"</code> then <code>"cursor-agent"</code>) &mdash; Path to the Cursor CLI binary; searched in order.</p></li>
+  <li><p><code>model</code> (<code>string</code>, runtime default) &mdash; Default model ID for conversations.</p></li>
+  <li><p><code>reasoningEffort</code> (<code>string</code>, runtime default) &mdash; Default reasoning effort level.</p></li>
+  <li><p><code>apiEndpoint</code> (<code>string</code>, omitted by default) &mdash; Custom API endpoint URL (passed as <code>-e</code> to the CLI).</p></li>
+</ul>
+<h3>pi</h3>
+<p>The <code>pi()</code> factory connects to the Pi coding agent runtime. Install and authenticate Pi, then add <code>@nawc/provider-pi</code> to the notebook.</p>
+<ul>
+  <li><p><code>model</code> (<code>string</code>, runtime default) &mdash; Default model ID (format: <code>"provider/model"</code>).</p></li>
+  <li><p><code>reasoningEffort</code> (<code>"off" | "minimal" | "low" | "medium" | "high" | "xhigh"</code>, default <code>"medium"</code> for reasoning models else <code>"off"</code>) &mdash; Default thinking level.</p></li>
+  <li><p><code>agentDir</code> (<code>string</code>, omitted by default) &mdash; Directory containing Pi agent config (auth.json, models.json).</p></li>
+  <li><p><code>sessionDir</code> (<code>string</code>, omitted by default) &mdash; Directory for persisting Pi sessions.</p></li>
+</ul>
+<h2>Creating your own provider</h2>
+<p>A provider is an object returned from a factory function. Import the types from <code>@nawc/config</code> and implement the parts your runtime needs.</p>
+<h3>Minimal provider</h3>
+<p>The simplest provider just needs a name and a <code>prompt</code> function. It receives the turn input and yields events back to the agent panel.</p>
+<code syntax="typescript" auto-expand>import type { NawcProvider, NawcProviderTurnInput, ProviderEvent } from "@nawc/config";
 
-provider: codex({
-  model: "your-model-id",
-  reasoningEffort: "medium",
-  sandbox: "workspace-write",
-})</code></pre>
-<p>
-  If you omit model settings, the provider exposes the models and controls available from the runtime
-  in the agent panel. If the panel cannot connect, check that the provider's command is on your PATH
-  and that its own login or setup is complete.
-</p>
-<h2>Custom providers</h2>
-<p>
-  A custom provider is an advanced extension for another agent service or local runtime. Use the
-  provider package's documentation for its setup and supported settings rather than changing the
-  notebook's other configuration.
-</p>
-<p>
-  Continue with
-  <a data-wiki-link="docs/07-editors-and-themes" href="#docs%2F07-editors-and-themes"
-    >[[docs/07-editors-and-themes]]</a
-  >
-  to customize where source opens and how the notebook looks.
-</p>
+export function myProvider() {
+  return {
+    name: "my-provider",
+    async *prompt(input: NawcProviderTurnInput): AsyncIterable<ProviderEvent> {
+      yield { type: "message.started", role: "assistant" };
+      yield { type: "message.delta", text: `Echo: ${input.prompt}` };
+      yield { type: "message.completed" };
+      yield { type: "turn.completed" };
+    },
+  } satisfies NawcProvider;
+}</code>
+<h3>Session-based provider</h3>
+<p>For stateful runtimes, implement <code>startSession</code> and <code>sendTurn</code> instead of <code>prompt</code>. This lets the panel reuse a session across multiple turns and interrupt it.</p>
+<code syntax="typescript" auto-expand>export function sessionProvider() {
+  const sessions = new Map<string, MySession>();
+
+  return {
+    name: "session-provider",
+    capabilities: ["attachments", "interrupt", "resume"],
+    async startSession({ cwd, providerThreadId }) {
+      const id = crypto.randomUUID();
+      sessions.set(id, new MySession(cwd, providerThreadId));
+      return { id, providerThreadId };
+    },
+    sendTurn(session, input) {
+      return sessions.get(session.id)!.run(input);
+    },
+    interrupt(session) {
+      sessions.get(session.id)?.abort();
+    },
+    closeSession(session) {
+      sessions.delete(session.id);
+    },
+  } satisfies NawcProvider;
+}</code>
+<h3>Modes and models</h3>
+<p>Declare modes and let users pick a model and reasoning effort at runtime. Implement <code>getSettings</code> and <code>listModels</code> to surface available options.</p>
+<code syntax="typescript" auto-expand>export function configurableProvider() {
+  return {
+    name: "configurable-provider",
+    modes: [
+      { id: "default", label: "Build", description: "Edit the workspace" },
+      { id: "plan", label: "Plan", description: "Propose changes without editing" },
+    ],
+    getSettings: async () => ({
+      model: "my-model",
+      reasoningEffort: "medium",
+    }),
+    listModels: async () => [
+      {
+        id: "my-model",
+        name: "My Model",
+        contextWindow: 128_000,
+        reasoningEfforts: [
+          { id: "low", description: "Low effort" },
+          { id: "medium", description: "Medium effort" },
+        ],
+        defaultReasoningEffort: "medium",
+        isDefault: true,
+      },
+    ],
+  } satisfies NawcProvider;
+}</code>
+<p></p><hr><p></p><p>Continue with <a data-wiki-link="docs/07-editors" href="#docs%2F07-editors">[[docs/07-editors]]</a> to choose which editor opens source references.</p>

@@ -8,7 +8,6 @@ export default defineConfig({
   },
   fmt: { ignorePatterns: ["**/.notebook/**"] },
   lint: {
-    ignorePatterns: ["**/.notebook/**"],
     options: { typeAware: true, typeCheck: true },
   },
   test: {

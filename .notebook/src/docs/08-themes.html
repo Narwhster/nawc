@@ -1,0 +1,70 @@
+<h1>08. Themes</h1>
+<p>The theme setting controls the notebook's color scheme. Import <code>nawcLight</code> or <code>nawcDark</code> from <code>nawc</code> and pass it to <code>defineConfig</code>.</p>
+<h2>Quick start</h2>
+<code syntax="typescript" auto-expand>import { defineConfig, nawcLight } from "nawc";
+
+export default defineConfig({
+  theme: nawcLight(),
+  // ...the rest of your configuration
+});</code>
+<p>Use <code>nawcLight()</code> for a light appearance and <code>nawcDark()</code> for a dark appearance. The default is <code>nawcLight()</code>.</p>
+<h2>Creating your own theme</h2>
+<p>Create your own or customize an existing theme by spreading the built-in theme and overriding its <code>name</code> and <code>variables</code>.</p>
+<code syntax="typescript" auto-expand>import { defineConfig, nawcDark } from "nawc";
+
+const theme = {
+  ...nawcDark(),
+  name: "midnight-copper",
+  variables: {
+    ...nawcDark().variables,
+    "--primary": "oklch(0.72 0.16 45)",
+    "--ring": "oklch(0.72 0.16 45)",
+  },
+};
+
+export default defineConfig({
+  theme,
+  // ...the rest of your configuration
+});</code>
+<h2>CSS variables</h2>
+<p>The following variable groups are available for customization.</p>
+<h3>UI surface</h3>
+<ul>
+  <li><p><code>--background</code>, <code>--foreground</code></p></li>
+  <li><p><code>--card</code>, <code>--card-foreground</code></p></li>
+  <li><p><code>--popover</code>, <code>--popover-foreground</code></p></li>
+  <li><p><code>--primary</code>, <code>--primary-foreground</code></p></li>
+  <li><p><code>--secondary</code>, <code>--secondary-foreground</code></p></li>
+  <li><p><code>--muted</code>, <code>--muted-foreground</code></p></li>
+  <li><p><code>--accent</code>, <code>--accent-foreground</code></p></li>
+  <li><p><code>--destructive</code></p></li>
+  <li><p><code>--border</code>, <code>--input</code>, <code>--ring</code></p></li>
+</ul>
+<h3>Sidebar</h3>
+<ul>
+  <li><p><code>--sidebar</code>, <code>--sidebar-foreground</code></p></li>
+  <li><p><code>--sidebar-primary</code>, <code>--sidebar-primary-foreground</code></p></li>
+  <li><p><code>--sidebar-accent</code>, <code>--sidebar-accent-foreground</code></p></li>
+  <li><p><code>--sidebar-border</code>, <code>--sidebar-ring</code></p></li>
+</ul>
+<h3>Typography</h3>
+<ul>
+  <li><p><code>--radius</code> — border radius for UI elements</p></li>
+  <li><p><code>--font-sans</code> — base font family</p></li>
+  <li><p><code>--font-mono</code> — monospace font family</p></li>
+</ul>
+<h3>Terminal</h3>
+<ul>
+  <li><p><code>--terminal-selection</code> — selection highlight color</p></li>
+</ul>
+<h3>Syntax highlighting</h3>
+<ul>
+  <li><p><code>--syntax-keyword</code></p></li>
+  <li><p><code>--syntax-string</code></p></li>
+  <li><p><code>--syntax-number</code></p></li>
+  <li><p><code>--syntax-title</code></p></li>
+</ul>
+<p></p>
+<hr>
+<p></p>
+<p>You have reached the end of the guide. Return to <a data-wiki-link="index" href="#index">[[index]]</a> to revisit the setup and workflow notes.</p>

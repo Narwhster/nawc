@@ -1,8 +1,4 @@
-import type {
-  StaticAgentConfig,
-  StaticAgentConversationTree,
-  StaticAgentHistoryEntry,
-} from "./index.ts";
+import type { StaticSiteConfig, StaticAgentHistoryEntry } from "./index.ts";
 
 export type StaticNotebookData = {
   readonly notes: Readonly<Record<string, string>>;
@@ -23,7 +19,7 @@ export type StaticNotebookData = {
 };
 
 type RuntimeInput = StaticNotebookData & {
-  readonly agent: StaticAgentConfig;
+  readonly agent: StaticSiteConfig;
 };
 
 type AgentRequest = {
@@ -31,6 +27,8 @@ type AgentRequest = {
   readonly turnId: string;
   readonly kind: string;
   readonly title: string;
+  readonly question: string;
+  readonly label?: string;
   readonly choices: readonly string[];
   readonly allowCustom: boolean;
   status: "pending" | "resolved";
@@ -50,9 +48,19 @@ type AgentMessage = {
 
 type AgentTurn = {
   readonly id: string;
-  status: "running" | "completed";
+  status: "running" | "completed" | "interrupted";
   readonly createdAt: string;
   updatedAt: string;
+};
+
+type AgentActivity = {
+  readonly id: string;
+  readonly turnId: string;
+  readonly createdAt: string;
+  readonly tool: string;
+  title: string;
+  status: "running" | "completed" | "failed" | "declined";
+  output?: string;
 };
 
 type AgentThread = {
@@ -63,12 +71,14 @@ type AgentThread = {
   status: "idle" | "running";
   readonly turns: AgentTurn[];
   readonly messages: AgentMessage[];
-  readonly activities: never[];
+  activities: AgentActivity[];
   readonly requests: AgentRequest[];
   readonly warnings: never[];
   readonly unknownEvents: never[];
   readonly attachedReferenceKeys: never[];
   prompt?: string;
+  title?: string;
+  note?: string;
   history: StaticAgentHistoryEntry[];
 };
 
@@ -164,24 +174,14 @@ export async function runStaticSource(
   await new AsyncFunction("console", compiled)(runtimeConsole);
 }
 
-function walkTree(
-  root: StaticAgentConversationTree,
-  history: readonly StaticAgentHistoryEntry[],
-): StaticAgentConversationTree {
-  let node = root;
-  for (const step of history) {
-    if (node.type !== "question" || node.question !== step.question)
-      throw new Error("The FAQ tree changed while this conversation was in progress");
-    const answer = node.answers.find((item) => item.label === step.chosenAnswer);
-    if (!answer) throw new Error(`Unknown FAQ answer: ${step.chosenAnswer}`);
-    node = answer.child;
-  }
-  return node;
-}
-
-function initialRoute(notes: ReadonlyMap<string, string>): void {
+function initialRoute(notes: ReadonlyMap<string, string>, homeNote?: string): void {
   if (location.hash || location.pathname.includes("/note/")) return;
-  const preferred = notes.has("index.html") ? "index.html" : [...notes.keys()].sort()[0];
+  const preferred =
+    homeNote && notes.has(homeNote)
+      ? homeNote
+      : notes.has("index.html")
+        ? "index.html"
+        : [...notes.keys()].sort()[0];
   if (!preferred) return;
   const encoded = preferred.split("/").map(encodeURIComponent).join("/");
   history.replaceState(
@@ -196,6 +196,7 @@ export function installStaticRuntime(input: RuntimeInput): void {
   const sources = new Map(Object.entries(input.sources));
   const folders = new Set<string>();
   const threads = new Map<string, AgentThread>();
+  const turnControllers = new Map<string, AbortController>();
   const eventSources = new Set<StaticEventSource>();
   const originalFetch = window.fetch.bind(window);
 
@@ -210,7 +211,7 @@ export function installStaticRuntime(input: RuntimeInput): void {
     }
   };
   deriveFolders();
-  initialRoute(notes);
+  initialRoute(notes, input.agent.homeNote);
 
   const emitFile = (event: string, file: string) => {
     const data = JSON.stringify({ event, file });
@@ -227,20 +228,37 @@ export function installStaticRuntime(input: RuntimeInput): void {
       return matcher.test(path) ? [{ path, content }] : [];
     });
   };
-  const advance = (thread: AgentThread, turn: AgentTurn) => {
+  const cancellableDelay = (ms: number, signal: AbortSignal) =>
+    new Promise<void>((resolve) => {
+      if (signal.aborted) return resolve();
+      const done = () => {
+        clearTimeout(timer);
+        signal.removeEventListener("abort", done);
+        resolve();
+      };
+      const timer = setTimeout(done, ms);
+      signal.addEventListener("abort", done);
+    });
+
+  const advance = async (thread: AgentThread, turn: AgentTurn, signal: AbortSignal) => {
     if (!thread.prompt) throw new Error("Missing FAQ prompt");
-    const root = input.agent.faq({
+    const result = input.agent.faq({
       prompt: thread.prompt,
       files: matchingFiles(),
       history: thread.history,
+      note: thread.note,
     });
-    const node = walkTree(root, thread.history);
+    const node = result.node;
+    if (node.type === "question" && node.title) {
+      thread.title = node.title;
+    }
     const now = timestamp();
+    if (signal.aborted) return;
     if (node.type === "question") {
       thread.messages.push({
         id: id(),
         role: "assistant",
-        text: "",
+        text: node.question,
         turnId: turn.id,
         createdAt: now,
         updatedAt: now,
@@ -250,12 +268,54 @@ export function installStaticRuntime(input: RuntimeInput): void {
         id: id(),
         turnId: turn.id,
         kind: "question",
-        title: node.question,
+        title: node.title ?? node.question,
+        question: node.question,
+        label: node.label,
         choices: node.answers.map((answer) => answer.label),
-        allowCustom: false,
+        allowCustom: node.allowCustom ?? false,
         status: "pending",
       });
       thread.status = "running";
+    } else if (node.type === "sequence") {
+      for (const step of node.steps) {
+        if (signal.aborted) return;
+        const stepNow = timestamp();
+        if (step.type === "tool_call") {
+          const activity: AgentActivity = {
+            id: id(),
+            turnId: turn.id,
+            createdAt: stepNow,
+            tool: step.tool,
+            title: step.title,
+            status: "running",
+          };
+          thread.activities.push(activity);
+          emitAgent(thread.id, thread);
+          if (step.duration && step.duration > 0) {
+            await cancellableDelay(step.duration, signal);
+          }
+          if (signal.aborted) return;
+          activity.status = "completed";
+          emitAgent(thread.id, thread);
+        } else if (step.type === "delay") {
+          await cancellableDelay(step.ms, signal);
+        } else if (step.type === "answer") {
+          thread.messages.push({
+            id: id(),
+            role: "assistant",
+            text: step.text,
+            turnId: turn.id,
+            createdAt: stepNow,
+            updatedAt: stepNow,
+            streaming: false,
+          });
+          emitAgent(thread.id, thread);
+        }
+      }
+      if (signal.aborted) return;
+      turn.status = "completed";
+      turn.updatedAt = timestamp();
+      thread.status = "idle";
     } else {
       thread.messages.push({
         id: id(),
@@ -270,7 +330,8 @@ export function installStaticRuntime(input: RuntimeInput): void {
       turn.updatedAt = now;
       thread.status = "idle";
     }
-    thread.updatedAt = now;
+    if (result.sideEffect) result.sideEffect();
+    thread.updatedAt = timestamp();
     emitAgent(thread.id, thread);
   };
 
@@ -492,9 +553,28 @@ export function installStaticRuntime(input: RuntimeInput): void {
         emitAgent(threadId, null);
         return response({ ok: true });
       }
+      const interruptMatch = url.pathname.match(/^\/api\/agent\/threads\/([^/]+)\/interrupt$/);
+      if (interruptMatch && method === "POST") {
+        const threadId = decodeURIComponent(interruptMatch[1] ?? "");
+        const thread = threads.get(threadId);
+        turnControllers.get(threadId)?.abort();
+        turnControllers.delete(threadId);
+        if (thread && thread.status === "running") {
+          const turn = thread.turns.findLast((item) => item.status === "running");
+          if (turn) {
+            turn.status = "interrupted";
+            turn.updatedAt = timestamp();
+          }
+          thread.status = "idle";
+          thread.updatedAt = timestamp();
+          emitAgent(threadId, thread);
+        }
+        return response({ ok: true });
+      }
       const turnMatch = url.pathname.match(/^\/api\/agent\/threads\/([^/]+)\/turns$/);
       if (turnMatch && method === "POST") {
-        const thread = threads.get(decodeURIComponent(turnMatch[1] ?? ""));
+        const threadId = decodeURIComponent(turnMatch[1] ?? "");
+        const thread = threads.get(threadId);
         if (!thread) throw new Error("Unknown agent thread");
         const value = await body<{ prompt: string; note?: string }>();
         const now = timestamp();
@@ -505,6 +585,7 @@ export function installStaticRuntime(input: RuntimeInput): void {
           updatedAt: now,
         };
         thread.prompt = value.prompt;
+        thread.note = value.note;
         thread.history = [];
         thread.turns.push(turn);
         thread.messages.push({
@@ -517,27 +598,54 @@ export function installStaticRuntime(input: RuntimeInput): void {
           streaming: false,
           references: value.note ? [{ type: "note", path: value.note }] : undefined,
         });
-        advance(thread, turn);
+        const controller = new AbortController();
+        turnControllers.set(threadId, controller);
+        if (request?.signal) {
+          if (request.signal.aborted) controller.abort();
+          else request.signal.addEventListener("abort", () => controller.abort());
+        }
+        try {
+          await advance(thread, turn, controller.signal);
+        } finally {
+          turnControllers.delete(threadId);
+        }
         return response("");
       }
       const requestMatch = url.pathname.match(
         /^\/api\/agent\/threads\/([^/]+)\/requests\/([^/]+)$/,
       );
       if (requestMatch && method === "POST") {
-        const thread = threads.get(decodeURIComponent(requestMatch[1] ?? ""));
+        const threadId = decodeURIComponent(requestMatch[1] ?? "");
+        const thread = threads.get(threadId);
         if (!thread) throw new Error("Unknown agent thread");
-        const request = thread.requests.find(
+        const agentRequest = thread.requests.find(
           (item) => item.id === decodeURIComponent(requestMatch[2] ?? ""),
         );
-        if (!request || request.status !== "pending") throw new Error("Unknown agent request");
+        if (!agentRequest || agentRequest.status !== "pending")
+          throw new Error("Unknown agent request");
         const value = await body<{ decision: string }>();
-        if (!request.choices.includes(value.decision)) throw new Error("Invalid FAQ answer");
-        request.status = "resolved";
-        request.decision = value.decision;
-        thread.history.push({ question: request.title, chosenAnswer: value.decision });
-        const turn = thread.turns.find((item) => item.id === request.turnId);
+        if (!agentRequest.allowCustom && !agentRequest.choices.includes(value.decision))
+          throw new Error("Invalid FAQ answer");
+        agentRequest.status = "resolved";
+        agentRequest.decision = value.decision;
+        thread.history.push({
+          label: agentRequest.label,
+          question: agentRequest.question,
+          chosenAnswer: value.decision,
+        });
+        const turn = thread.turns.find((item) => item.id === agentRequest.turnId);
         if (!turn) throw new Error("Unknown agent turn");
-        advance(thread, turn);
+        const controller = new AbortController();
+        turnControllers.set(threadId, controller);
+        if (request?.signal) {
+          if (request.signal.aborted) controller.abort();
+          else request.signal.addEventListener("abort", () => controller.abort());
+        }
+        try {
+          await advance(thread, turn, controller.signal);
+        } finally {
+          turnControllers.delete(threadId);
+        }
         return response({ ok: true });
       }
       throw new Error(`Static notebook API does not support ${method} ${url.pathname}`);

@@ -154,6 +154,7 @@ type AgentThread = {
   readonly provider: string;
   readonly providerThreadId?: string;
   readonly updatedAt: string;
+  readonly title?: string;
   readonly model?: string;
   readonly reasoningEffort?: string;
   readonly mode?: string;
@@ -223,6 +224,7 @@ function formatTime(value: string): string {
 }
 
 function threadLabel(thread: AgentThread): string {
+  if (thread.title) return thread.title.slice(0, 48);
   const firstPrompt = thread.messages.find((message) => message.role === "user")?.text.trim();
   return firstPrompt ? firstPrompt.slice(0, 48) : `Conversation ${formatTime(thread.updatedAt)}`;
 }
@@ -500,7 +502,8 @@ function RequestActions({
       toast.error(error instanceof Error ? error.message : String(error));
     });
   };
-  const decisions = request.choices?.length
+  const hasChoices = request.choices !== undefined;
+  const decisions = hasChoices
     ? request.choices.map((choice) => [choice, choice] as const)
     : [
         ["decline", "Decline"],
@@ -509,7 +512,7 @@ function RequestActions({
       ];
   return (
     <div className="mt-3 flex min-w-0 flex-col gap-2 group-has-[>svg]/alert:col-start-2">
-      {request.choices?.length ? (
+      {hasChoices ? (
         <Suggestions>
           {decisions.map(([decision, label]) => (
             <Suggestion
@@ -1041,18 +1044,7 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                   const activitiesHere = turnActivities.filter(
                     (a: Activity) => a.createdAt > after && (!before || a.createdAt <= before),
                   );
-                  const preTextTurn: Turn = { ...turn!, thinking: thinkingHere };
-                  if (activitiesHere.length > 0 || thinkingHere.length > 0 || preTextTurn.plan) {
-                    items.push(
-                      <Message key={`pre-text:${turn!.id}:${message.id}`} role="assistant">
-                        <TurnActivity
-                          turn={preTextTurn}
-                          activities={activitiesHere}
-                          thinking={thinkingHere}
-                        />
-                      </Message>,
-                    );
-                  }
+                  const postTextTurn: Turn = { ...turn!, thinking: thinkingHere };
                   items.push(
                     <Fragment key={message.id}>
                       <Message role={message.role}>
@@ -1107,6 +1099,17 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                           </Alert>
                         ))}
                       </Message>
+                      {(activitiesHere.length > 0 ||
+                        thinkingHere.length > 0 ||
+                        postTextTurn.plan) && (
+                        <Message role="assistant">
+                          <TurnActivity
+                            turn={postTextTurn}
+                            activities={activitiesHere}
+                            thinking={thinkingHere}
+                          />
+                        </Message>
+                      )}
                       {turnWarnings.map((warning, wIndex) => (
                         <Alert variant="destructive" key={`warning:${message.turnId}:${wIndex}`}>
                           <CircleAlertIcon />

@@ -4,7 +4,7 @@ import { buildStaticNotebook, devStaticNotebook, previewStaticNotebook } from ".
 
 type Options = {
   readonly config: string;
-  readonly agent: string;
+  readonly siteConfig: string;
   readonly outDir: string;
   readonly port?: number;
   readonly host?: string;
@@ -13,14 +13,14 @@ type Options = {
 const common = (command: Command) =>
   command
     .option("-c, --config <file>", "notebook config file", "nawc.config.ts")
-    .option("-a, --agent <file>", "static FAQ module", "nawc-static-agent.ts")
+    .option("-s, --site-config <file>", "static site config file", "nawc-site.config.ts")
     .option("-o, --out-dir <directory>", "static output directory", "dist");
 
 const serve = async (kind: "dev" | "preview", options: Options) => {
   const siteOptions = {
     projectDir: process.cwd(),
     configFile: options.config,
-    agentFile: options.agent,
+    agentFile: options.siteConfig,
     outDir: options.outDir,
     port: options.port,
     host: options.host,
@@ -47,7 +47,7 @@ common(program.command("build").description("build the static notebook")).action
     const outDir = await buildStaticNotebook({
       projectDir: process.cwd(),
       configFile: options.config,
-      agentFile: options.agent,
+      agentFile: options.siteConfig,
       outDir: options.outDir,
     });
     console.log(`Built static notebook at ${outDir}`);

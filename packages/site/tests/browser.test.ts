@@ -37,19 +37,24 @@ describe("static browser runtime", () => {
       plugins: [],
       agent: {
         files: { match: /\.html$/ },
-        faq: () => ({
-          type: "question",
-          question: "What do you want to know?",
-          answers: [
-            {
-              label: "Deploying",
-              child: {
+        faq: ({ history }) => {
+          const last = history[history.length - 1];
+          if (last?.chosenAnswer === "Deploying") {
+            return {
+              node: {
                 type: "answer",
                 text: "Upload the generated directory to any static host.",
               },
+            };
+          }
+          return {
+            node: {
+              type: "question",
+              question: "What do you want to know?",
+              answers: [{ label: "Deploying" }],
             },
-          ],
-        }),
+          };
+        },
       },
     });
 

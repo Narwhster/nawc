@@ -1,6 +1,6 @@
-<h1>nawc-static-agent probe</h1>
+<h1>nawc-site.config probe</h1>
 <p>
-  A concrete example of the <code>nawc-static-agent.ts</code> shape a notebook author would
+  A concrete example of the <code>nawc-site.config.ts</code> shape a notebook author would
   write. Used as a probe for
   <a
     data-wiki-link="tickets/product-website"
@@ -29,10 +29,10 @@
   emitted as the final canned response. The provider walks the tree by asking each question and
   following the chosen branch.
 </p>
-<h2>Example <code>nawc-static-agent.ts</code></h2>
+<h2>Example <code>nawc-site.config.ts</code></h2>
 <p>
   In a real notebook this file lives at the notebook root. It imports
-  <code>defineStaticAgent</code> from <code>@nawc/site</code> and only writes usage code. The
+  <code>defineStaticSiteConfig</code> from <code>@nawc/site</code> and only writes usage code. The
   types of every field are inferred from the package's exports.
 </p>
 <p>

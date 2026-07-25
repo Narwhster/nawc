@@ -34,7 +34,7 @@
   <code>npx @nawc/site preview</code> for a local <code>vite preview</code>-style check before
   deploying. There is no <code>nawc build</code> subcommand and no <code>vp build</code> coupling —
   the CLI is the entry point and the package controls the entire output. The CLI uses a TypeScript
-  loader to read <code>nawc.config.ts</code> and <code>nawc-static-agent.ts</code>.
+  loader to read <code>nawc.config.ts</code> and <code>nawc-site.config.ts</code>.
 </p>
 <h2>Decision: the package builds a static site from an existing nawc notebook</h2>
 <p>
@@ -112,11 +112,11 @@
     >[[tickets/static-agent-probe]]</a
   >, which carries a runnable example and a vitest probe.
 </p>
-<h2>Decision: static agent lives in <code>nawc-static-agent.ts</code></h2>
+<h2>Decision: static site config lives in <code>nawc-site.config.ts</code></h2>
 <p>
   A notebook author adds a new file alongside <code>nawc.config.ts</code>, named
-  <code>nawc-static-agent.ts</code>. It is a plain TypeScript module that exports a default
-  static-agent config &mdash; not a config file in the
+  <code>nawc-site.config.ts</code>. It is a plain TypeScript module that exports a default
+  static-site config &mdash; not a config file in the
   <code>nawc.config.ts</code>-style schema sense. The <code>@nawc/site</code> build CLI reads
   it at build time and bakes the result into the bundle. The dev server ignores it &mdash; the
   author's real-LLM <code>nawc.config.ts</code> provider is untouched.

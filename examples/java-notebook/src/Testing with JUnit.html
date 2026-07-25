@@ -18,7 +18,10 @@
   To run JUnit tests from the command line, you need the JUnit Platform Console Standalone JAR. The
   runner executes:
 </p>
-<pre><code>java -jar junit-platform-console-standalone.jar -cp . --select-method CalculatorTest#testAdd</code></pre>
+<code syntax="bash" auto-expand
+  >java -jar junit-platform-console-standalone.jar -cp . --select-method
+  CalculatorTest#testAdd</code
+>
 <p>Configure the JAR path and classpath when creating the syntax adapter:</p>
 <pre><code>junit({
   jar: "path/to/junit-platform-console-standalone.jar",

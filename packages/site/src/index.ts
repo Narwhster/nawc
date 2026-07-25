@@ -4,6 +4,7 @@ export type StaticAgentFile = {
 };
 
 export type StaticAgentHistoryEntry = {
+  readonly label?: string;
   readonly question: string;
   readonly chosenAnswer: string;
 };
@@ -15,16 +16,40 @@ export type StaticAgentAnswer = {
 
 export type StaticAgentQuestion = {
   readonly type: "question";
+  readonly title?: string;
+  readonly label?: string;
   readonly question: string;
+  readonly allowCustom?: boolean;
   readonly answers: readonly {
     readonly label: string;
-    readonly child: StaticAgentConversationTree;
   }[];
 };
 
-export type StaticAgentConversationTree = StaticAgentAnswer | StaticAgentQuestion;
+export type StaticAgentToolCall = {
+  readonly type: "tool_call";
+  readonly tool: string;
+  readonly title: string;
+  readonly duration?: number;
+};
 
-export type StaticAgentConfig = {
+export type StaticAgentDelay = {
+  readonly type: "delay";
+  readonly ms: number;
+};
+
+export type StaticAgentSequence = {
+  readonly type: "sequence";
+  readonly steps: readonly (StaticAgentToolCall | StaticAgentDelay | StaticAgentAnswer)[];
+};
+
+export type StaticAgentNode = StaticAgentAnswer | StaticAgentQuestion | StaticAgentSequence;
+
+export type StaticAgentFaqResult = {
+  readonly node: StaticAgentNode;
+  readonly sideEffect?: () => void;
+};
+
+export type StaticSiteConfig = {
   readonly files: {
     readonly match: RegExp;
   };
@@ -32,9 +57,11 @@ export type StaticAgentConfig = {
     readonly prompt: string;
     readonly files: readonly StaticAgentFile[];
     readonly history: readonly StaticAgentHistoryEntry[];
-  }) => StaticAgentConversationTree;
+    readonly note?: string;
+  }) => StaticAgentFaqResult;
+  readonly homeNote?: string;
 };
 
-export function defineStaticAgent<const T extends StaticAgentConfig>(config: T): T {
+export function defineStaticSiteConfig<const T extends StaticSiteConfig>(config: T): T {
   return config;
 }

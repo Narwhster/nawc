@@ -9,6 +9,8 @@
     "nawc": "vp run @nawc/self-notebook#nawc",
     "nawc:test": "vp run @nawc/self-notebook#notebook:test",
     "site:dev": "vp run @nawc/self-notebook#site:dev",
+    "site:build": "vp run @nawc/self-notebook#site:build",
+    "site:start": "vp run @nawc/self-notebook#site:start",
     "prepare": "vp config"
   },
   "devDependencies": {

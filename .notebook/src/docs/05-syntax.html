@@ -1,53 +1,37 @@
 <h1>05. Source references and runnable examples</h1>
-<p>
-  The <code>&lt;code&gt;</code> element shows source from your project. The <code>&lt;runnable&gt;</code>
-  element shows source and adds a control for running it when the selected syntax supports execution.
-  Both use paths relative to <code>baseDir</code>.
-</p>
-<p>
-  Without <code>file</code>, the <code>&lt;code&gt;</code> element stores inline source directly in
-  the note instead of referencing a file. Escape HTML characters in inline source.
-</p>
-<pre><code>&lt;code syntax="ts"&gt;const answer = 42;&lt;/code&gt;</code></pre>
-<h2>TypeScript</h2>
-<p>
-  Enable <code>typescript()</code>, then use <code>typescript</code>, <code>ts</code>, or
-  <code>tsx</code> as the syntax name:
-</p>
-<pre><code>&lt;code
+<p>The <code>&lt;code&gt;</code> element shows source from your project. The <code>&lt;runnable&gt;</code> element shows source and adds a control for running it when the selected syntax supports execution. Both use paths relative to <code>baseDir</code>.</p>
+<p>Learning the syntax is useful for debugging mistakes, but I recommend letting your agent add these.</p>
+<p>Without <code>file</code>, the <code>&lt;code&gt;</code> element stores inline source directly in the note instead of referencing a file. Escape HTML characters in inline source.</p>
+<code syntax="html" auto-expand>&lt;code syntax="ts"&gt;const answer = 42;&lt;/code&gt;</code>
+<h2>Example - TypeScript</h2>
+<p>Enable <code>typescript()</code>, then use <code>typescript</code>, <code>ts</code>, or <code>tsx</code> as the syntax name:</p>
+<code syntax="html" auto-expand>&lt;code
   file="src/format.ts"
   syntax="typescript"
   name="formatDate"
   type="function"
 /&gt;
 
-&lt;runnable file="examples/format-date.ts" syntax="ts" /&gt;</code></pre>
-<p>
-  A reference without <code>name</code> and <code>type</code> shows the whole file. To select one
-  declaration, provide both. TypeScript supports <code>function</code>, <code>class</code>,
-  <code>type</code>, <code>interface</code>, <code>variable</code>, and <code>enum</code>.
-</p>
-<p>
-  A runnable TypeScript file runs with <code>tsx</code>. Declaration selectors do not change what is
-  executed, so put the example you want to run at the file's top level.
-</p>
-<h2>Vitest</h2>
-<p>
-  Enable <code>vitest()</code>, then use <code>vitest</code> or <code>test</code>:
-</p>
-<pre><code>&lt;code file="src/math.test.ts" syntax="vitest" name="adds numbers" /&gt;
-&lt;runnable file="src/math.test.ts" syntax="test" name="adds numbers" /&gt;</code></pre>
-<p>
-  The test name must match exactly. Without a name, a reference shows the whole test file and a
-  runnable block runs all tests in that file. With a name, the runnable block runs only that title.
-</p>
+&lt;runnable file="examples/format-date.ts" syntax="ts" /&gt;</code>
+<p>A reference without <code>name</code> and <code>type</code> shows the whole file. To select one declaration, provide both. TypeScript supports <code>function</code>, <code>class</code>, <code>type</code>, <code>interface</code>, <code>variable</code>, and <code>enum</code>.</p>
+<p>A runnable TypeScript file runs with <code>tsx</code>. Declaration selectors do not change what is executed, so put the example you want to run at the file's top level.</p>
+<p>Here is an inline runnable you can try directly in the notebook:</p>
+<runnable syntax="typescript" auto-expand>const greeting = "Hello from NAWC!";
+console.log(greeting);</runnable>
 <h2>Other languages</h2>
-<p>
-  Java, JUnit, and other syntax plugins use their own syntax names and selectors. Read the generated
-  skill for the plugin before adding attributes; the names and selectors are not interchangeable.
-</p>
-<p>
-  Continue with
-  <a data-wiki-link="docs/06-providers" href="#docs%2F06-providers">[[docs/06-providers]]</a>
-  to connect the agent that will work with your notes.
-</p>
+<p>Vitest, Java, Rust, and other syntax plugins use their own syntax names and selectors. Let your agent read the generated skill for the plugin before adding creating code blocks for them. The names and selectors are not interchangeable.</p>
+<h2>nawc splash</h2>
+<p><code>nawc splash</code> lists notes whose <code>&lt;code&gt;</code>, <code>&lt;runnable&gt;</code>, or <code>&lt;interactive&gt;</code> references point at files modified in your working tree. Tell your agent to run it after making changes to find notes that might be stale, or before committing to check if any docs need updating alongside the code.</p>
+<code syntax="bash" auto-expand>nawc splash
+nawc splash --depth 1</code>
+<p>With <code>--depth N</code>, the command also follows outgoing wiki-links from splash zone notes, then the links of those notes, up to N hops. The default depth is 0.</p>
+<p>The output has two sections. The splash zone lists notes whose references touch a modified file. The related section shows wiki-link chains starting from those notes.</p>
+<code syntax="md" auto-expand># Splash Zone
+- docs/05-syntax.html
+
+# Related - Depth 1
+- docs/05-syntax.html references docs/04-plugins.html, docs/06-providers.html</code>
+<p></p>
+<hr>
+<p></p>
+<p>Continue with <a data-wiki-link="docs/06-providers" href="#docs%2F06-providers">[[docs/06-providers]]</a> to connect the agent that will work with your notes.</p>

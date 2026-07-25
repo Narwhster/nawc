@@ -14,6 +14,13 @@ it("adds the runtime data directory to the generated notebook Git ignore file", 
       directory: notebookDir,
       packageManager: "pnpm",
       install: false,
+      selection: {
+        providerId: "openai",
+        editorId: "vscode",
+        themeId: "dark",
+        baseDir: notebookDir,
+        pluginIds: [],
+      },
     });
 
     await expect(readFile(path.join(notebookDir, ".gitignore"), "utf8")).resolves.toContain(

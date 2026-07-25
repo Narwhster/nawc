@@ -1,4 +1,10 @@
-import { definePlugin, type NawcFileReference } from "@nawc/plugin";
+import {
+  definePlugin,
+  type NawcFileReference,
+  type NawcPlugin,
+  type ResolvedSource,
+  type SourceSelection,
+} from "@nawc/plugin";
 import { parseFragment, type DefaultTreeAdapterMap } from "parse5";
 
 type Element = DefaultTreeAdapterMap["element"];
@@ -35,7 +41,16 @@ function coreReferences({ html }: { readonly html: string }): readonly NawcFileR
   return collectReferences(root).map((path) => ({ path }));
 }
 
-export function core() {
+function resolveFullSource(source: string, selection: SourceSelection): ResolvedSource {
+  return {
+    ...selection,
+    code: source,
+    startLine: 1,
+    endLine: source.split("\n").length,
+  };
+}
+
+export function core(): NawcPlugin {
   return definePlugin({
     name: "core",
     client: "@nawc/core/client",
@@ -43,6 +58,22 @@ export function core() {
       { name: "interactive", tag: "interactive", description: "Sandboxed HTML prototype" },
       { name: "code", tag: "code", description: "Live or inline source code" },
       { name: "runnable", tag: "runnable", description: "Runnable source reference" },
+    ],
+    syntax: [
+      {
+        name: "markdown",
+        aliases: ["md"],
+        highlight: "markdown",
+        extension: "md",
+        resolve: resolveFullSource,
+      },
+      {
+        name: "bash",
+        aliases: ["sh", "shell", "zsh"],
+        highlight: "bash",
+        extension: "sh",
+        resolve: resolveFullSource,
+      },
     ],
     references: coreReferences,
   });

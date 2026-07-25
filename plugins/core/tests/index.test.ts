@@ -6,6 +6,34 @@ describe("core plugin", () => {
     expect(core()).not.toHaveProperty("skills");
   });
 
+  it("includes a markdown syntax", () => {
+    const plugin = core();
+    expect(plugin.syntax).toHaveLength(2);
+    const md = plugin.syntax![0];
+    expect(md.name).toBe("markdown");
+    expect(md.aliases).toEqual(["md"]);
+    expect(md.highlight).toBe("markdown");
+    expect(md.extension).toBe("md");
+  });
+
+  it("includes a bash syntax", () => {
+    const plugin = core();
+    const bash = plugin.syntax![1];
+    expect(bash.name).toBe("bash");
+    expect(bash.aliases).toEqual(["sh", "shell", "zsh"]);
+    expect(bash.highlight).toBe("bash");
+    expect(bash.extension).toBe("sh");
+  });
+
+  it("resolves full source for markdown and bash", () => {
+    const plugin = core();
+    const source = "# Hello\n\nWorld";
+    for (const syntax of plugin.syntax!) {
+      const result = syntax.resolve(source, { file: "test" });
+      expect(result).toEqual({ file: "test", code: source, startLine: 1, endLine: 3 });
+    }
+  });
+
   it("extracts file references from <code>, <runnable>, and <interactive>", () => {
     const plugin = core();
     expect(plugin.references).toBeDefined();
