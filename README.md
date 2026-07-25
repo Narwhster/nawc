@@ -2,51 +2,106 @@
 
 NAWC is a local, HTML-backed notebook for specification- and test-driven development with coding agents.
 
-## Try the showcase
+It turns rough ideas into durable notes, recorded decisions, runnable examples, tests, and focused implementation tickets. Because that context lives alongside the project, later agent sessions can work from the decisions that shaped it instead of starting from a plain-text issue.
 
-```sh
-pnpm install
-pnpm ready
-pnpm dev
-```
+## Live example
 
-Then open [http://localhost:6292](http://localhost:6292). The notebook in `examples/notebook` documents this repository using live source references, runnable Vitest blocks, and a sandboxed interactive prototype.
+Explore the notebook, documentation, runnable examples, and interactive agent guide at [nawc.dev](https://nawc.dev).
 
-### Server access
+## Quick start
 
-The server port is optional and defaults to `6292`. Set `port` and `host` in `nawc.config.ts`, or override them with `nawc --port` and `nawc --host`:
+Requirements:
 
-```ts
-export default defineConfig({
-  // ...the rest of your config
-  port: 6292,
-  host: "0.0.0.0",
-});
-```
+- Node.js 22.12 or newer
+- npm, pnpm, Yarn, or Bun
+- A Git repository
+- An installed and authenticated agent provider such as Codex, Cursor, OpenCode, or Pi
 
-The default host binds all interfaces, so the notebook can be reached through a Tailscale IP at `http://<tailscale-ip>:<port>`. Use `host: "127.0.0.1"` or `nawc --host 127.0.0.1` for local-only access.
-
-## Create a notebook
-
-Once the packages are published, run:
+Create a notebook from your project directory:
 
 ```sh
 pnpm create nawc
+```
+
+The interactive setup asks where the notebook should live and which provider, editor, theme, and plugins to use. It then writes the notebook and installs its dependencies.
+
+Start the generated notebook:
+
+```sh
 cd nawc-notebook
 pnpm nawc
 ```
 
-A notebook contains `nawc.config.ts`, HTML notes under `src`, and generated plugin skills under `.skills` while NAWC is running.
+Open [http://localhost:6292](http://localhost:6292).
 
-### Themes
+You can also provide the setup choices directly:
 
-Use `theme: nawcLight()` (the default) or `theme: nawcDark()` in `nawc.config.ts`. The showcase notebook uses the dark theme. Themes are plain `NawcTheme` objects, so a notebook can provide its own named light or dark palette by supplying CSS custom properties in `variables`. The semantic variables are shared by the application chrome, editor highlighting, Dockview, and runnable terminals.
+```sh
+pnpm create nawc .nawc \
+  --provider codex \
+  --editor vscode \
+  --theme dark \
+  --plugins core,nawc-skills,typescript,vitest
+```
 
-## Workspace
+## How it works
 
-- `packages/` — CLI/server, creator, config, plugin contracts, and React UI
-- `plugins/` — editor, syntax, and skills plugins
-- `provider/` — agent harness adapters
-- `examples/` — working notebooks
+Notes are plain HTML files under the notebook's `src/` directory. A `nawc.config.ts` file connects the notebook to your project and selects its capabilities:
 
-Run `pnpm ready` before submitting changes.
+```ts
+import { core } from "@nawc/core";
+import { nawcSkills } from "@nawc/nawc-skills";
+import { codex } from "@nawc/provider-codex";
+import { typescript } from "@nawc/syntax-typescript";
+import { vitest } from "@nawc/syntax-vitest";
+import { defineConfig, nawcLight, vscode } from "nawc";
+
+export default defineConfig({
+  plugins: [core(), nawcSkills(), typescript(), vitest()],
+  provider: codex(),
+  editor: vscode(),
+  theme: nawcLight(),
+  baseDir: "..",
+});
+```
+
+Plugins add note elements, runnable syntax, previews, and agent skills. Providers connect conversations to an agent runtime. Editor adapters open source references at the correct file and location.
+
+Run `nawc splash` to find notes whose source references touch files changed in the working tree:
+
+```sh
+nawc splash
+nawc splash --depth 1
+```
+
+## First-party packages
+
+- `nawc` and `create-nawc` — notebook server, CLI, and project generator
+- `@nawc/core`, `@nawc/react`, `@nawc/tldraw`, and `@nawc/tailwind` — notebook capabilities
+- `@nawc/syntax-typescript`, `@nawc/syntax-vitest`, `@nawc/syntax-java`, `@nawc/syntax-junit`, and `@nawc/syntax-rust` — source and runnable syntax support
+- `@nawc/provider-codex`, `@nawc/provider-cursor`, `@nawc/provider-opencode`, and `@nawc/provider-pi` — agent runtime adapters
+- `@nawc/editor-vscode`, `@nawc/editor-cursor`, `@nawc/editor-zed`, `@nawc/editor-idea`, `@nawc/editor-webstorm`, and `@nawc/editor-clion` — editor integrations
+- `@nawc/theme-nawc` — built-in light and dark themes
+- `@nawc/site` — static NAWC site generation
+
+## Development
+
+This repository uses [Vite+](https://viteplus.dev/guide/):
+
+```sh
+vp install
+vp check
+vp test
+vp run -r build
+```
+
+Run the repository's own notebook and website with:
+
+```sh
+vp run nawc
+vp run site:dev
+```
+
+## License
+
+NAWC is free software licensed under the [GNU Affero General Public License v3.0 or later](./LICENSE).

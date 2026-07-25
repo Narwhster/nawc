@@ -1,6 +1,23 @@
 {
   "name": "@nawc/nawc-skills",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Agent skills for the NAWC specification and development workflow.",
+  "keywords": [
+    "coding-agents",
+    "nawc",
+    "notebook",
+    "specification-driven-development"
+  ],
+  "homepage": "https://nawc.dev",
+  "bugs": {
+    "url": "https://github.com/Narwhster/nawc/issues"
+  },
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Narwhster/nawc.git",
+    "directory": "plugins/nawc-skills"
+  },
   "files": [
     "dist"
   ],
@@ -8,6 +25,10 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "vp pack",
@@ -19,5 +40,8 @@
   },
   "devDependencies": {
     "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

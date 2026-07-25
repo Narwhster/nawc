@@ -1,7 +1,5 @@
 import { defineStaticSiteConfig } from "@nawc/site";
 
-const BASE_URL = import.meta.env.BASE_URL;
-
 const BUTTON_RED = "--primary: oklch(0.637 0.237 25.331)";
 const BUTTON_BLUE = "--primary: oklch(0.546 0.245 262.881)";
 const BUTTON_GREEN = "--primary: oklch(0.596 0.145 163.225)";
@@ -11,8 +9,16 @@ const BUTTON_YELLOW = "--primary: oklch(0.795 0.184 86.047)";
 const DOC_PATH = "docs/01-introduction.html";
 
 export default defineStaticSiteConfig({
+  metadata: {
+    title: "NAWC - A notebook for your agents",
+    description:
+      "NAWC is a local, HTML-backed notebook for turning ideas into specs, decisions, runnable examples, tests, and implementation tickets with coding agents.",
+    canonicalUrl: "https://nawc.dev/",
+    image: "https://nawc.dev/social-card.png",
+  },
   files: { match: /(?:^|\/)docs\// },
   faq: ({ prompt, files, history, note }) => {
+    const baseUrl = import.meta.env.BASE_URL;
     const replaceCssVar = (decl: string) => {
       const doc = files.find((f) => f.path === DOC_PATH);
       if (doc) {
@@ -291,7 +297,7 @@ export default defineStaticSiteConfig({
       return {
         node: {
           type: "answer",
-          text: "The docs are located in the `docs/` folder in this very notebook. Start over at [docs/01-introduction](" + BASE_URL + "note/docs/01-introduction.html).",
+          text: "The docs are located in the `docs/` folder in this very notebook. Start over at [docs/01-introduction](" + baseUrl + "note/docs/01-introduction.html).",
         },
       };
     }
@@ -309,7 +315,7 @@ export default defineStaticSiteConfig({
       return {
         node: {
           type: "answer",
-          text: "Alright, let me let you on a little secret. Go to [docs/01-introduction](" + BASE_URL + "note/docs/01-introduction.html), then use the `$refine` skill in the agent panel. Don't tell anyone I told you.",
+          text: "Alright, let me let you on a little secret. Go to [docs/01-introduction](" + baseUrl + "note/docs/01-introduction.html), then use the `$refine` skill in the agent panel. Don't tell anyone I told you.",
         },
       };
     }

@@ -2,7 +2,27 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { loadStaticNotebookData } from "../src/build.ts";
+import { loadStaticNotebookData, renderStaticMetadata } from "../src/build.ts";
+
+describe("renderStaticMetadata", () => {
+  it("adds static-site metadata without changing local notebook HTML", () => {
+    const html = renderStaticMetadata(
+      "<html><head><title>NAWC</title></head><body></body></html>",
+      {
+        title: "NAWC - A notebook for your agents",
+        description: "Ideas & evidence",
+        canonicalUrl: "https://nawc.dev/",
+        image: "https://nawc.dev/social-card.png",
+      },
+    );
+
+    expect(html).toContain("<title>NAWC - A notebook for your agents</title>");
+    expect(html).toContain('content="Ideas &amp; evidence"');
+    expect(html).toContain('rel="canonical" href="https://nawc.dev/"');
+    expect(html).toContain('property="og:image" content="https://nawc.dev/social-card.png"');
+    expect(html).toContain('name="twitter:card" content="summary_large_image"');
+  });
+});
 
 describe("loadStaticNotebookData", () => {
   it("bundles notes and referenced files while disabling unsupported runnables", async () => {

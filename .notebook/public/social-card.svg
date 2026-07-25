@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="oklch(14.8% 0.004 228.8)" />
+  <rect x="245" y="230" width="170" height="170" fill="oklch(79.5% 0.184 86.047)" />
+  <text
+    x="475"
+    y="365"
+    fill="oklch(98.7% 0.002 197.1)"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="144"
+    font-weight="700"
+    letter-spacing="4"
+  >NAWC</text>
+</svg>

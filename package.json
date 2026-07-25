@@ -1,15 +1,29 @@
 {
   "name": "nawc-monorepo",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
+  "homepage": "https://nawc.dev",
+  "bugs": {
+    "url": "https://github.com/Narwhster/nawc/issues"
+  },
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Narwhster/nawc.git"
+  },
   "type": "module",
   "scripts": {
+    "ci": "vp check && vp test && vp run -r build && vp run site:build",
     "ready": "vp check && vp test && vp run -r build",
     "test": "vp test",
     "nawc": "vp run @nawc/self-notebook#nawc",
     "nawc:test": "vp run @nawc/self-notebook#notebook:test",
+    "release:dry-run": "pnpm --filter './packages/**' --filter './plugins/**' --filter './provider/**' --filter './editor/**' --filter './theme/**' -r publish --dry-run --no-git-checks",
+    "release:publish": "pnpm --filter './packages/**' --filter './plugins/**' --filter './provider/**' --filter './editor/**' --filter './theme/**' -r publish --no-git-checks",
+    "release:verify": "node scripts/verify-release.mjs",
     "site:dev": "vp run @nawc/self-notebook#site:dev",
     "site:build": "vp run @nawc/self-notebook#site:build",
+    "site:deploy": "wrangler deploy",
     "site:start": "vp run @nawc/self-notebook#site:start",
     "prepare": "vp config"
   },
@@ -17,7 +31,8 @@
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
   },
   "engines": {
     "node": ">=22.12.0"

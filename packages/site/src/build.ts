@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -15,6 +16,7 @@ import {
   type ViteDevServer,
 } from "vite";
 import type { StaticNotebookData } from "./browser.ts";
+import type { StaticSiteConfig } from "./index.ts";
 
 type SiteOptions = {
   readonly projectDir: string;
@@ -189,13 +191,16 @@ function staticNotebookPlugin(
   const uiMain = path.join(uiRoot, "src/main.tsx");
   const agentPath = path.resolve(options.projectDir, options.agentFile);
   const srcDir = path.join(options.projectDir, "src");
+  const metadata = loadStaticSiteConfig(agentPath).then((config) => config.metadata);
 
   return {
     name: "nawc-static-notebook",
     transformIndexHtml: {
       order: "pre",
-      handler(html) {
-        return html.replace("/src/main.tsx", "/@nawc-site-entry");
+      async handler(html) {
+        const siteMetadata = await metadata;
+        const entryHtml = html.replace("/src/main.tsx", "/@nawc-site-entry");
+        return siteMetadata ? renderStaticMetadata(entryHtml, siteMetadata) : entryHtml;
       },
     },
     resolveId(id) {
@@ -285,18 +290,59 @@ function staticNotebookPlugin(
   };
 }
 
+async function loadStaticSiteConfig(agentPath: string): Promise<StaticSiteConfig> {
+  const jiti = createJiti(import.meta.url, { interopDefault: true });
+  return jiti.import<StaticSiteConfig>(agentPath, { default: true });
+}
+
+export function renderStaticMetadata(
+  html: string,
+  metadata: NonNullable<StaticSiteConfig["metadata"]>,
+): string {
+  const title = escapeHtml(metadata.title);
+  const description = escapeHtml(metadata.description);
+  const canonicalUrl = escapeHtml(metadata.canonicalUrl);
+  const image = metadata.image ? escapeHtml(metadata.image) : undefined;
+  const tags = [
+    `<meta name="description" content="${description}" />`,
+    `<link rel="canonical" href="${canonicalUrl}" />`,
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:site_name" content="NAWC" />`,
+    `<meta property="og:title" content="${title}" />`,
+    `<meta property="og:description" content="${description}" />`,
+    `<meta property="og:url" content="${canonicalUrl}" />`,
+    image ? `<meta property="og:image" content="${image}" />` : undefined,
+    `<meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}" />`,
+    `<meta name="twitter:title" content="${title}" />`,
+    `<meta name="twitter:description" content="${description}" />`,
+    image ? `<meta name="twitter:image" content="${image}" />` : undefined,
+  ].filter((tag): tag is string => tag !== undefined);
+  return html
+    .replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`)
+    .replace("</head>", `    ${tags.join("\n    ")}\n  </head>`);
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function viteConfig(options: SiteOptions): InlineConfig {
   const projectDir = path.resolve(options.projectDir);
   const configFile = options.configFile ?? "nawc.config.ts";
   const agentFile = options.agentFile ?? "nawc-site.config.ts";
   const outDir = path.resolve(projectDir, options.outDir ?? "dist");
+  const publicDir = path.resolve(projectDir, "public");
   const { uiRoot, browserEntry, coreClient, fontRoot } = packagePaths();
   return {
     configFile: false,
     root: uiRoot,
     base: "./",
     appType: "spa" as const,
-    publicDir: false,
+    publicDir: existsSync(publicDir) ? publicDir : false,
     resolve: {
       alias: {
         "@nawcui": path.join(uiRoot, "src"),

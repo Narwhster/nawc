@@ -918,7 +918,7 @@ export function AgentPanel({ note }: { readonly note?: string }) {
       <header className="nawc-agent-header flex h-11 shrink-0 items-center gap-2 overflow-hidden border-b px-2">
         <BotIcon className="shrink-0" />
         {threads.length > 0 ? (
-          <Select value={threadId || undefined} onValueChange={setThreadId}>
+          <Select value={threadId} onValueChange={setThreadId}>
             <SelectTrigger
               aria-label="Conversation"
               className="min-w-0 flex-1 border-0 px-1 shadow-none"

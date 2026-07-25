@@ -50,6 +50,12 @@ export type StaticAgentFaqResult = {
 };
 
 export type StaticSiteConfig = {
+  readonly metadata?: {
+    readonly title: string;
+    readonly description: string;
+    readonly canonicalUrl: string;
+    readonly image?: string;
+  };
   readonly files: {
     readonly match: RegExp;
   };

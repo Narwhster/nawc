@@ -32,6 +32,7 @@ catalog:
   remark-gfm: ^4.0.1
   "@tiptap/extension-table": ^3.28.0
   "@playwright/test": ^1.61.1
+  wrangler: ^4.114.0
 
 minimumReleaseAgeExclude:
   - hono@4.12.29
@@ -43,3 +44,4 @@ allowBuilds:
   node-pty: true
   protobufjs: false
   tree-sitter-rust: false
+  workerd: true

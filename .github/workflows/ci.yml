@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - staging
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.11.0
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting, lint, and types
+        run: pnpm exec vp check
+
+      - name: Run tests
+        run: pnpm exec vp test
+
+      - name: Build packages and examples
+        run: pnpm exec vp run -r build
+
+      - name: Build static website
+        run: pnpm run site:build
+
+      - name: Verify publishable package contents
+        run: >-
+          pnpm
+          --filter './packages/**'
+          --filter './plugins/**'
+          --filter './provider/**'
+          --filter './editor/**'
+          --filter './theme/**'
+          -r pack --dry-run

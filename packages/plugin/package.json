@@ -1,6 +1,23 @@
 {
   "name": "@nawc/plugin",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Plugin contracts and utilities for extending NAWC notebooks.",
+  "keywords": [
+    "coding-agents",
+    "nawc",
+    "notebook",
+    "specification-driven-development"
+  ],
+  "homepage": "https://nawc.dev",
+  "bugs": {
+    "url": "https://github.com/Narwhster/nawc/issues"
+  },
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Narwhster/nawc.git",
+    "directory": "packages/plugin"
+  },
   "files": [
     "dist"
   ],
@@ -8,6 +25,10 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "vp pack",
@@ -21,5 +42,8 @@
   "devDependencies": {
     "typescript": "catalog:",
     "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

@@ -1,9 +1,27 @@
 {
   "name": "@nawc/ui",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "React user interface for NAWC notebooks.",
+  "keywords": [
+    "coding-agents",
+    "nawc",
+    "notebook",
+    "specification-driven-development"
+  ],
+  "homepage": "https://nawc.dev",
+  "bugs": {
+    "url": "https://github.com/Narwhster/nawc/issues"
+  },
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Narwhster/nawc.git",
+    "directory": "packages/ui"
+  },
   "files": [
     "index.html",
-    "src"
+    "src",
+    "!src/**/*.test.*"
   ],
   "type": "module",
   "exports": {
@@ -11,6 +29,10 @@
     "./components/*": "./src/components/*.tsx",
     "./lib/*": "./src/lib/*.ts",
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "dev": "vp dev",
@@ -54,5 +76,8 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }
