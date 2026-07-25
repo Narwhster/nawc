@@ -1,4 +1,4 @@
-// .notebook/src/tickets/static-agent-probe.example.ts
+// .notebook/src/tickets/closed/static-agent-probe.example.ts
 //
 // What a notebook author's `nawc-site.config.ts` will look like in practice.
 // This file imports from `@nawc/site`, which does not exist yet — that is

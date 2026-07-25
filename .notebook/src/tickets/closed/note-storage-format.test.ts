@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, it } from "vitest";
-import { listNotes } from "../../../packages/nawc/src/workspace.ts";
+import { listNotes } from "../../../../packages/nawc/src/workspace.ts";
 
 export async function noteStorage(root: string) {
   return listNotes(root);

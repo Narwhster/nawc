@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { sourceLanguage } from "../../../plugins/core/src/source-highlighting.ts";
+import { sourceLanguage } from "../../../../plugins/core/src/source-highlighting.ts";
 
 export function highlightWithSyntax(name: string, code: string) {
   const language = sourceLanguage(name);

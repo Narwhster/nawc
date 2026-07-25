@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { syntaxFor } from "@nawc/config";
-import { sourceLanguage } from "../../../plugins/core/src/source-highlighting.ts";
+import { sourceLanguage } from "../../../../plugins/core/src/source-highlighting.ts";
 
 const diagram = { name: "diagram", aliases: ["diag"], resolve: () => undefined };
 

@@ -1,6 +1,6 @@
 import type { EditorLocation, NawcEditor } from "@nawc/config";
 import { expect, it } from "vitest";
-import { launchEditor } from "../../../packages/nawc/src/editor.ts";
+import { launchEditor } from "../../../../packages/nawc/src/editor.ts";
 
 export function editorLocation(file: string, scope: "note" | "source") {
   return { file, scope };

@@ -2,9 +2,9 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, it } from "vitest";
-import type { NawcProvider } from "../../../packages/config/src/agent.ts";
-import { AgentManager } from "../../../packages/nawc/src/agent-manager.ts";
-import { createProject } from "../../../packages/create-nawc/src/create.ts";
+import type { NawcProvider } from "../../../../packages/config/src/agent.ts";
+import { AgentManager } from "../../../../packages/nawc/src/agent-manager.ts";
+import { createProject } from "../../../../packages/create-nawc/src/create.ts";
 
 it("adds the runtime data directory to the generated notebook Git ignore file", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "nawc-chat-state-"));
