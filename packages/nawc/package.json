@@ -46,6 +46,7 @@
     "@nawc/plugin": "workspace:*",
     "@nawc/theme-nawc": "workspace:*",
     "@nawc/ui": "workspace:*",
+    "@tailwindcss/vite": "^4.1.18",
     "chokidar": "^5.0.0",
     "commander": "^15.0.0",
     "hono": "^4.12.29",

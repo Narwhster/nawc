@@ -597,6 +597,9 @@ importers:
       '@nawc/ui':
         specifier: workspace:*
         version: link:../ui
+      '@tailwindcss/vite':
+        specifier: ^4.1.18
+        version: 4.3.2(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.0)(yaml@2.9.0))
       chokidar:
         specifier: ^5.0.0
         version: 5.0.0

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { getRequestListener } from "@hono/node-server";
+import tailwindcss from "@tailwindcss/vite";
 import {
   syntaxFor,
   type NawcConfig,
@@ -632,6 +633,7 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
       fs: { allow: [projectDir, baseDir, uiRoot] },
     },
     plugins: [
+      tailwindcss(),
       ...vitePlugins,
       {
         name: "nawc-configured-plugins",
