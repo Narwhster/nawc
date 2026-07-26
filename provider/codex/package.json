@@ -1,6 +1,6 @@
 {
   "name": "@nawc/provider-codex",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Connect NAWC conversations to the Codex CLI.",
   "keywords": [
     "coding-agents",

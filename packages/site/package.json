@@ -1,6 +1,6 @@
 {
   "name": "@nawc/site",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Build static websites from NAWC notebooks.",
   "keywords": [
     "coding-agents",

@@ -1,6 +1,6 @@
 {
   "name": "@nawc/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local HTML-backed notebooks for specification- and test-driven development with coding agents.",
   "keywords": [
     "coding-agents",
@@ -19,7 +19,7 @@
     "directory": "packages/nawc"
   },
   "bin": {
-    "cli": "./dist/cli.mjs"
+    "nawc": "./dist/nawc.mjs"
   },
   "files": [
     "dist"
@@ -27,7 +27,7 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.mjs",
-    "./cli": "./dist/cli.mjs",
+    "./nawc": "./dist/nawc.mjs",
     "./package.json": "./package.json"
   },
   "publishConfig": {

@@ -774,6 +774,9 @@ importers:
       remark-gfm:
         specifier: 'catalog:'
         version: 4.0.1
+      shadcn:
+        specifier: 'catalog:'
+        version: 4.13.0(typescript@6.0.3)
       sonner:
         specifier: 'catalog:'
         version: 2.0.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -799,9 +802,6 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 29.1.1(@noble/hashes@1.8.0)
-      shadcn:
-        specifier: 'catalog:'
-        version: 4.13.0(typescript@6.0.3)
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

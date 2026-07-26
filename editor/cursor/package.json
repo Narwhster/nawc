@@ -1,6 +1,6 @@
 {
   "name": "@nawc/editor-cursor",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Open NAWC source references in Cursor.",
   "keywords": [
     "coding-agents",

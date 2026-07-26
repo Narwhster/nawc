@@ -1,6 +1,6 @@
 {
   "name": "@nawc/plugin",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Plugin contracts and utilities for extending NAWC notebooks.",
   "keywords": [
     "coding-agents",

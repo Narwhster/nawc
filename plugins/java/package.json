@@ -1,6 +1,6 @@
 {
   "name": "@nawc/syntax-java",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Java source syntax support for NAWC notebooks.",
   "keywords": [
     "coding-agents",

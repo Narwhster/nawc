@@ -48,6 +48,16 @@ for (const { file, manifest } of publishable) {
   }
 }
 
+const cli = publishable.find(({ manifest }) => manifest.name === "@nawc/cli")?.manifest;
+if (cli?.bin?.nawc !== "./dist/nawc.mjs") {
+  throw new Error("@nawc/cli must publish the nawc executable from ./dist/nawc.mjs.");
+}
+
+const ui = publishable.find(({ manifest }) => manifest.name === "@nawc/ui")?.manifest;
+if (ui?.dependencies?.shadcn === undefined) {
+  throw new Error("@nawc/ui must publish shadcn as a runtime dependency.");
+}
+
 console.log(`Release ${expectedTag} contains ${publishable.length} public packages.`);
 
 function readPackage(file) {

@@ -608,6 +608,18 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
   const vite = await createViteServer({
     root: uiRoot,
     appType: "spa",
+    optimizeDeps: {
+      entries: ["src/**/*.{ts,tsx}"],
+      include: [
+        "highlight.js/lib/common",
+        "react",
+        "react/jsx-runtime",
+        "react-dom",
+        "react-dom/client",
+        "use-sync-external-store/shim",
+        "use-sync-external-store/shim/with-selector",
+      ],
+    },
     resolve: {
       alias: { "@nawcui": path.join(uiRoot, "src") },
       dedupe: ["react", "react-dom"],
