@@ -4,6 +4,17 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to publish
+        required: true
+        type: string
+      skip_site:
+        description: Skip the @nawc/site package
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -15,14 +26,14 @@ concurrency:
 
 jobs:
   publish:
-    if: startsWith(github.event.release.tag_name, 'v')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     environment: npm
     steps:
       - name: Check out release tag
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event.release.tag_name || inputs.release_tag }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -46,7 +57,7 @@ jobs:
       - name: Verify tag and package versions
         run: pnpm run release:verify
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
 
       - name: Pack packages
         run: |
@@ -67,7 +78,9 @@ jobs:
             name="$(node -p 'JSON.parse(process.argv[1]).name' "$manifest")"
             version="$(node -p 'JSON.parse(process.argv[1]).version' "$manifest")"
 
-            if npm view "$name@$version" version >/dev/null 2>&1; then
+            if [[ "$name" == "@nawc/site" && "${{ inputs.skip_site }}" == "true" ]]; then
+              echo "Skipping $name@$version because skip_site was requested"
+            elif npm view "$name@$version" version >/dev/null 2>&1; then
               echo "Skipping $name@$version because it is already published"
             else
               npm publish "$archive"
