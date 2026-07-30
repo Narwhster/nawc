@@ -600,6 +600,45 @@ describe("CompletionMenu", () => {
     expect(threadReads).toBe(1);
   });
 
+  it("preserves the draft when the provider rejects a turn", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/api/agent/provider")) {
+        return Promise.resolve(jsonResponse({ label: "Test agent", capabilities: [], modes: [] }));
+      }
+      if (url.endsWith("/api/prompt/models")) return Promise.resolve(jsonResponse([]));
+      if (url.endsWith("/api/prompt/settings")) return Promise.resolve(jsonResponse({}));
+      if (url.endsWith("/api/agent/threads/thread-1/turns")) {
+        return Promise.resolve(new Response("Unknown skill: missing", { status: 400 }));
+      }
+      if (url.endsWith("/api/agent/threads")) return Promise.resolve(jsonResponse([emptyThread]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    window.localStorage.setItem("nawc:agent-active-thread:v1", emptyThread.id);
+
+    await act(async () =>
+      root.render(
+        <TooltipProvider>
+          <AgentPanel />
+        </TooltipProvider>,
+      ),
+    );
+    await act(async () => Promise.resolve());
+
+    const input = container.querySelector<HTMLTextAreaElement>('[aria-label="Message the agent"]');
+    if (!input) throw new Error("Message input did not render");
+    await act(async () => {
+      Reflect.set(HTMLTextAreaElement.prototype, "value", "Use $missing to review this", input);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () =>
+      container.querySelector<HTMLButtonElement>('[aria-label="Send message"]')?.click(),
+    );
+
+    expect(input.value).toBe("Use $missing to review this");
+  });
+
   it("preserves an unsent draft when the active note changes", async () => {
     const fetchMock = vi.fn((input: string | URL | Request) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;

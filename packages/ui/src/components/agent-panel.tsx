@@ -875,9 +875,9 @@ export function AgentPanel({ note }: { readonly note?: string }) {
         setThreads((current) =>
           current.some((item) => item.id === created.id) ? current : [created, ...current],
         );
+        setDrafts((current) => ({ ...current, [created.id]: prompt }));
         setThreadId(created.id);
       }
-      setDrafts((current) => ({ ...current, [draftKey]: "", [activeThreadId]: "" }));
       const references = [...collectPromptReferences(prompt), ...pendingReferences];
       const response = await fetch(
         `/api/agent/threads/${encodeURIComponent(activeThreadId)}/turns`,
@@ -890,6 +890,7 @@ export function AgentPanel({ note }: { readonly note?: string }) {
         }),
       );
       if (!response.ok || !response.body) throw new Error(await response.text());
+      setDrafts((current) => ({ ...current, [draftKey]: "", [activeThreadId]: "" }));
       setPendingReferences([]);
       setAttachments([]);
       const reader = response.body.getReader();

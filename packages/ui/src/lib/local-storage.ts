@@ -19,7 +19,7 @@ function subscribe(key: string, callback: Listener): () => void {
 }
 
 function emit(key: string): void {
-  queueMicrotask(() => listeners.get(key)?.forEach((l) => l()));
+  listeners.get(key)?.forEach((listener) => listener());
 }
 
 const cache = new Map<string, { raw: string | null; parsed: unknown }>();
