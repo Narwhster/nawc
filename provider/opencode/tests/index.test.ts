@@ -79,6 +79,48 @@ describe("OpenCode JSONL", () => {
     });
   });
 
+  it("maps native permission requests and replies", () => {
+    expect(
+      mapOpencodeSdkEvent(
+        {
+          type: "permission.asked",
+          properties: {
+            id: "permission-1",
+            sessionID: "session-1",
+            permission: "external_directory",
+            patterns: ["/home/user/dev/other/*"],
+            metadata: {},
+            always: ["/home/user/dev/other/*"],
+          },
+        },
+        "session-1",
+      ),
+    ).toEqual({
+      type: "request.opened",
+      requestId: "permission-1",
+      requestKind: "permission",
+      title: "Allow OpenCode to use external directory",
+      details: "/home/user/dev/other/*",
+    });
+    expect(
+      mapOpencodeSdkEvent(
+        {
+          type: "permission.replied",
+          properties: {
+            sessionID: "session-1",
+            requestID: "permission-1",
+            reply: "always",
+          },
+        },
+        "session-1",
+      ),
+    ).toEqual({
+      type: "request.resolved",
+      requestId: "permission-1",
+      decision: "acceptForSession",
+    });
+  });
+
   it("maps step_start to a turn lifecycle event", () => {
     expect(
       parseOpencodeEvent(

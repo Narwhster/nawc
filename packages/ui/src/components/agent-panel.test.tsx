@@ -336,7 +336,75 @@ describe("CompletionMenu", () => {
     ).toHaveLength(1);
   });
 
-  it("renders question choices and sends the selected label", async () => {
+  it("renders a permission request when the latest assistant message is empty", async () => {
+    const requestedThread = {
+      ...emptyThread,
+      status: "running" as const,
+      messages: [
+        {
+          id: "user-message",
+          role: "user" as const,
+          text: "Read an external file",
+          turnId: "turn-1",
+          createdAt: "2026-07-12T00:00:00.000Z",
+          updatedAt: "2026-07-12T00:00:00.000Z",
+          streaming: false,
+        },
+        {
+          id: "assistant-message",
+          role: "assistant" as const,
+          text: "",
+          turnId: "turn-1",
+          createdAt: "2026-07-12T00:00:01.000Z",
+          updatedAt: "2026-07-12T00:00:01.000Z",
+          streaming: false,
+        },
+      ],
+      turns: [{ id: "turn-1", status: "running" as const }],
+      requests: [
+        {
+          id: "permission-1",
+          turnId: "turn-1",
+          kind: "permission",
+          title: "Allow OpenCode to use external directory",
+          details: "/home/user/dev/other/*",
+          status: "pending" as const,
+        },
+      ],
+    };
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.endsWith("/api/agent/provider")) {
+        return Promise.resolve(jsonResponse({ label: "Test agent", capabilities: [], modes: [] }));
+      }
+      if (url.endsWith("/api/prompt/models")) return Promise.resolve(jsonResponse([]));
+      if (url.endsWith("/api/prompt/settings")) return Promise.resolve(jsonResponse({}));
+      if (url.endsWith("/api/agent/threads"))
+        return Promise.resolve(jsonResponse([requestedThread]));
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    window.localStorage.setItem("nawc:agent-active-thread:v1", requestedThread.id);
+
+    await act(async () =>
+      root.render(
+        <TooltipProvider>
+          <AgentPanel />
+        </TooltipProvider>,
+      ),
+    );
+    await act(async () => Promise.resolve());
+
+    expect(container.textContent).toContain("Allow OpenCode to use external directory");
+    expect(container.textContent).toContain("/home/user/dev/other/*");
+    expect(
+      [...container.querySelectorAll("button")].filter(
+        (button) => button.textContent === "Allow once",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("renders provider choice labels and sends their opaque IDs", async () => {
     const questionThread = {
       ...emptyThread,
       status: "running" as const,
@@ -358,7 +426,10 @@ describe("CompletionMenu", () => {
           kind: "cursor/ask_question",
           title: "Choose a framework",
           details: "Which framework should I use?",
-          choices: ["React", "Vue"],
+          choices: [
+            { id: "react-option", label: "React" },
+            { id: "vue-option", label: "Vue" },
+          ],
           allowCustom: true,
           status: "pending" as const,
         },
@@ -402,7 +473,7 @@ describe("CompletionMenu", () => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       return url.endsWith("/api/agent/threads/thread-1/requests/question-1");
     });
-    expect(response?.[1]?.body).toBe(JSON.stringify({ decision: "React" }));
+    expect(response?.[1]?.body).toBe(JSON.stringify({ decision: "react-option" }));
   });
 
   it("clears the local running state after interrupting an in-flight turn", async () => {

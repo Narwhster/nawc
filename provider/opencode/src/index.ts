@@ -5,6 +5,7 @@ import path from "node:path";
 import {
   createOpencodeClient,
   type OpencodeClient,
+  type PermissionRequest,
   type ProviderListResponse,
   type QuestionRequest,
 } from "@opencode-ai/sdk/v2";
@@ -186,6 +187,35 @@ export function mapOpencodeSdkEvent(
       ...(typeof first.question === "string" ? { details: first.question } : {}),
       ...(choices.length > 0 ? { choices } : {}),
       allowCustom: true,
+    };
+  }
+  if (value.type === "permission.asked") {
+    if (typeof properties.id !== "string" || typeof properties.permission !== "string") return;
+    const patterns = Array.isArray(properties.patterns)
+      ? properties.patterns.filter((pattern): pattern is string => typeof pattern === "string")
+      : [];
+    return {
+      type: "request.opened",
+      requestId: properties.id,
+      requestKind: "permission",
+      title: `Allow OpenCode to use ${properties.permission.replaceAll("_", " ")}`,
+      ...(patterns.length > 0 ? { details: patterns.join("\n") } : {}),
+    };
+  }
+  if (
+    value.type === "permission.replied" &&
+    typeof properties.requestID === "string" &&
+    typeof properties.reply === "string"
+  ) {
+    return {
+      type: "request.resolved",
+      requestId: properties.requestID,
+      decision:
+        properties.reply === "once"
+          ? "accept"
+          : properties.reply === "always"
+            ? "acceptForSession"
+            : "decline",
     };
   }
   if (value.type === "session.idle") return { type: "turn.completed" };
@@ -613,6 +643,7 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
     providerThreadId?: string;
     server?: RunningOpencodeServer;
     client?: OpencodeClient;
+    readonly pendingPermissions: Map<string, PermissionRequest>;
     readonly pendingQuestions: Map<string, QuestionRequest>;
     readonly userMessageIds: Set<string>;
   };
@@ -631,6 +662,7 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
       id: randomUUID(),
       cwd,
       providerThreadId,
+      pendingPermissions: new Map(),
       pendingQuestions: new Map(),
       userMessageIds: new Set(),
     };
@@ -740,8 +772,14 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
         if (!event) continue;
         if (event.type === "request.opened") {
           const properties = isJsonObject(native) ? native.properties : undefined;
-          if (isJsonObject(properties))
-            session.pendingQuestions.set(event.requestId, properties as QuestionRequest);
+          if (isJsonObject(properties)) {
+            if (event.requestKind === "permission")
+              session.pendingPermissions.set(event.requestId, properties as PermissionRequest);
+            else session.pendingQuestions.set(event.requestId, properties as QuestionRequest);
+          }
+        } else if (event.type === "request.resolved") {
+          session.pendingPermissions.delete(event.requestId);
+          session.pendingQuestions.delete(event.requestId);
         }
         yield event;
         if (
@@ -811,6 +849,22 @@ export function opencode(options: OpencodeOptions = {}): NawcProvider {
     async respondToRequest(session, requestId, decision) {
       const active = sessions.get(session.id);
       if (!active?.client) throw new Error(`Unknown OpenCode session: ${session.id}`);
+      if (active.pendingPermissions.has(requestId)) {
+        try {
+          await active.client.permission.reply({
+            requestID: requestId,
+            reply:
+              decision === "accept"
+                ? "once"
+                : decision === "acceptForSession"
+                  ? "always"
+                  : "reject",
+          });
+        } finally {
+          active.pendingPermissions.delete(requestId);
+        }
+        return;
+      }
       const request = active.pendingQuestions.get(requestId);
       if (!request) throw new Error(`Unknown OpenCode question: ${requestId}`);
       try {

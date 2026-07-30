@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type {
   NawcAgentAttachment,
   NawcProviderOptionSelection,
+  NawcProviderRequestChoice,
   NawcProviderUsage,
   ProviderEvent,
   PromptReference,
@@ -35,7 +36,7 @@ export type AgentRequest = {
   readonly kind: string;
   readonly title: string;
   readonly details?: string;
-  readonly choices?: readonly string[];
+  readonly choices?: readonly (string | NawcProviderRequestChoice)[];
   readonly allowCustom?: boolean;
   status: "pending" | "resolved";
   decision?: string;

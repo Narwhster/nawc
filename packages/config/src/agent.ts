@@ -18,6 +18,11 @@ export type NawcProviderReasoningEffort = {
   readonly description?: string;
 };
 
+export type NawcProviderRequestChoice = {
+  readonly id: string;
+  readonly label: string;
+};
+
 export type NawcProviderOption =
   | {
       readonly id: string;
@@ -143,7 +148,7 @@ export type ProviderEvent = ProviderEventBase &
         readonly requestKind: string;
         readonly title: string;
         readonly details?: string;
-        readonly choices?: readonly string[];
+        readonly choices?: readonly (string | NawcProviderRequestChoice)[];
         readonly allowCustom?: boolean;
       }
     | { readonly type: "request.resolved"; readonly requestId: string; readonly decision: string }

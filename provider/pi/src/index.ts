@@ -7,6 +7,8 @@ import {
   SessionManager,
   type AgentSession,
   type AgentSessionEvent,
+  type ExtensionUIDialogOptions,
+  type ExtensionUIContext,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import type {
@@ -33,6 +35,9 @@ type PiSession = {
   readonly providerThreadId?: string;
   readonly agent: AgentSession;
   readonly runtime: ModelRuntime;
+  readonly ui: ReturnType<typeof createPiUiBridge>;
+  readonly binding: Promise<void>;
+  readonly pendingEvents: ProviderEvent[];
   readonly pendingQuestions: Map<string, (answer: string) => void>;
   emit?: (event: ProviderEvent) => void;
 };
@@ -66,6 +71,77 @@ export function piQuestionEvent(
     details: input.question,
     choices: input.options.map((option) => option.label),
     allowCustom: true,
+  };
+}
+
+type PiUiRequest = Extract<ProviderEvent, { type: "request.opened" }>;
+
+export function createPiUiBridge(emit: (event: ProviderEvent) => void) {
+  const pending = new Map<
+    string,
+    (decision: string | undefined, notifyResolution?: boolean) => void
+  >();
+
+  const request = (
+    event: Omit<PiUiRequest, "type" | "requestId">,
+    options?: ExtensionUIDialogOptions,
+  ): Promise<string | undefined> => {
+    if (options?.signal?.aborted) return Promise.resolve(undefined);
+
+    return new Promise((resolve) => {
+      const requestId = randomUUID();
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      function abort() {
+        finish(undefined, true);
+      }
+      function finish(decision: string | undefined, notifyResolution = false) {
+        pending.delete(requestId);
+        if (timeout) clearTimeout(timeout);
+        options?.signal?.removeEventListener("abort", abort);
+        if (notifyResolution) emit({ type: "request.resolved", requestId, decision: "cancelled" });
+        resolve(decision);
+      }
+
+      pending.set(requestId, finish);
+      options?.signal?.addEventListener("abort", abort, { once: true });
+      if (options?.timeout !== undefined) timeout = setTimeout(abort, options.timeout);
+      emit({ type: "request.opened", requestId, ...event });
+    });
+  };
+
+  return {
+    select: (title: string, choices: string[], options?: ExtensionUIDialogOptions) =>
+      request({ requestKind: "pi/select", title, choices }, options),
+    confirm: async (title: string, message: string, options?: ExtensionUIDialogOptions) =>
+      (await request(
+        {
+          requestKind: "pi/confirm",
+          title,
+          details: message,
+          choices: ["Confirm", "Cancel"],
+        },
+        options,
+      )) === "Confirm",
+    input: (title: string, placeholder?: string, options?: ExtensionUIDialogOptions) =>
+      request(
+        {
+          requestKind: "pi/input",
+          title,
+          details: placeholder,
+          choices: [],
+          allowCustom: true,
+        },
+        options,
+      ),
+    respond(requestId: string, decision: string): boolean {
+      const finish = pending.get(requestId);
+      if (!finish) return false;
+      finish(decision);
+      return true;
+    },
+    cancelAll(): void {
+      for (const finish of pending.values()) finish(undefined, true);
+    },
   };
 }
 
@@ -212,6 +288,7 @@ export function pi(options: PiOptions = {}): NawcProvider {
       ? SessionManager.open(input.providerThreadId, options.sessionDir, input.cwd)
       : SessionManager.create(input.cwd, options.sessionDir);
     const pendingQuestions = new Map<string, (answer: string) => void>();
+    const pendingEvents: ProviderEvent[] = [];
     let value: PiSession | undefined;
     const questionTool: ToolDefinition<typeof PiQuestionParams> = {
       name: "question",
@@ -255,11 +332,26 @@ export function pi(options: PiOptions = {}): NawcProvider {
       customTools: [questionTool],
     });
     const providerThreadId = session.sessionFile;
+    const ui = createPiUiBridge((event) => {
+      if (value?.emit) value.emit(event);
+      else pendingEvents.push(event);
+    });
+    const uiContext = {
+      ...session.extensionRunner.getUIContext(),
+      select: ui.select,
+      confirm: ui.confirm,
+      input: ui.input,
+    } satisfies ExtensionUIContext;
+    const binding = session.bindExtensions({ uiContext, mode: "rpc" });
+    void binding.catch(() => undefined);
     value = {
       id: randomUUID(),
       providerThreadId,
       agent: session,
       runtime,
+      ui,
+      binding,
+      pendingEvents,
       pendingQuestions,
     };
     sessions.set(value.id, value);
@@ -289,19 +381,28 @@ export function pi(options: PiOptions = {}): NawcProvider {
       wake?.();
       wake = undefined;
     };
+    queued.push(...session.pendingEvents.splice(0));
     const unsubscribe = session.agent.subscribe((native) => {
       const mapped = mapPiEvent(native);
       if (mapped) queued.push(mapped);
       wake?.();
       wake = undefined;
     });
-    const abort = () => void session.agent.abort();
+    const abort = () => {
+      session.ui.cancelAll();
+      void session.agent.abort();
+    };
     input.signal?.addEventListener("abort", abort, { once: true });
-    const prompt = session.agent
-      .prompt(input.prompt + referenceInstructions(input.references, input.skillsDir), {
-        source: "rpc",
-        images: images(input.attachments),
-      })
+    const prompt = session.binding
+      .then(() =>
+        session.agent.prompt(
+          input.prompt + referenceInstructions(input.references, input.skillsDir),
+          {
+            source: "rpc",
+            images: images(input.attachments),
+          },
+        ),
+      )
       .catch((error: unknown) => {
         queued.push({
           type: "error",
@@ -384,17 +485,23 @@ export function pi(options: PiOptions = {}): NawcProvider {
       return runTurn(active, input);
     },
     async interrupt(session) {
-      await sessions.get(session.id)?.agent.abort();
+      const active = sessions.get(session.id);
+      if (!active) return;
+      active.ui.cancelAll();
+      await active.agent.abort();
     },
     async respondToRequest(session, requestId, decision) {
       const active = sessions.get(session.id);
+      if (active?.ui.respond(requestId, decision)) return;
       const resolve = active?.pendingQuestions.get(requestId);
       if (!active || !resolve) throw new Error(`Unknown Pi question: ${requestId}`);
       active.pendingQuestions.delete(requestId);
       resolve(decision);
     },
     async closeSession(session) {
-      sessions.get(session.id)?.agent.dispose();
+      const active = sessions.get(session.id);
+      active?.ui.cancelAll();
+      active?.agent.dispose();
       sessions.delete(session.id);
     },
     async *prompt(input) {
@@ -408,6 +515,7 @@ export function pi(options: PiOptions = {}): NawcProvider {
       try {
         yield* runTurn(session, input);
       } finally {
+        session.ui.cancelAll();
         session.agent.dispose();
         sessions.delete(session.id);
       }

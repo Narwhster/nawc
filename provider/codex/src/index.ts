@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type {
   NawcProvider,
   NawcProviderModel,
+  NawcProviderRequestChoice,
   NawcProviderReasoningEffort,
   NawcProviderSettings,
   NawcProviderSkill,
@@ -184,6 +185,110 @@ type CodexAppMessage = {
   readonly error?: { readonly message?: unknown };
 };
 
+function codexDecisionId(decision: unknown): string | undefined {
+  if (typeof decision === "string") return decision;
+  if (!decision || typeof decision !== "object" || Array.isArray(decision)) return;
+  try {
+    return JSON.stringify(decision);
+  } catch {
+    return;
+  }
+}
+
+function codexDecisionLabel(decision: unknown): string | undefined {
+  const value =
+    typeof decision === "string"
+      ? decision
+      : decision && typeof decision === "object" && !Array.isArray(decision)
+        ? Object.keys(decision)[0]
+        : undefined;
+  if (!value) return;
+  return value
+    .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
+    .replaceAll("_", " ")
+    .replace(/^./, (character) => character.toUpperCase());
+}
+
+export function codexApprovalChoices(params: unknown): readonly NawcProviderRequestChoice[] {
+  if (!params || typeof params !== "object" || Array.isArray(params)) return [];
+  const available = (params as Record<string, unknown>).availableDecisions;
+  if (!Array.isArray(available)) return [];
+  return available.flatMap((decision) => {
+    const id = codexDecisionId(decision);
+    const label = codexDecisionLabel(decision);
+    return id && label ? [{ id, label }] : [];
+  });
+}
+
+export function codexApprovalDecision(params: unknown, id: string): unknown {
+  if (!params || typeof params !== "object" || Array.isArray(params)) return;
+  const available = (params as Record<string, unknown>).availableDecisions;
+  if (!Array.isArray(available)) return;
+  return available.find((decision) => codexDecisionId(decision) === id);
+}
+
+function codexPermissionResponses(params: unknown): readonly {
+  readonly label: string;
+  readonly response: {
+    readonly permissions: unknown;
+    readonly scope: "turn" | "session";
+    readonly strictAutoReview?: boolean;
+  };
+}[] {
+  if (!params || typeof params !== "object" || Array.isArray(params)) return [];
+  const permissions = (params as Record<string, unknown>).permissions;
+  if (!permissions || typeof permissions !== "object" || Array.isArray(permissions)) return [];
+  return [
+    { label: "Allow for turn", response: { permissions, scope: "turn" } },
+    {
+      label: "Allow for turn with strict auto review",
+      response: { permissions, scope: "turn", strictAutoReview: true },
+    },
+    { label: "Allow for session", response: { permissions, scope: "session" } },
+    { label: "Decline", response: { permissions: {}, scope: "turn" } },
+  ];
+}
+
+export function codexPermissionChoices(params: unknown): readonly NawcProviderRequestChoice[] {
+  return codexPermissionResponses(params).map(({ label, response }) => ({
+    id: JSON.stringify(response),
+    label,
+  }));
+}
+
+export function codexPermissionResponse(params: unknown, id: string): unknown {
+  return codexPermissionResponses(params).find(({ response }) => JSON.stringify(response) === id)
+    ?.response;
+}
+
+type CodexCollaborationMode = {
+  readonly name: string;
+  readonly mode?: string;
+  readonly model?: string;
+  readonly reasoningEffort?: string;
+};
+
+export function parseCodexCollaborationModes(value: unknown): readonly CodexCollaborationMode[] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+  const data = (value as Record<string, unknown>).data;
+  if (!Array.isArray(data)) return [];
+  return data.flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+    const record = entry as Record<string, unknown>;
+    if (typeof record.name !== "string") return [];
+    return [
+      {
+        name: record.name,
+        ...(typeof record.mode === "string" ? { mode: record.mode } : {}),
+        ...(typeof record.model === "string" ? { model: record.model } : {}),
+        ...(typeof record.reasoning_effort === "string"
+          ? { reasoningEffort: record.reasoning_effort }
+          : {}),
+      },
+    ];
+  });
+}
+
 class CodexAppServer {
   readonly #child;
   readonly #pending = new Map<
@@ -350,9 +455,14 @@ export function mapCodexAppServerEvent(message: CodexAppMessage): ProviderEvent 
   }
   if (
     method === "item/commandExecution/requestApproval" ||
-    method === "item/fileChange/requestApproval"
+    method === "item/fileChange/requestApproval" ||
+    method === "item/permissions/requestApproval"
   ) {
     if (typeof message.id !== "string" && typeof message.id !== "number") return;
+    const choices =
+      method === "item/permissions/requestApproval"
+        ? codexPermissionChoices(params)
+        : codexApprovalChoices(params);
     return {
       type: "request.opened",
       requestId: `${message.id}`,
@@ -362,7 +472,15 @@ export function mapCodexAppServerEvent(message: CodexAppMessage): ProviderEvent 
           ? typeof params.command === "string"
             ? params.command
             : "Codex requests command approval"
-          : "Codex requests file-change approval",
+          : method === "item/fileChange/requestApproval"
+            ? "Codex requests file-change approval"
+            : "Codex requests additional permissions",
+      ...(typeof params.reason === "string"
+        ? { details: params.reason }
+        : method === "item/permissions/requestApproval" && params.permissions
+          ? { details: JSON.stringify(params.permissions, null, 2) }
+          : {}),
+      ...(choices.length > 0 ? { choices } : {}),
     };
   }
   if (method === "turn/started") return { type: "turn.started" };
@@ -699,10 +817,18 @@ export function codex(options: CodexOptions = {}): NawcProvider {
     readonly cwd: string;
     providerThreadId?: string;
     threadLoaded: boolean;
+    effectiveModel?: string;
+    effectiveReasoningEffort?: string;
+    collaborationModes?: readonly CodexCollaborationMode[];
     server?: CodexAppServer;
     readonly requests: Map<
       string,
-      { readonly id: unknown; readonly method: string; readonly questionId?: string }
+      {
+        readonly id: unknown;
+        readonly method: string;
+        readonly params: unknown;
+        readonly questionId?: string;
+      }
     >;
   };
   const sessions = new Map<string, CodexSession>();
@@ -741,41 +867,61 @@ export function codex(options: CodexOptions = {}): NawcProvider {
           .join("\n")}`
       : "";
     const skillInstruction = `\n\nNAWC plugin skills are available in ${skillsDir}. Read the relevant SKILL.md files before editing NAWC notes.`;
-    const modeInstruction =
-      mode === "plan"
-        ? "\n\nWork in plan mode: inspect the request and repository, then explain the proposed changes without editing files."
-        : mode === "review"
-          ? "\n\nReview the current work. Report concrete findings without editing files."
-          : "";
     session.server ??= await CodexAppServer.start(options.executable ?? "codex", cwd);
     const server = session.server;
+    if (session.collaborationModes === undefined) {
+      session.collaborationModes = await server
+        .request("collaborationMode/list", {})
+        .then(parseCodexCollaborationModes)
+        .catch(() => []);
+    }
+    const nativePlan = session.collaborationModes.find((candidate) => candidate.mode === "plan");
     if (session.providerThreadId && !session.threadLoaded) {
-      await server.request("thread/resume", {
+      const resumed = (await server.request("thread/resume", {
         threadId: session.providerThreadId,
         cwd,
         model: model ?? options.model ?? null,
-      });
+      })) as { readonly model?: unknown; readonly reasoningEffort?: unknown };
+      if (typeof resumed.model === "string") session.effectiveModel = resumed.model;
+      if (typeof resumed.reasoningEffort === "string")
+        session.effectiveReasoningEffort = resumed.reasoningEffort;
       session.threadLoaded = true;
     } else {
       if (!session.providerThreadId) {
         const started = (await server.request("thread/start", {
           cwd,
           model: model ?? options.model ?? null,
-          sandbox:
-            mode === "plan" || mode === "review"
-              ? "read-only"
-              : (options.sandbox ?? "workspace-write"),
-          approvalPolicy: "on-request",
+          ...(mode === "plan" || mode === "review"
+            ? { sandbox: "read-only" }
+            : options.sandbox
+              ? { sandbox: options.sandbox }
+              : {}),
           experimentalRawEvents: false,
-        })) as { readonly thread?: { readonly id?: unknown } };
+        })) as {
+          readonly thread?: { readonly id?: unknown };
+          readonly model?: unknown;
+          readonly reasoningEffort?: unknown;
+        };
         const threadId = started.thread?.id;
         if (typeof threadId !== "string") throw new Error("Codex did not return a thread id");
         session.providerThreadId = threadId;
+        if (typeof started.model === "string") session.effectiveModel = started.model;
+        if (typeof started.reasoningEffort === "string")
+          session.effectiveReasoningEffort = started.reasoningEffort;
         session.threadLoaded = true;
         yield { type: "thread.started", threadId };
       }
     }
     const threadId = session.providerThreadId;
+    const selectedModel = model ?? options.model ?? session.effectiveModel;
+    const selectedReasoningEffort =
+      reasoningEffort ?? options.reasoningEffort ?? session.effectiveReasoningEffort;
+    const modeInstruction =
+      mode === "plan" && !nativePlan
+        ? "\n\nWork in plan mode: inspect the request and repository, then explain the proposed changes without editing files."
+        : mode === "review"
+          ? "\n\nReview the current work. Report concrete findings without editing files."
+          : "";
     const serviceTier = modelOptions?.find((selection) => selection.id === "serviceTier")?.value;
     const abort = () => {
       if (threadId) void server.request("turn/interrupt", { threadId }).catch(() => undefined);
@@ -801,8 +947,20 @@ export function codex(options: CodexOptions = {}): NawcProvider {
             url: attachment.dataUrl,
           })),
         ],
-        model: model ?? options.model ?? null,
-        effort: reasoningEffort ?? options.reasoningEffort ?? null,
+        model: selectedModel ?? null,
+        effort: selectedReasoningEffort ?? null,
+        ...(mode === "plan" && nativePlan && selectedModel
+          ? {
+              collaborationMode: {
+                mode: nativePlan.mode,
+                settings: {
+                  model: nativePlan.model ?? selectedModel,
+                  reasoning_effort: nativePlan.reasoningEffort ?? selectedReasoningEffort ?? null,
+                  developer_instructions: null,
+                },
+              },
+            }
+          : {}),
         ...(typeof serviceTier === "string" ? { serviceTier } : {}),
       });
       while (true) {
@@ -822,6 +980,7 @@ export function codex(options: CodexOptions = {}): NawcProvider {
           session.requests.set(event.requestId, {
             id: native.id,
             method: typeof native.method === "string" ? native.method : event.requestKind,
+            params: native.params,
             ...(typeof first?.id === "string" ? { questionId: first.id } : {}),
           });
         }
@@ -893,6 +1052,16 @@ export function codex(options: CodexOptions = {}): NawcProvider {
             [request.questionId ?? "answer"]: { answers: [decision] },
           },
         });
+      } else if (request.method === "item/commandExecution/requestApproval") {
+        const choices = codexApprovalChoices(request.params);
+        const providerDecision = codexApprovalDecision(request.params, decision);
+        if (choices.length > 0 && providerDecision === undefined)
+          throw new Error(`Unknown Codex approval choice: ${decision}`);
+        active.server.respond(request.id, { decision: providerDecision ?? decision });
+      } else if (request.method === "item/permissions/requestApproval") {
+        const response = codexPermissionResponse(request.params, decision);
+        if (!response) throw new Error(`Unknown Codex permission choice: ${decision}`);
+        active.server.respond(request.id, response);
       } else active.server.respond(request.id, { decision });
       active.requests.delete(requestId);
     },

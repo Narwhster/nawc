@@ -1,12 +1,106 @@
 import { describe, expect, it } from "vitest";
 import {
+  codexApprovalChoices,
+  codexApprovalDecision,
+  codexPermissionChoices,
+  codexPermissionResponse,
   mapCodexAppServerEvent,
   parseCodexEvent,
+  parseCodexCollaborationModes,
   parseCodexModelsResponse,
   parseCodexSkillsResponse,
 } from "../src/index.ts";
 
 describe("Codex JSONL", () => {
+  it("preserves the app server's available approval decisions", () => {
+    const amendment = {
+      acceptWithExecpolicyAmendment: { execpolicy_amendment: ["git", "status"] },
+    };
+    const params = {
+      availableDecisions: ["accept", "decline", amendment],
+    };
+
+    expect(codexApprovalChoices(params)).toEqual([
+      { id: "accept", label: "Accept" },
+      { id: "decline", label: "Decline" },
+      {
+        id: JSON.stringify(amendment),
+        label: "Accept With Execpolicy Amendment",
+      },
+    ]);
+    expect(codexApprovalDecision(params, JSON.stringify(amendment))).toEqual(amendment);
+  });
+
+  it("maps app-server approval choices and reasons", () => {
+    expect(
+      mapCodexAppServerEvent({
+        id: 16,
+        method: "item/commandExecution/requestApproval",
+        params: {
+          command: "vp test",
+          reason: "Needs network access",
+          availableDecisions: ["accept", "decline"],
+        },
+      }),
+    ).toEqual({
+      type: "request.opened",
+      requestId: "16",
+      requestKind: "item/commandExecution/requestApproval",
+      title: "vp test",
+      details: "Needs network access",
+      choices: [
+        { id: "accept", label: "Accept" },
+        { id: "decline", label: "Decline" },
+      ],
+    });
+  });
+
+  it("preserves requested Codex permission profiles in scoped responses", () => {
+    const params = {
+      permissions: { network: { enabled: true } },
+      reason: "Download dependencies",
+    };
+    const choices = codexPermissionChoices(params);
+
+    expect(choices.map(({ label }) => label)).toEqual([
+      "Allow for turn",
+      "Allow for turn with strict auto review",
+      "Allow for session",
+      "Decline",
+    ]);
+    expect(codexPermissionResponse(params, choices[2].id)).toEqual({
+      permissions: params.permissions,
+      scope: "session",
+    });
+    expect(
+      mapCodexAppServerEvent({
+        id: 18,
+        method: "item/permissions/requestApproval",
+        params,
+      }),
+    ).toMatchObject({
+      type: "request.opened",
+      requestId: "18",
+      title: "Codex requests additional permissions",
+      details: "Download dependencies",
+      choices,
+    });
+  });
+
+  it("reads provider-advertised collaboration modes", () => {
+    expect(
+      parseCodexCollaborationModes({
+        data: [
+          { name: "Plan", mode: "plan", model: null, reasoning_effort: "medium" },
+          { name: "Pair", mode: null, model: "gpt" },
+        ],
+      }),
+    ).toEqual([
+      { name: "Plan", mode: "plan", reasoningEffort: "medium" },
+      { name: "Pair", model: "gpt" },
+    ]);
+  });
+
   it("maps app-server user-input requests to question choices", () => {
     expect(
       mapCodexAppServerEvent({

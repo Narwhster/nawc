@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
   cursor,
+  cursorPermissionChoices,
   cursorPermissionOptionId,
   cursorQuestionChoices,
   parseCursorEvent,
@@ -133,11 +134,22 @@ describe("Cursor ACP permissions", () => {
     ],
   };
 
-  it.each([
-    ["accept", "allow-this-command"],
-    ["acceptForSession", "allow-this-session"],
-    ["decline", "reject-command"],
-  ])("maps the generic %s decision to the agent-provided option ID", (decision, optionId) => {
-    expect(cursorPermissionOptionId(params, decision)).toBe(optionId);
+  it("uses the agent-provided permission labels and opaque IDs", () => {
+    expect(cursorPermissionChoices(params)).toEqual([
+      { id: "allow-this-command", label: "Allow" },
+      { id: "allow-this-session", label: "Allow for session" },
+      { id: "reject-command", label: "Reject" },
+    ]);
+  });
+
+  it.each(["allow-this-command", "allow-this-session", "reject-command"])(
+    "preserves the agent-provided option ID %s",
+    (optionId) => {
+      expect(cursorPermissionOptionId(params, optionId)).toBe(optionId);
+    },
+  );
+
+  it("does not invent a mapping for generic decisions", () => {
+    expect(cursorPermissionOptionId(params, "acceptForSession")).toBeUndefined();
   });
 });

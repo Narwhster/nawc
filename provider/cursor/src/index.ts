@@ -6,6 +6,7 @@ import type {
   NawcProviderOption,
   NawcProviderOptionSelection,
   NawcProviderReasoningEffort,
+  NawcProviderRequestChoice,
   NawcProviderSettings,
   NawcProviderSession,
   NawcProviderTurnInput,
@@ -602,15 +603,17 @@ function referencesPrompt(
 function requestDetails(request: PendingRequest): {
   readonly title: string;
   readonly details?: string;
-  readonly choices?: readonly string[];
+  readonly choices?: readonly (string | NawcProviderRequestChoice)[];
   readonly allowCustom?: boolean;
 } {
   const params = isRecord(request.params) ? request.params : {};
   if (request.method === "session/request_permission") {
     const toolCall = isRecord(params.toolCall) ? params.toolCall : {};
+    const choices = cursorPermissionChoices(params);
     return {
       title: typeof toolCall.title === "string" ? toolCall.title : "Cursor requests permission",
       ...(typeof toolCall.rawInput === "string" ? { details: toolCall.rawInput } : {}),
+      ...(choices.length > 0 ? { choices } : {}),
     };
   }
   if (request.method === "cursor/ask_question") {
@@ -627,6 +630,19 @@ function requestDetails(request: PendingRequest): {
   return { title: request.method };
 }
 
+export function cursorPermissionChoices(params: unknown): readonly NawcProviderRequestChoice[] {
+  if (!isRecord(params) || !Array.isArray(params.options)) return [];
+  return params.options.flatMap((option) => {
+    if (!isRecord(option) || typeof option.optionId !== "string") return [];
+    return [
+      {
+        id: option.optionId,
+        label: typeof option.name === "string" ? option.name : option.optionId,
+      },
+    ];
+  });
+}
+
 export function cursorQuestionChoices(question: unknown): readonly string[] {
   if (!isRecord(question) || !Array.isArray(question.options)) return ["OK"];
   const choices = question.options.flatMap((option) =>
@@ -637,18 +653,8 @@ export function cursorQuestionChoices(question: unknown): readonly string[] {
 
 export function cursorPermissionOptionId(params: unknown, decision: string): string | undefined {
   if (!isRecord(params) || !Array.isArray(params.options)) return;
-  const kind =
-    decision === "accept"
-      ? "allow_once"
-      : decision === "acceptForSession"
-        ? "allow_always"
-        : decision === "decline"
-          ? "reject_once"
-          : undefined;
-  if (!kind) return;
   for (const option of params.options) {
-    if (!isRecord(option) || option.kind !== kind) continue;
-    if (typeof option.optionId === "string") return option.optionId;
+    if (isRecord(option) && option.optionId === decision) return decision;
   }
 }
 
@@ -954,10 +960,9 @@ export function cursor(options: CursorOptions = {}): NawcProvider {
         session.acp.getServerRequest(`number:${requestId}`);
       if (!request) throw new Error(`Unknown Cursor request: ${requestId}`);
       if (request.method === "session/request_permission") {
-        const optionId = cursorPermissionOptionId(request.params, decision) ?? decision;
-        if (decision === "cancel" || decision === "reject")
-          session.acp.respond(request.id, { outcome: { outcome: "cancelled" } });
-        else session.acp.respond(request.id, { outcome: { outcome: "selected", optionId } });
+        const optionId = cursorPermissionOptionId(request.params, decision);
+        if (!optionId) throw new Error(`Unknown Cursor permission choice: ${decision}`);
+        session.acp.respond(request.id, { outcome: { outcome: "selected", optionId } });
       } else if (request.method === "cursor/ask_question") {
         const params = isRecord(request.params) ? request.params : {};
         const questions = Array.isArray(params.questions) ? params.questions : [];

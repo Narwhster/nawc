@@ -17,7 +17,7 @@ import {
   WrenchIcon,
   XIcon,
 } from "lucide-react";
-import type { NawcProviderUsage } from "@nawc/config";
+import type { NawcProviderRequestChoice, NawcProviderUsage } from "@nawc/config";
 import { createId } from "@paralleldrive/cuid2";
 import {
   Fragment,
@@ -138,7 +138,7 @@ type AgentRequest = {
   readonly turnId: string;
   readonly title: string;
   readonly details?: string;
-  readonly choices?: readonly string[];
+  readonly choices?: readonly (string | NawcProviderRequestChoice)[];
   readonly allowCustom?: boolean;
   readonly status: "pending" | "resolved";
 };
@@ -504,7 +504,11 @@ function RequestActions({
   };
   const hasChoices = request.choices !== undefined;
   const decisions = hasChoices
-    ? request.choices.map((choice) => [choice, choice] as const)
+    ? request.choices.map((choice) =>
+        typeof choice === "string"
+          ? ([choice, choice] as const)
+          : ([choice.id, choice.label] as const),
+      )
     : [
         ["decline", "Decline"],
         ["accept", "Allow once"],
@@ -1176,6 +1180,16 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                             </Button>
                           )}
                         </div>
+                        {pendingRequests.map((request) => (
+                          <Alert key={request.id}>
+                            <CircleAlertIcon />
+                            <AlertTitle>{request.title}</AlertTitle>
+                            {request.details && (
+                              <AlertDescription>{request.details}</AlertDescription>
+                            )}
+                            <RequestActions request={request} threadId={thread.id} />
+                          </Alert>
+                        ))}
                       </Message>
                       {turnWarnings.map((warning, wIndex) => (
                         <Alert variant="destructive" key={`warning:${message.turnId}:${wIndex}`}>
@@ -1194,9 +1208,12 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                   continue;
                 const turnActivities = thread.activities.filter((item) => item.turnId === turn.id);
                 const turnThinking = turn.thinking ?? [];
-                const hasContent =
+                const pendingRequests = thread.requests.filter(
+                  (item) => item.turnId === turn.id && item.status === "pending",
+                );
+                const hasActivityContent =
                   turnActivities.length > 0 || turn.plan || turnThinking.length > 0;
-                if (!hasContent) {
+                if (!hasActivityContent && pendingRequests.length === 0) {
                   items.push(
                     <Message key={`turn-activity:${turn.id}`} role="assistant">
                       <ThinkingIndicator />
@@ -1205,11 +1222,23 @@ export function AgentPanel({ note }: { readonly note?: string }) {
                 } else {
                   items.push(
                     <Message key={`turn-activity:${turn.id}`} role="assistant">
-                      <TurnActivity
-                        turn={turn}
-                        activities={turnActivities}
-                        thinking={turnThinking}
-                      />
+                      {hasActivityContent && (
+                        <TurnActivity
+                          turn={turn}
+                          activities={turnActivities}
+                          thinking={turnThinking}
+                        />
+                      )}
+                      {pendingRequests.map((request) => (
+                        <Alert key={request.id}>
+                          <CircleAlertIcon />
+                          <AlertTitle>{request.title}</AlertTitle>
+                          {request.details && (
+                            <AlertDescription>{request.details}</AlertDescription>
+                          )}
+                          <RequestActions request={request} threadId={thread.id} />
+                        </Alert>
+                      ))}
                     </Message>,
                   );
                 }
