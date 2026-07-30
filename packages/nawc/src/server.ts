@@ -49,6 +49,7 @@ import { NoteSearchIndex } from "./note-search.ts";
 import { AgentManager } from "./agent-manager.ts";
 import type { AgentThread } from "./agent-thread.ts";
 import { validateAgentAttachments } from "./agent-input.ts";
+import { drainAgentTurn } from "./agent-turn-drain.ts";
 
 type ServerOptions = {
   readonly projectDir: string;
@@ -372,9 +373,6 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
     }
     const threadId = context.req.param("id");
     return streamSSE(context, async (stream) => {
-      stream.onAbort(() => {
-        void agentManager.interrupt(threadId);
-      });
       const turn = agentManager.sendTurn({
         threadId,
         prompt: body.prompt,
@@ -385,22 +383,14 @@ export async function createNawcServer(options: ServerOptions): Promise<RunningS
         options: body.options,
         mode: body.mode,
       });
-      let drainError: unknown;
-      const drain = (async () => {
-        try {
-          for await (const event of turn) {
-            await stream.writeSSE({
-              data: JSON.stringify(event),
-              event: event.type,
-            });
-          }
-        } catch (error) {
-          drainError = error;
-        }
-      })();
+      const drain = drainAgentTurn(turn, (event) =>
+        stream.writeSSE({
+          data: JSON.stringify(event),
+          event: event.type,
+        }),
+      );
       agentManager.trackActiveTurn(drain);
       await drain;
-      if (drainError) throw drainError;
     });
   });
   app.get("/api/events", (context) =>
