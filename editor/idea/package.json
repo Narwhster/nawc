@@ -1,6 +1,6 @@
 {
   "name": "@nawc/editor-idea",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Open NAWC source references in IntelliJ IDEA.",
   "keywords": [
     "coding-agents",

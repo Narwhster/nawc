@@ -1,6 +1,6 @@
 {
   "name": "@nawc/cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Local HTML-backed notebooks for specification- and test-driven development with coding agents.",
   "keywords": [
     "coding-agents",

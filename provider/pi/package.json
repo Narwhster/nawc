@@ -1,6 +1,6 @@
 {
   "name": "@nawc/provider-pi",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Connect NAWC conversations to the Pi coding agent.",
   "keywords": [
     "coding-agents",

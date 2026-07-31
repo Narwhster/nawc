@@ -1,6 +1,6 @@
 {
   "name": "create-nawc",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Create and configure a new NAWC notebook.",
   "keywords": [
     "coding-agents",

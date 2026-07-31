@@ -1,6 +1,6 @@
 {
   "name": "@nawc/syntax-vitest",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Vitest test syntax and execution support for NAWC notebooks.",
   "keywords": [
     "coding-agents",
