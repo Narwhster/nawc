@@ -87,7 +87,7 @@ function getNoteHistory(histories: Map<string, NoteHistory>, panel: IDockviewPan
   return history;
 }
 
-export default function App() {
+export default function App({ notebookId }: { readonly notebookId: string }) {
   const dockview = useRef<DockviewApi>(undefined);
   const noteHistories = useRef(new Map<string, NoteHistory>());
   const sidebarPanel = useRef<PanelImperativeHandle | null>(null);
@@ -100,17 +100,18 @@ export default function App() {
     canGoForward: false,
   });
   const [sidebarOpen, setSidebarOpen] = useLocalStorageState(
-    "nawc:sidebar-open:v1",
+    `nawc:${notebookId}:sidebar-open:v1`,
     !window.matchMedia(mobileMediaQuery).matches,
   );
   const [agentOpen, setAgentOpen] = useLocalStorageState(
-    "nawc:agent-open:v1",
+    `nawc:${notebookId}:agent-open:v1`,
     !window.matchMedia(mobileMediaQuery).matches,
   );
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
-    id: "nawc-panels",
+    id: `nawc-panels:${notebookId}`,
     storage: localStorage,
   });
+  const dockviewKey = `nawc:${notebookId}:tabs:v1`;
   const [dialog, setDialog] = useState<WorkspaceDialogState>();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchRevision, setSearchRevision] = useState(0);
@@ -434,8 +435,29 @@ export default function App() {
             setActive(panelPath(panel));
             updateNavigation(panel);
           });
-          const path = parseNoteLink(window.location.href);
-          if (path) openNoteRef.current(path, true);
+          void (async () => {
+            const notes = await api<string[]>("/api/notes");
+            const saved = localStorage.getItem(dockviewKey);
+            if (saved) {
+              try {
+                dock.fromJSON(JSON.parse(saved));
+                for (const panel of dock.panels) {
+                  const path = panelPath(panel);
+                  if (!path || !notes.includes(path)) dock.removePanel(panel);
+                  else noteHistories.current.set(panel.id, createNoteHistory());
+                }
+              } catch {
+                localStorage.removeItem(dockviewKey);
+              }
+            }
+            const path = parseNoteLink(window.location.href);
+            if (path && !dock.panels.some((panel) => panelPath(panel) === path))
+              openNoteRef.current(path, true);
+            setActive(panelPath(dock.activePanel));
+            dock.onDidLayoutChange(() =>
+              localStorage.setItem(dockviewKey, JSON.stringify(dock.toJSON())),
+            );
+          })();
         }}
       />
     </section>
@@ -531,7 +553,7 @@ export default function App() {
                 >
                   <XIcon />
                 </Button>
-                <AgentPanel note={active} />
+                <AgentPanel notebookId={notebookId} note={active} />
               </div>
             )}
           </div>
@@ -570,7 +592,7 @@ export default function App() {
               collapsible
               panelRef={agentPanel}
             >
-              <AgentPanel note={active} />
+              <AgentPanel notebookId={notebookId} note={active} />
             </ResizablePanel>
           </ResizablePanelGroup>
         )}

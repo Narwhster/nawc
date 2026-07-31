@@ -4,6 +4,7 @@ import App from "./App";
 import "./styles.css";
 
 type ThemeMeta = {
+  baseDir: string;
   theme: {
     name: string;
     appearance: "light" | "dark";
@@ -12,8 +13,10 @@ type ThemeMeta = {
 };
 
 const response = await fetch("/api/meta");
+let notebookId = window.location.pathname;
 if (response.ok) {
-  const { theme } = (await response.json()) as ThemeMeta;
+  const { baseDir, theme } = (await response.json()) as ThemeMeta;
+  notebookId = baseDir;
   const root = document.documentElement;
   root.dataset.theme = theme.name;
   root.classList.toggle("dark", theme.appearance === "dark");
@@ -24,6 +27,6 @@ if (response.ok) {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <App notebookId={notebookId} />
   </StrictMode>,
 );

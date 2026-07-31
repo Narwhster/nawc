@@ -578,13 +578,26 @@ function RequestActions({
   );
 }
 
-export function AgentPanel({ note }: { readonly note?: string }) {
+export function AgentPanel({
+  notebookId = "",
+  note,
+}: {
+  readonly notebookId?: string;
+  readonly note?: string;
+}) {
   const [provider, setProvider] = useState<ProviderMetadata>();
   const [threads, setThreads] = useState<readonly AgentThread[]>([]);
-  const [threadId, setThreadId] = useLocalStorageState(THREAD_KEY, "");
+  const storageKey = (key: string) => (notebookId ? `${notebookId}:${key}` : key);
+  const [threadId, setThreadId] = useLocalStorageState(storageKey(THREAD_KEY), "");
   const [models, setModels] = useState<readonly ModelOption[]>([]);
-  const [preferences, setPreferences] = useLocalStorageState<AgentPreferences>(PREFERENCES_KEY, {});
-  const [drafts, setDrafts] = useLocalStorageState<Record<string, string>>(DRAFTS_KEY, {});
+  const [preferences, setPreferences] = useLocalStorageState<AgentPreferences>(
+    storageKey(PREFERENCES_KEY),
+    {},
+  );
+  const [drafts, setDrafts] = useLocalStorageState<Record<string, string>>(
+    storageKey(DRAFTS_KEY),
+    {},
+  );
   const [running, setRunning] = useState(false);
   const [trigger, setTrigger] = useState<ComposerTrigger>();
   const [completions, setCompletions] = useState<readonly Completion[]>([]);
